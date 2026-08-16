@@ -13,10 +13,13 @@ from urllib import request
 
 # Params: edit these, then run `uv run data/download.py`
 USER_AGENT = "Document Copilot your.email@example.com"
-TICKERS = ["AAPL", "MSFT", "NVDA", "AMZN", "GOOGL"]
+TICKERS = ["AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "BSP"]
 FILINGS_PER_COMPANY = 5
 OUTPUT_DIR = Path(__file__).resolve().parent / "downloads"
 CLEAR_OUTPUT_DIR = True
+
+ANNUAL_FORMS = ("10-K", "20-F")
+IPO_FALLBACK_FORMS = ("F-1", "S-1", "424B4")
 
 COMPANY_CIKS = {
     "AAPL": "0000320193",
@@ -24,6 +27,7 @@ COMPANY_CIKS = {
     "NVDA": "0001045810",
     "AMZN": "0001018724",
     "GOOGL": "0001652044",
+    "BSP": "0002004711",
 }
 
 
@@ -61,7 +65,8 @@ def download_filings() -> dict:
     manifest = {
         "source": "SEC EDGAR",
         "generated_at_utc": datetime.now(UTC).isoformat(),
-        "form": "10-K",
+        "annual_forms": list(ANNUAL_FORMS),
+        "fallback_forms": list(IPO_FALLBACK_FORMS),
         "downloaded_count": 0,
         "filings": [],
     }
@@ -76,13 +81,11 @@ def download_filings() -> dict:
             for item in submission.get("filings", {}).get("files", [])
         )
 
-        filings = []
-        for sec_submission in submissions:
-            filings.extend(extract_10k_filings(sec_submission, target_years))
-            if len(filings) >= FILINGS_PER_COMPANY:
-                break
+        filings = select_filings(submissions, target_years)
+        if not filings:
+            print(f"No supported filings found for {ticker}.")
 
-        for filing in filings[:FILINGS_PER_COMPANY]:
+        for filing in filings:
             accession_path = filing["accession_number"].replace("-", "")
             source_url = (
                 "https://www.sec.gov/Archives/edgar/data/"
@@ -119,9 +122,33 @@ def download_filings() -> dict:
     return manifest
 
 
-def extract_10k_filings(
-    submission: dict, target_years: set[str]
+def select_filings(
+    submissions: list[dict], target_years: set[str]
 ) -> list[dict[str, str]]:
+    filings = [
+        filing for submission in submissions for filing in extract_filings(submission)
+    ]
+    filings.sort(key=lambda filing: filing["filing_date"], reverse=True)
+
+    annual_filings = [
+        filing
+        for filing in filings
+        if filing["form"] in ANNUAL_FORMS and filing["year"] in target_years
+    ]
+    if annual_filings:
+        return annual_filings[:FILINGS_PER_COMPANY]
+
+    fallback_filings = []
+    for form in IPO_FALLBACK_FORMS:
+        filing = next((filing for filing in filings if filing["form"] == form), None)
+        if filing:
+            fallback_filings.append(filing)
+
+    fallback_filings.sort(key=lambda filing: filing["filing_date"], reverse=True)
+    return fallback_filings
+
+
+def extract_filings(submission: dict) -> list[dict[str, str]]:
     recent = submission["filings"]["recent"] if "filings" in submission else submission
     filings = []
 
@@ -134,17 +161,16 @@ def extract_10k_filings(
         strict=True,
     ):
         year = (report_date or filing_date)[:4]
-        if form == "10-K" and year in target_years:
-            filings.append(
-                {
-                    "year": year,
-                    "form": form,
-                    "accession_number": accession,
-                    "primary_document": document,
-                    "filing_date": filing_date,
-                    "report_date": report_date,
-                }
-            )
+        filings.append(
+            {
+                "year": year,
+                "form": form,
+                "accession_number": accession,
+                "primary_document": document,
+                "filing_date": filing_date,
+                "report_date": report_date,
+            }
+        )
 
     return filings
 
