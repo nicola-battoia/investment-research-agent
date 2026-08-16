@@ -1,0 +1,1 @@
+"""Document Copilot backend application."""

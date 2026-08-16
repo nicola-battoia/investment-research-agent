@@ -4,7 +4,7 @@ An internal AI chatbot that lets analysts query a corpus of documents in plain E
 
 ## The client
 
-**Driftwood Capital** — fictional independent investment research firm. Their analysts spend half their week reading 10-Ks and 10-Qs before they can produce any original analysis. Document Copilot eats that intake work so they can skip straight to insight.
+**10-K Club** — fictional independent investment research firm. Their analysts spend half their week reading 10-Ks and 10-Qs before they can produce any original analysis. Document Copilot eats that intake work so they can skip straight to insight.
 
 Full brief: [docs/client-brief.md](docs/client-brief.md)
 
