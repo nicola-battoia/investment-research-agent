@@ -28,11 +28,11 @@ See universal policy in [../AGENTS.md](../AGENTS.md). Backend-specific:
 
 ```text
 backend/
-├── alembic/
-│   ├── env.py           # Imports app database metadata for autogenerate
-│   └── versions/        # Reviewed migration files
 ├── alembic.ini
 ├── app/
+│   ├── alembic/
+│   │   ├── env.py       # Imports app database metadata for autogenerate
+│   │   └── versions/    # Reviewed migration files
 │   ├── main.py          # FastAPI entrypoint
 │   ├── config.py        # Pydantic settings — single source of truth for env
 │   ├── api/             # FastAPI routers (chat, ingest, auth)

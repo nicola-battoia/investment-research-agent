@@ -299,9 +299,9 @@ Database schema changes are managed from the backend with SQLAlchemy models and 
 
 The workflow is:
 
-1. Update SQLAlchemy models in `app/database/models.py`.
+1. Update the table-specific SQLAlchemy models in `app/database/`.
 2. Generate a candidate migration with `uv run alembic revision --autogenerate -m "<change>"`.
-3. Review the generated migration file in `backend/alembic/versions/`.
+3. Review the generated migration file in `backend/app/alembic/versions/`.
 4. Add explicit migration operations for Postgres/Supabase features that autogenerate cannot infer reliably.
 5. Apply the migration locally or against the linked Supabase database with `uv run alembic upgrade head`.
 6. Commit both the model changes and the migration file.

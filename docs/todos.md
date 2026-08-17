@@ -37,10 +37,10 @@ Phase complete when both services start locally, the frontend can call the backe
 - [x] Model `source_documents` with company, ticker, form, filing dates, accession number, SEC URL, normalized Markdown, extraction metadata, and a content checksum.
 - [x] Model `document_chunks` with document ID, chunk order, text, token count, page or section locator, source offsets, metadata, embedding, and full-text search data.
 - [x] Add uniqueness and foreign-key rules that prevent duplicate filings, duplicate chunks, orphan citations, and messages without a thread.
-- [ ] Create the first reviewed Alembic migration.
-- [ ] In the migration, enable `pgvector`, add the embedding column with the configured dimensions, add the generated `tsvector` column, and create HNSW and GIN indexes.
-- [ ] Enable row-level security and add policies so users can only read and change their own user record, threads, messages, and citations. Keep the shared filing corpus read-only to signed-in users.
-- [ ] Decide how a profile is created for a new Auth user and implement that flow.
+- [x] Create the first reviewed Alembic migration.
+- [x] In the migration, enable `pgvector`, add the embedding column with the configured dimensions, add the generated `tsvector` column, and create HNSW and GIN indexes.
+- [x] Enable row-level security and add policies so users can only read and change their own user record, threads, messages, and citations. Keep the shared filing corpus read-only to signed-in users.
+- [x] Create each application user automatically with a database trigger after Supabase Auth creates a new user.
 - [ ] Apply the migration to a clean Supabase project and verify every table, index, policy, and grant.
 
 Phase complete when the full schema can be created from an empty database by running `uv run alembic upgrade head`.

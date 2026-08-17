@@ -79,3 +79,8 @@ def test_document_and_chunk_integrity() -> None:
     assert chunks.c.search_vector.computed is not None
     assert chunks.c.document_id.nullable is False
     assert chunks.c.text.nullable is False
+    assert {index.name for index in chunks.indexes} == {
+        "ix_document_chunks_embedding_hnsw",
+        "ix_document_chunks_metadata_gin",
+        "ix_document_chunks_search_vector_gin",
+    }

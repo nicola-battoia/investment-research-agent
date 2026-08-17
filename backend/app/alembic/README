@@ -1,0 +1,9 @@
+Run Alembic commands from the backend directory.
+
+Preview the pending migration without changing the database:
+
+    uv run alembic upgrade head --sql
+
+Apply migrations only after reviewing the generated SQL:
+
+    uv run alembic upgrade head

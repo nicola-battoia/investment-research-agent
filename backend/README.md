@@ -29,6 +29,12 @@ uv run ruff check app tests
 uv run ruff format --check app tests
 ```
 
+Preview pending migration SQL without changing the database:
+
+```bash
+uv run alembic upgrade head --sql
+```
+
 ## Use in Python or Jupyter
 
 Use the backend virtual environment, then import shared settings through:

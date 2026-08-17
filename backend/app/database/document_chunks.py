@@ -8,6 +8,7 @@ from sqlalchemy import (
     CheckConstraint,
     Computed,
     ForeignKey,
+    Index,
     Integer,
     Text,
     UniqueConstraint,
@@ -46,6 +47,22 @@ class DocumentChunk(TimestampMixin, Base):
             "chunk_index",
             name="uq_document_chunks_document_index",
         ),
+        Index(
+            "ix_document_chunks_embedding_hnsw",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
+        Index(
+            "ix_document_chunks_search_vector_gin",
+            "search_vector",
+            postgresql_using="gin",
+        ),
+        Index(
+            "ix_document_chunks_metadata_gin",
+            "metadata",
+            postgresql_using="gin",
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(
@@ -78,7 +95,10 @@ class DocumentChunk(TimestampMixin, Base):
     )
     search_vector: Mapped[str] = mapped_column(
         TSVECTOR,
-        Computed("to_tsvector('english', coalesce(text, ''))", persisted=True),
+        Computed(
+            "to_tsvector('english'::regconfig, coalesce(text, ''))",
+            persisted=True,
+        ),
         nullable=False,
     )
 

@@ -27,6 +27,15 @@ class Settings(BaseSettings):
     openai_embedding_dimensions: PositiveInt
     allowed_origins: Annotated[tuple[AnyHttpUrl, ...], NoDecode]
 
+    @field_validator("database_url")
+    @classmethod
+    def require_psycopg_3(cls, value: SecretStr) -> SecretStr:
+        if not value.get_secret_value().startswith("postgresql+psycopg://"):
+            raise ValueError(
+                "DATABASE_URL must use postgresql+psycopg:// for Psycopg 3"
+            )
+        return value
+
     @field_validator("allowed_origins", mode="before")
     @classmethod
     def split_allowed_origins(cls, value: object) -> object:

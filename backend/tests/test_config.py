@@ -19,7 +19,7 @@ VALID_ENV = {
     "SUPABASE_URL": "http://localhost:54321",
     "SUPABASE_ANON_KEY": "test-anon-key",
     "SUPABASE_SERVICE_ROLE_KEY": "test-service-role-key",
-    "DATABASE_URL": "postgresql://postgres:password@localhost:5432/postgres",
+    "DATABASE_URL": "postgresql+psycopg://postgres:password@localhost:5432/postgres",
     "OPENAI_API_KEY": "test-openai-key",
     "OPENAI_EMBEDDING_MODEL": "text-embedding-3-small",
     "OPENAI_EMBEDDING_DIMENSIONS": "1536",
@@ -102,3 +102,15 @@ def test_rejects_non_positive_embedding_dimensions(tmp_path: Path) -> None:
 
     assert result.returncode != 0
     assert "openai_embedding_dimensions" in result.stderr
+
+
+def test_requires_psycopg_3_database_url(tmp_path: Path) -> None:
+    result = run_config_import(
+        tmp_path,
+        overrides={
+            "DATABASE_URL": "postgresql://postgres:password@localhost:5432/postgres"
+        },
+    )
+
+    assert result.returncode != 0
+    assert "must use postgresql+psycopg:// for Psycopg 3" in result.stderr

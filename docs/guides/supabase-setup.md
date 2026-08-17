@@ -27,7 +27,7 @@ You need these values in backend and frontend env config (exact variable names w
 | **anon (public) key** | Same page → `anon` `public` key | Frontend (browser-safe) |
 | **service_role (secret) key** | Same page → `service_role` `secret` key | Backend only — never expose to the browser |
 | **Project ref** | Dashboard URL `supabase.com/dashboard/project/<ref>` or `supabase projects list` | CLI commands |
-| **Direct database connection string** | Dashboard → **Project Settings** → **Database** → Connection string | Alembic migrations and backend DB access |
+| **Direct database connection string** | Dashboard → **Project Settings** → **Database** → Connection string; use the `postgresql+psycopg://` scheme in backend configuration | Alembic migrations and backend DB access |
 | **Database password** | What you set at project creation | Direct Postgres connection |
 
 From the CLI you can also print API keys:

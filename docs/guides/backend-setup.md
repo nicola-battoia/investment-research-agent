@@ -15,11 +15,7 @@ uv add --dev pytest ruff
 
 Alembic owns database schema changes for this project. SQLAlchemy models describe the app tables, and Alembic migrations apply those changes to Supabase Postgres.
 
-Initialize Alembic once from `backend/`:
-
-```bash
-uv run alembic init alembic
-```
+Alembic is already initialized. Its configuration lives at `backend/alembic.ini`, with migration scripts under `backend/app/alembic/`. Do not run `alembic init` again.
 
 Configure `alembic/env.py` to import the app's SQLAlchemy metadata and read the direct database URL from `app.config.settings`. Use the direct/session Supabase database connection, not the transaction pooler URL, for migrations.
 
