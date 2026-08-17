@@ -272,7 +272,7 @@ Streaming responsibilities:
 
 Supabase tables should be small and product-oriented:
 
-- `profiles`: one row per authenticated user, keyed by Supabase `auth.users.id`.
+- `users`: one application row per authenticated user, keyed by Supabase `auth.users.id`.
 - `chat_threads`: thread metadata, owner, title, timestamps.
 - `chat_messages`: user and assistant messages in order, with AI SDK-compatible message JSON where useful.
 - `message_citations`: normalized citation records linked to assistant messages.

@@ -30,16 +30,16 @@ Phase complete when both services start locally, the frontend can call the backe
 
 ## 3. Build the database schema
 
-- [ ] Model `profiles`, linked to Supabase Auth users.
-- [ ] Model `chat_threads` with an owner, title, and timestamps.
-- [ ] Model ordered `chat_messages` with role, content, message data, model usage, and timestamps.
-- [ ] Model `message_citations` linked to assistant messages and source chunks.
-- [ ] Model `source_documents` with company, ticker, form, filing dates, accession number, SEC URL, normalized Markdown, extraction metadata, and a content checksum.
-- [ ] Model `document_chunks` with document ID, chunk order, text, token count, page or section locator, source offsets, metadata, embedding, and full-text search data.
-- [ ] Add uniqueness and foreign-key rules that prevent duplicate filings, duplicate chunks, orphan citations, and messages without a thread.
+- [x] Model `users`, linked to Supabase Auth users.
+- [x] Model `chat_threads` with an owner, title, and timestamps.
+- [x] Model ordered `chat_messages` with role, content, message data, model usage, and timestamps.
+- [x] Model `message_citations` linked to assistant messages and source chunks.
+- [x] Model `source_documents` with company, ticker, form, filing dates, accession number, SEC URL, normalized Markdown, extraction metadata, and a content checksum.
+- [x] Model `document_chunks` with document ID, chunk order, text, token count, page or section locator, source offsets, metadata, embedding, and full-text search data.
+- [x] Add uniqueness and foreign-key rules that prevent duplicate filings, duplicate chunks, orphan citations, and messages without a thread.
 - [ ] Create the first reviewed Alembic migration.
 - [ ] In the migration, enable `pgvector`, add the embedding column with the configured dimensions, add the generated `tsvector` column, and create HNSW and GIN indexes.
-- [ ] Enable row-level security and add policies so users can only read and change their own profiles, threads, messages, and citations. Keep the shared filing corpus read-only to signed-in users.
+- [ ] Enable row-level security and add policies so users can only read and change their own user record, threads, messages, and citations. Keep the shared filing corpus read-only to signed-in users.
 - [ ] Decide how a profile is created for a new Auth user and implement that flow.
 - [ ] Apply the migration to a clean Supabase project and verify every table, index, policy, and grant.
 
