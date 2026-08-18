@@ -20,9 +20,9 @@ Phase complete when the team has one written MVP contract for the corpus, access
 - [ ] Create the backend package structure under `backend/app`, plus `backend/ingest` and `backend/tests`.
 - [x] Implement `backend/app/config.py` as the only place that reads and validates backend environment variables.
 - [x] Create the FastAPI application with CORS, structured logging, a health endpoint, and application dependencies stored through FastAPI rather than module globals.
-- [ ] Initialize Alembic and connect it to the SQLAlchemy metadata and the direct Supabase database URL.
-- [ ] Scaffold the Vite React application with strict TypeScript, React Router, Tailwind CSS, and shadcn/ui.
-- [ ] Add `frontend/src/lib/env.ts` as the only place that reads and validates frontend environment variables.
+- [x] Initialize Alembic and connect it to the SQLAlchemy metadata and the direct Supabase database URL.
+- [x] Scaffold the Vite React application with strict TypeScript, React Router, Tailwind CSS, and shadcn/ui.
+- [x] Add `frontend/src/lib/env.ts` as the only place that reads and validates frontend environment variables.
 - [ ] Create the basic frontend route and component folders described in the architecture.
 - [ ] Document the exact local setup, run, migration, lint, type-check, and test commands in the main README.
 
@@ -41,21 +41,21 @@ Phase complete when both services start locally, the frontend can call the backe
 - [x] In the migration, enable `pgvector`, add the embedding column with the configured dimensions, add the generated `tsvector` column, and create HNSW and GIN indexes.
 - [x] Enable row-level security and add policies so users can only read and change their own user record, threads, messages, and citations. Keep the shared filing corpus read-only to signed-in users.
 - [x] Create each application user automatically with a database trigger after Supabase Auth creates a new user.
-- [ ] Apply the migration to a clean Supabase project and verify every table, index, policy, and grant.
+- [x] Apply the migration to a clean Supabase project and verify every table, index, policy, and grant.
 
 Phase complete when the full schema can be created from an empty database by running `uv run alembic upgrade head`.
 
 ## 4. Implement authentication and the shared API layer
 
 - [ ] Configure Supabase email authentication for local development and production.
-- [ ] Enforce the approved company email domain or email allow-list during account creation.
-- [ ] Create the shared Supabase browser client and an auth provider for session loading, sign-in, sign-out, and expired sessions.
-- [ ] Add protected frontend routes and a simple email sign-in screen.
-- [ ] Implement backend bearer-token validation by asking Supabase Auth for the current user.
-- [ ] Expose a reusable `get_current_user` FastAPI dependency.
-- [ ] Create user-scoped and admin Supabase clients in the backend; never send the service-role key to the browser.
-- [ ] Implement the frontend `fetch` wrapper with the API base URL, bearer-token injection, JSON handling, a timeout, and typed HTTP versus network errors.
-- [ ] Add the product-level API client used by pages and components.
+- [x] Enforce the approved company email domain or email allow-list during account creation. For the private pilot, public sign-up is disabled and approved users are created manually.
+- [x] Create the shared Supabase browser client and an auth provider for session loading, sign-in, sign-out, and expired sessions.
+- [x] Add protected frontend routes and a simple email sign-in screen.
+- [x] Implement backend bearer-token validation by asking Supabase Auth for the current user.
+- [x] Expose a reusable `get_current_user` FastAPI dependency.
+- [x] Create user-scoped and admin Supabase clients in the backend; never send the service-role key to the browser.
+- [x] Implement the frontend `fetch` wrapper with the API base URL, bearer-token injection, JSON handling, a timeout, and typed HTTP versus network errors.
+- [x] Add the product-level API client used by pages and components.
 - [ ] Add backend tests for missing, invalid, and expired tokens and for attempts to access another user's records.
 
 Phase complete when a user can sign in and call a protected backend endpoint, while unauthenticated and cross-user requests are rejected.
