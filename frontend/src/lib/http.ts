@@ -33,6 +33,23 @@ function errorMessage(payload: unknown, fallback: string): string {
   ) {
     return payload.detail
   }
+  if (
+    typeof payload === 'object' &&
+    payload !== null &&
+    'detail' in payload &&
+    Array.isArray(payload.detail) &&
+    payload.detail.length > 0
+  ) {
+    const firstError: unknown = payload.detail[0]
+    if (
+      typeof firstError === 'object' &&
+      firstError !== null &&
+      'msg' in firstError &&
+      typeof firstError.msg === 'string'
+    ) {
+      return firstError.msg
+    }
+  }
   return fallback
 }
 
@@ -48,6 +65,14 @@ async function readJson(response: Response): Promise<unknown> {
       status: response.status,
     })
   }
+}
+
+export async function apiErrorFromResponse(response: Response): Promise<ApiError> {
+  const payload = await readJson(response)
+  return new ApiError(
+    errorMessage(payload, `API request failed with status ${response.status}`),
+    { status: response.status },
+  )
 }
 
 export function createHttpClient(
@@ -81,10 +106,9 @@ export function createHttpClient(
       const payload = await readJson(response)
 
       if (!response.ok) {
-        throw new ApiError(
-          errorMessage(payload, `API request failed with status ${response.status}`),
-          { status: response.status },
-        )
+        throw new ApiError(errorMessage(payload, `API request failed with status ${response.status}`), {
+          status: response.status,
+        })
       }
 
       return payload as T

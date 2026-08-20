@@ -62,15 +62,15 @@ Phase complete when a user can sign in and call a protected backend endpoint, wh
 
 ## 5. Build a thin chat path with a stubbed assistant
 
-- [ ] Add backend operations to create, list, load, rename, and delete the current user's chat threads.
-- [ ] Add backend operations to load the ordered messages and citations for one owned thread.
-- [ ] Define the frontend-to-backend message format and keep the conversion to internal message types in one backend module.
-- [ ] Add `POST /chat/stream` with ownership checks and a temporary streamed response in the AI SDK format.
-- [ ] Verify the exact AI SDK React and streaming packages and APIs, then install the required packages with `pnpm`.
-- [ ] Build a minimal protected chat page with a thread list, new-thread action, message history, input box, and streaming state.
-- [ ] Connect the frontend chat transport directly to FastAPI with the current Supabase access token.
-- [ ] Persist the stubbed user and assistant messages, then prove that a page refresh restores the conversation.
-- [ ] Show useful UI messages for authentication, forbidden, missing-thread, validation, server, network, and CORS failures.
+- [x] Add backend operations to create, list, load, rename, and delete the current user's chat threads.
+- [x] Add backend operations to load the ordered messages and citations for one owned thread.
+- [x] Define the frontend-to-backend message format and keep the conversion to internal message types in one backend module.
+- [x] Add `POST /chat/stream` with ownership checks and a temporary streamed response in the AI SDK format.
+- [x] Verify the exact AI SDK React and streaming packages and APIs, then install the required packages with `pnpm`.
+- [x] Build a minimal protected chat page with a thread list, new-thread action, message history, input box, and streaming state.
+- [x] Connect the frontend chat transport directly to FastAPI with the current Supabase access token.
+- [x] Persist the stubbed user and assistant messages, then prove that a page refresh restores the conversation.
+- [x] Show useful UI messages for authentication, forbidden, missing-thread, validation, server, network, and CORS failures.
 
 Phase complete when an authenticated user can create a chat, receive a streamed stub response, reload it, and never see another user's chat.
 
@@ -81,12 +81,12 @@ Phase complete when an authenticated user can create a chat, receive a streamed 
 - [ ] Convert SEC HTML into clean, normalized Markdown while preserving headings, tables, and the citation locators agreed in phase 1.
 - [ ] Strip navigation, scripts, style data, repeated headers, and other text that should not be searchable.
 - [ ] Store the normalized document text and extraction metadata in `source_documents`.
-- [ ] Split each document into useful passages that respect sections and tables, with small overlap where needed.
-- [ ] Record stable chunk order, token count, page or section, source offsets, and filing metadata on every chunk.
-- [ ] Generate embeddings in batches with the configured OpenAI model and dimensions.
-- [ ] Make ingestion safe to rerun by using accession numbers, checksums, and upserts instead of creating duplicates.
-- [ ] Add clear progress, retry, failure, and final-summary output without logging secrets or full filing contents.
-- [ ] Provide one command for a dry run and one command for ingesting or re-ingesting the sample corpus.
+- [x] Split each document into useful passages that respect sections and tables, with small overlap where needed.
+- [x] Record stable chunk order, token count, page or section, source offsets, and filing metadata on every chunk.
+- [x] Generate embeddings in batches with the configured OpenAI model and dimensions.
+- [x] Make ingestion safe to rerun by using accession numbers, checksums, and upserts instead of creating duplicates.
+- [x] Add clear progress, retry, failure, and final-summary output without logging secrets or full filing contents.
+- [x] Provide one command for a dry run and one command for ingesting or re-ingesting the sample corpus.
 - [ ] Add fixture-based backend tests for HTML cleanup, Markdown output, chunk boundaries, metadata, and rerun behavior.
 - [ ] Ingest the sample corpus and manually inspect representative financial tables, risk factors, and cross-page sections.
 
@@ -94,17 +94,17 @@ Phase complete when the sample filings are stored once, searchable as clean chun
 
 ## 7. Implement hybrid retrieval
 
-- [ ] Convert each user query into an embedding with the same model and dimensions used during ingestion.
-- [ ] Implement a bounded `pgvector` similarity query over document chunks.
-- [ ] Implement a bounded Postgres full-text query over the generated search vector.
-- [ ] Support explicit filters for company or ticker, filing type, filing year, and date range.
-- [ ] Fuse the semantic and lexical ranked lists in Python with Reciprocal Rank Fusion.
-- [ ] Remove duplicate results and fetch neighboring chunks only when they add useful context.
-- [ ] Return a typed source-passage object with all metadata needed for grounding and display.
-- [ ] Keep retrieval independent from the model agent and do not allow the model to generate SQL.
-- [ ] Add unit tests for vector-query construction, full-text-query construction, filters, rank fusion, deduplication, and neighboring context.
-- [ ] Run the evaluation questions against retrieval alone and inspect whether the needed passages appear near the top.
-- [ ] Tune chunking, result counts, and ranking weights using recorded evaluation results rather than individual anecdotes.
+- [x] Convert each user query into an embedding with the same model and dimensions used during ingestion.
+- [x] Implement a bounded `pgvector` similarity query over document chunks.
+- [x] Implement a bounded Postgres full-text query over the generated search vector.
+- [x] Support explicit filters for company or ticker, filing type, filing year, and date range.
+- [x] Fuse the semantic and lexical ranked lists in Python with Reciprocal Rank Fusion.
+- [x] Remove duplicate results and fetch neighboring chunks only when they add useful context.
+- [x] Return a typed source-passage object with all metadata needed for grounding and display.
+- [x] Keep retrieval independent from the model agent and do not allow the model to generate SQL.
+- [x] Add unit tests for vector-query construction, full-text-query construction, filters, rank fusion, deduplication, and neighboring context.
+- [x] Run the evaluation questions against retrieval alone and inspect whether the needed passages appear near the top.
+- [x] Tune chunking, result counts, and ranking weights using recorded evaluation results rather than individual anecdotes.
 
 Phase complete when the retrieval layer consistently finds the evidence needed by the initial evaluation set without calling the answer model.
 

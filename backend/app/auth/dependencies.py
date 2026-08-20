@@ -1,9 +1,11 @@
 """FastAPI dependencies for Supabase bearer authentication."""
 
+from dataclasses import dataclass
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from supabase import AsyncClient
 from supabase_auth import User
 from supabase_auth.errors import AuthError
 
@@ -11,6 +13,14 @@ from app.config import Settings
 from app.database.supabase import create_user_supabase_client
 
 bearer_scheme = HTTPBearer(auto_error=False)
+
+
+@dataclass(frozen=True)
+class AuthenticatedContext:
+    """Verified user and their request-scoped, RLS-aware Supabase client."""
+
+    user: User
+    supabase: AsyncClient
 
 
 def authentication_error() -> HTTPException:
@@ -21,14 +31,14 @@ def authentication_error() -> HTTPException:
     )
 
 
-async def get_current_user(
+async def get_authenticated_context(
     request: Request,
     credentials: Annotated[
         HTTPAuthorizationCredentials | None,
         Depends(bearer_scheme),
     ],
-) -> User:
-    """Return the Supabase user represented by a valid bearer token."""
+) -> AuthenticatedContext:
+    """Verify one bearer token and return its user-scoped database context."""
     if credentials is None:
         raise authentication_error()
 
@@ -44,4 +54,11 @@ async def get_current_user(
     if response is None:
         raise authentication_error()
 
-    return response.user
+    return AuthenticatedContext(user=response.user, supabase=client)
+
+
+async def get_current_user(
+    context: Annotated[AuthenticatedContext, Depends(get_authenticated_context)],
+) -> User:
+    """Return the Supabase user represented by a valid bearer token."""
+    return context.user

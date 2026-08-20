@@ -200,11 +200,12 @@ Retrieval and grounding remain independent from PydanticAI. This keeps ingestion
 
 Document Copilot uses hybrid retrieval:
 
-1. Embed the user's query with the configured OpenAI embedding model.
-2. Run a semantic search over `document_chunks.embedding` with `pgvector`.
-3. Run a lexical search over `document_chunks.search_vector` with Postgres full-text search.
-4. Fuse the two ranked lists in Python with Reciprocal Rank Fusion.
-5. Fetch the selected chunks, source document metadata, and optional neighboring chunks for grounding.
+1. Start two independent retrieval pipelines concurrently.
+2. In the semantic pipeline, embed the original user query with the configured OpenAI embedding model, then search `document_chunks.embedding` with `pgvector`.
+3. In the lexical pipeline, use a configured OpenAI model and typed Structured Outputs to extract bounded groups of SEC-relevant keywords and short phrases, then search `document_chunks.search_vector` with Postgres full-text search.
+4. Apply the same explicit document filters to both database searches. PostgreSQL's English text-search dictionary handles stemming and stop-word removal for lexical terms.
+5. Fuse the two stable-ID ranked lists in Python with Reciprocal Rank Fusion.
+6. Fetch the selected chunks, source document metadata, and only structurally useful neighboring context for grounding.
 
 This keeps the database responsible for efficient ranked retrieval and keeps the application responsible for product-specific ranking policy. The first implementation should avoid agent-generated SQL; the PydanticAI agent receives bounded tools such as `search_filings`, `read_chunk`, and `read_surrounding_chunks`.
 

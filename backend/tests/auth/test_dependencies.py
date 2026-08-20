@@ -24,6 +24,7 @@ def make_settings() -> Settings:
         openai_api_key="test-openai-key",
         openai_embedding_model="text-embedding-3-small",
         openai_embedding_dimensions=1536,
+        openai_keyword_model="gpt-5.4-nano",
         allowed_origins="http://localhost:5173",
     )
 

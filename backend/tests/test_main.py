@@ -10,6 +10,7 @@ VALID_ENV = {
     "OPENAI_API_KEY": "test-openai-key",
     "OPENAI_EMBEDDING_MODEL": "text-embedding-3-small",
     "OPENAI_EMBEDDING_DIMENSIONS": "1536",
+    "OPENAI_KEYWORD_MODEL": "gpt-5.4-nano",
     "ALLOWED_ORIGINS": "http://localhost:5173",
 }
 

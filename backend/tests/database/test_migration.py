@@ -52,6 +52,22 @@ def test_initial_migration_renders_expected_offline_sql() -> None:
             "GRANT SELECT ON TABLE public.source_documents, "
             "public.document_chunks TO authenticated"
         ),
+        "CREATE FUNCTION public.match_document_chunks_semantic",
+        "p_query_embedding vector(1536)",
+        "chunk.embedding OPERATOR(public.<=>) p_query_embedding",
+        "CREATE FUNCTION public.match_document_chunks_lexical",
+        "websearch_to_tsquery('english'::regconfig, p_query_text)",
+        "ts_rank_cd(chunk.search_vector, parsed.query, 32)",
+        "regexp_replace(btrim(p_query_text), '\\s+', ' OR ', 'g')",
+        "parsed.strict_query @@ chunk.search_vector",
+        "parsed.retrieval_query @@ chunk.search_vector",
+        "SECURITY INVOKER",
+        "least(greatest(p_match_count, 0), 100)",
+        "extract(year FROM source.report_date)::integer = ANY(p_filing_years)",
+        ("GRANT EXECUTE ON FUNCTION public.match_document_chunks_semantic"),
+        ("GRANT EXECUTE ON FUNCTION public.match_document_chunks_lexical"),
+        ("REVOKE ALL ON FUNCTION public.match_document_chunks_semantic"),
+        ("REVOKE ALL ON FUNCTION public.match_document_chunks_lexical"),
     )
     for statement in expected_sql:
         assert statement in sql

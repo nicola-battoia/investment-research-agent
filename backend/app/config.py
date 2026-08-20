@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     openai_api_key: SecretStr
     openai_embedding_model: str
     openai_embedding_dimensions: PositiveInt
+    openai_keyword_model: str
     allowed_origins: Annotated[tuple[AnyHttpUrl, ...], NoDecode]
 
     @field_validator("database_url")

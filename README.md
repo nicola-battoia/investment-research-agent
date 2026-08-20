@@ -42,7 +42,7 @@ Install these before setting up `backend/` or `frontend/`:
 | ---- | ------- | -------- | ------- |
 | [Python](https://www.python.org/downloads/) | 3.12+ | Backend runtime | OS package manager or python.org |
 | [uv](https://docs.astral.sh/uv/getting-started/installation/) | latest | Backend deps + `data/download.py` | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
-| [Node.js](https://nodejs.org/) | 20+ (LTS) | Frontend toolchain | nodejs.org or `nvm install --lts` |
+| [Node.js](https://nodejs.org/) | 22+ (LTS) | Frontend toolchain and AI SDK UI | nodejs.org or `nvm install --lts` |
 | [pnpm](https://pnpm.io/installation) | latest | Frontend package manager | `corepack enable && corepack prepare pnpm@latest --activate` |
 
 You also need accounts/keys for external services once the app is wired up. Start with [docs/guides/supabase-setup.md](docs/guides/supabase-setup.md) (account + project), then create an [OpenAI API key](https://platform.openai.com/api-keys) when the LLM layer is wired up.

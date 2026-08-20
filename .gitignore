@@ -25,9 +25,13 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Data / artifacts (downloaded corpus files are large, never check in)
+# Data / artifacts (local corpus files are large, never check in)
 /data/downloads/*
 !/data/downloads/.gitkeep
+/data/markdown/*
+!/data/markdown/.gitkeep
+/data/docling_documents/*
+!/data/docling_documents/.gitkeep
 *.parquet
 
 # IDE / OS
