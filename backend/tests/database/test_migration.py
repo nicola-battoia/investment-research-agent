@@ -1,3 +1,4 @@
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -71,6 +72,19 @@ def test_initial_migration_renders_expected_offline_sql() -> None:
     )
     for statement in expected_sql:
         assert statement in sql
+
+    final_semantic_function = sql.rsplit(
+        "CREATE OR REPLACE FUNCTION public.match_document_chunks_semantic", 1
+    )[1].split("$$;", 1)[0]
+    assert "SECURITY INVOKER" in final_semantic_function
+    assert "LANGUAGE plpgsql" in final_semantic_function
+    assert "SET search_path = ''" in final_semantic_function
+    assert "RETURN QUERY EXECUTE $query$" in final_semantic_function
+    assert re.search(
+        r"ORDER BY chunk\.embedding OPERATOR\(public\.<=>\) "
+        r"\$1, chunk\.id",
+        final_semantic_function,
+    )
 
 
 def test_grant_correction_migration_renders_expected_downgrade_sql() -> None:

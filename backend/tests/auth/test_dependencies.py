@@ -25,6 +25,9 @@ def make_settings() -> Settings:
         openai_embedding_model="text-embedding-3-small",
         openai_embedding_dimensions=1536,
         openai_keyword_model="gpt-5.4-nano",
+        openai_assistant_model="gpt-5.6-terra",
+        openai_assistant_reasoning_effort="medium",
+        openai_assistant_max_output_tokens=3000,
         allowed_origins="http://localhost:5173",
     )
 

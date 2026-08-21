@@ -363,6 +363,9 @@ Backend settings:
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `DATABASE_URL` for Alembic and direct Postgres access
 - `OPENAI_API_KEY`
+- `OPENAI_ASSISTANT_MODEL`
+- `OPENAI_ASSISTANT_REASONING_EFFORT`
+- `OPENAI_ASSISTANT_MAX_OUTPUT_TOKENS`
 - `ALLOWED_ORIGINS`
 - embedding model name and dimensions
 

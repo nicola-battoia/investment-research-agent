@@ -110,17 +110,22 @@ Phase complete when the retrieval layer consistently finds the evidence needed b
 
 ## 8. Implement the grounded document assistant
 
-- [ ] Define typed models for source passages, citations, and a grounded answer.
-- [ ] Create explicit request-scoped agent dependencies containing the user, thread, retriever, grounding validator, and model settings.
-- [ ] Write the assistant instructions: use only retrieved evidence, cite factual claims, refuse unsupported conclusions, and never give stock recommendations or investment advice.
-- [ ] Give the agent only bounded tools such as searching filings, reading a selected chunk, and reading nearby chunks.
-- [ ] Include only the conversation history needed to understand the current question.
-- [ ] Define one machine-checkable citation marker and use it consistently in model output and the UI.
-- [ ] Validate that every citation names a passage retrieved during the current turn and that every supported answer includes citations.
-- [ ] Validate that refusal answers clearly say the corpus does not contain enough evidence and do not attach invented citations.
-- [ ] Return a controlled grounding failure when validation fails; never save an invalid assistant answer as a successful message.
-- [ ] Add unit tests for valid answers, unknown citation IDs, missing citations, unsupported questions, and investment-advice requests.
-- [ ] Add a small set of marked integration tests that call OpenAI and Supabase only when test credentials are present.
+- [x] Define typed models for source passages, citations, and a grounded answer.
+- [x] Create explicit request-scoped agent dependencies containing the user, thread, retriever, grounding validator, and model settings.
+- [x] Write the assistant instructions: use only retrieved evidence, cite factual claims, refuse unsupported conclusions, and never give stock recommendations or investment advice.
+- [x] Give the agent only bounded tools such as searching filings, reading a selected chunk, and reading nearby chunks.
+- [x] Include only the conversation history needed to understand the current question.
+- [x] Define one machine-checkable citation marker, use it consistently in model output, and expose the same citation contract for the Phase 9 UI.
+- [x] Validate that every citation names a passage retrieved during the current turn and that every supported answer includes citations.
+- [x] Validate that refusal answers clearly say the corpus does not contain enough evidence and do not attach invented citations.
+- [x] Return a controlled grounding failure when validation fails; never save an invalid assistant answer as a successful message.
+- [x] Add unit tests for valid answers, unknown citation IDs, missing citations, unsupported questions, and investment-advice requests.
+- [x] Add a small set of marked integration tests that call OpenAI and Supabase only when test credentials are present.
+
+Implementation status: complete. All offline tests and the three authenticated
+Phase 8 live cases pass against OpenAI and the Supabase corpus. The live suite
+proves a cited answer, an uncited corpus-insufficiency refusal, and cited factual
+context followed by the investment-advice refusal.
 
 Phase complete when the assistant either returns a validated, cited answer or a clear refusal—never an unsupported polished answer.
 

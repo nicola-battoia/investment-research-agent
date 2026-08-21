@@ -11,6 +11,9 @@ VALID_ENV = {
     "OPENAI_EMBEDDING_MODEL": "text-embedding-3-small",
     "OPENAI_EMBEDDING_DIMENSIONS": "1536",
     "OPENAI_KEYWORD_MODEL": "gpt-5.4-nano",
+    "OPENAI_ASSISTANT_MODEL": "gpt-5.6-terra",
+    "OPENAI_ASSISTANT_REASONING_EFFORT": "medium",
+    "OPENAI_ASSISTANT_MAX_OUTPUT_TOKENS": "3000",
     "ALLOWED_ORIGINS": "http://localhost:5173",
 }
 

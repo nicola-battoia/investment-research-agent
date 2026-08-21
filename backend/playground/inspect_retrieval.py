@@ -3,10 +3,10 @@
 # ruff: noqa: F704, PLE1142, B018 - IPython supports top-level await and display.
 
 # %% Imports
+import nest_asyncio2
+
 from app.retrieval.models import RetrievalFilters
 from evaluation.inspect_retrieval import inspect_retrieval
-
-import nest_asyncio2
 
 nest_asyncio2.apply()
 

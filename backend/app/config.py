@@ -1,7 +1,7 @@
 """Validated application settings."""
 
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import AnyHttpUrl, PositiveInt, SecretStr, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
@@ -26,6 +26,16 @@ class Settings(BaseSettings):
     openai_embedding_model: str
     openai_embedding_dimensions: PositiveInt
     openai_keyword_model: str
+    openai_assistant_model: str
+    openai_assistant_reasoning_effort: Literal[
+        "none",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+    ]
+    openai_assistant_max_output_tokens: PositiveInt
     allowed_origins: Annotated[tuple[AnyHttpUrl, ...], NoDecode]
 
     @field_validator("database_url")

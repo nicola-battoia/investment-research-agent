@@ -169,17 +169,81 @@ This is the smallest recorded ratio that passed the frozen acceptance set; the
 retriever and evaluation command use it by default. See
 `evaluation/results/tuning-summary.md` for the recorded comparison.
 
+## Grounded document assistant
+
+Phase 8 adds a PydanticAI assistant behind a directly callable Python boundary. It
+is deliberately not connected to `POST /chat/stream` yet; Phase 9 will replace the
+stub only after the assistant returns a fully validated result.
+
+```mermaid
+flowchart TD
+    Q["Current question and recent chat context"] --> A["PydanticAI document assistant"]
+    A -->|"search_filings, at most 3"| R["Phase 7 hybrid retriever"]
+    R --> E["Current-turn source registry<br/>S1, S2, S3..."]
+    E --> A
+    A -->|"read_chunk(S#)"| E
+    A -->|"read_surrounding_chunks(S#)"| N["At most two neighboring chunks"]
+    N --> E
+    A --> D["Strict typed draft answer"]
+    D --> V{"Grounding validation"}
+    V -->|"valid"| G["GroundedAnswer and usage"]
+    V -->|"first failure"| A
+    V -->|"second failure"| F["GroundingFailureError"]
+```
+
+Search results expose bounded previews. The agent must explicitly read a passage
+before it can cite it, and citations use current-turn labels such as `[S1]` rather
+than model-supplied database UUIDs. The grounding validator then verifies that
+inline markers, structured citation references, exact excerpts, and retrieved
+passages agree. Unsupported questions return a fixed, uncited corpus-insufficiency
+statement. Investment questions may receive cited factual context, but always end
+with the fixed investment-advice refusal.
+
+Each run receives a fresh `AssistantDeps` containing the authenticated user and
+thread IDs, the Phase 7 retriever, model settings, validator, and evidence registry.
+Only the latest three complete chat turns are included, and old source labels or
+tool transcripts are never reused. The assistant is bounded to three searches,
+three surrounding reads, 12 total tool calls, eight model requests, and 64 unique
+passages per turn.
+
+### Inspect the assistant interactively
+
+Open `playground/inspect_assistant.py` with the backend IPython kernel selected,
+then run its `# %%` cells in order with Shift+Enter. Paste an authenticated
+Supabase access token into the hidden prompt, edit `QUESTION`, and run the assistant
+cell. There are no arguments and no terminal command.
+
+This is the real Phase 8 workflow, not a second implementation. It constructs a
+user-scoped Supabase client, runs the PydanticAI assistant, and logs each bounded
+tool call and result. At the end it shows every current-turn `S#` passage, whether
+the assistant read or cited it, the validated answer and exact excerpts, and model
+usage. The last two cells leave the typed answer and evidence records available for
+normal IPython inspection.
+
+Configure answer generation separately from embeddings and keyword extraction:
+
+```dotenv
+OPENAI_ASSISTANT_MODEL=gpt-5.6-terra
+OPENAI_ASSISTANT_REASONING_EFFORT=medium
+OPENAI_ASSISTANT_MAX_OUTPUT_TOKENS=3000
+```
+
 The fast test suite never calls Supabase or OpenAI:
 
 ```bash
 uv run pytest -m "not integration"
 ```
 
-To run the authenticated live retrieval test deliberately, provide a current test
-user token and select the integration marker:
+To run the authenticated live retrieval and grounded-assistant tests deliberately,
+put a current test-user token in the gitignored `.env.integration` file and select
+the integration marker:
+
+```dotenv
+SUPABASE_TEST_ACCESS_TOKEN=<token>
+```
 
 ```bash
-SUPABASE_TEST_ACCESS_TOKEN=<token> uv run pytest -m integration
+uv run --env-file .env.integration pytest -m integration
 ```
 
 ## Use in Python or Jupyter
