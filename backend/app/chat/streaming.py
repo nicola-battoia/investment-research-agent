@@ -1,0 +1,217 @@
+"""AI SDK-compatible streaming for validated, persisted chat turns."""
+
+from __future__ import annotations
+
+import asyncio
+import json
+from collections.abc import AsyncIterator
+from dataclasses import dataclass
+
+import structlog
+from fastapi import Request
+from openai import OpenAIError
+from postgrest import APIError
+from pydantic_ai.exceptions import (
+    ModelAPIError,
+    UnexpectedModelBehavior,
+    UsageLimitExceeded,
+)
+
+from app.chat.messages import (
+    CitationPart,
+    SourceUrlPart,
+    TextPart,
+    UIMessageResponse,
+)
+from app.chat.orchestrator import ChatTurnOrchestrator, PreparedChatTurn
+from app.database.chats import ChatPositionConflictError, ChatThreadNotFoundError
+from app.grounding import GroundingFailureError
+
+HEARTBEAT_SECONDS = 15
+TEXT_DELTA_CHARACTERS = 160
+logger = structlog.get_logger()
+
+
+@dataclass(frozen=True)
+class StreamFailure:
+    code: str
+    message: str
+    retryable: bool
+
+
+async def chat_turn_events(
+    *,
+    request: Request,
+    orchestrator: ChatTurnOrchestrator,
+    turn: PreparedChatTurn,
+    timeout_seconds: int,
+) -> AsyncIterator[str]:
+    yield _status_event()
+    task = asyncio.create_task(orchestrator.complete(turn))
+    try:
+        async with asyncio.timeout(timeout_seconds):
+            completed = None
+            while completed is None:
+                done, _pending = await asyncio.wait(
+                    {task},
+                    timeout=HEARTBEAT_SECONDS,
+                )
+                if task in done:
+                    completed = task.result()
+                    break
+                if await request.is_disconnected():
+                    await _cancel(task)
+                    return
+                yield _status_event()
+        if completed is None:
+            return
+    except TimeoutError:
+        await _cancel(task)
+        async for event in _failure_events(
+            StreamFailure(
+                code="turn_timeout",
+                message="The research turn took too long. Please try again.",
+                retryable=True,
+            )
+        ):
+            yield event
+        return
+    except asyncio.CancelledError:
+        await _cancel(task)
+        raise
+    except Exception as error:  # noqa: BLE001 - stream errors need a stable protocol
+        failure = _mapped_failure(error)
+        logger.warning(
+            "chat_turn_failed",
+            thread_id=str(turn.thread_id),
+            user_id=str(turn.user_id),
+            error_class=type(error).__name__,
+            error_code=failure.code,
+        )
+        async for event in _failure_events(failure):
+            yield event
+        return
+
+    if await request.is_disconnected():
+        return
+    async for event in _completed_turn_events(completed):
+        yield event
+
+
+async def _completed_turn_events(message: UIMessageResponse) -> AsyncIterator[str]:
+    metadata = message.metadata.model_dump(mode="json", by_alias=True)
+    yield _event(
+        {
+            "type": "start",
+            "messageId": message.id,
+            "messageMetadata": metadata,
+        }
+    )
+    for index, part in enumerate(message.parts):
+        if isinstance(part, TextPart):
+            text_id = f"{message.id}-text-{index}"
+            yield _event({"type": "text-start", "id": text_id})
+            for offset in range(0, len(part.text), TEXT_DELTA_CHARACTERS):
+                yield _event(
+                    {
+                        "type": "text-delta",
+                        "id": text_id,
+                        "delta": part.text[offset : offset + TEXT_DELTA_CHARACTERS],
+                    }
+                )
+                await asyncio.sleep(0)
+            yield _event({"type": "text-end", "id": text_id})
+        elif isinstance(part, SourceUrlPart | CitationPart):
+            yield _event(part.model_dump(mode="json", by_alias=True))
+    yield _event(
+        {
+            "type": "finish",
+            "finishReason": "stop",
+            "messageMetadata": metadata,
+        }
+    )
+    yield "data: [DONE]\n\n"
+
+
+async def _failure_events(failure: StreamFailure) -> AsyncIterator[str]:
+    yield _event(
+        {
+            "type": "data-turn-error",
+            "data": {
+                "code": failure.code,
+                "message": failure.message,
+                "retryable": failure.retryable,
+            },
+            "transient": True,
+        }
+    )
+    yield _event({"type": "error", "errorText": failure.message})
+    yield "data: [DONE]\n\n"
+
+
+def _status_event() -> str:
+    return _event(
+        {
+            "type": "data-turn-status",
+            "data": {
+                "state": "researching",
+                "message": "Researching filings…",
+            },
+            "transient": True,
+        }
+    )
+
+
+def _mapped_failure(error: Exception) -> StreamFailure:
+    if isinstance(error, ChatPositionConflictError):
+        return StreamFailure(
+            "turn_conflict",
+            "Another message completed in this chat. Refresh and try again.",
+            True,
+        )
+    if isinstance(error, ChatThreadNotFoundError):
+        return StreamFailure(
+            "thread_missing",
+            "This chat no longer exists.",
+            False,
+        )
+    if isinstance(error, GroundingFailureError):
+        return StreamFailure(
+            "grounding_failed",
+            "The answer could not be verified against its filing sources.",
+            True,
+        )
+    if isinstance(error, APIError):
+        return StreamFailure(
+            "database_unavailable",
+            "The chat database is temporarily unavailable.",
+            True,
+        )
+    if isinstance(
+        error,
+        (OpenAIError, ModelAPIError, UnexpectedModelBehavior, UsageLimitExceeded),
+    ):
+        return StreamFailure(
+            "assistant_unavailable",
+            "The research assistant is temporarily unavailable.",
+            True,
+        )
+    return StreamFailure(
+        "turn_failed",
+        "The research turn could not be completed.",
+        True,
+    )
+
+
+async def _cancel(task: asyncio.Task[object]) -> None:
+    if task.done():
+        return
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
+
+
+def _event(payload: dict[str, object]) -> str:
+    return f"data: {json.dumps(payload, separators=(',', ':'))}\n\n"

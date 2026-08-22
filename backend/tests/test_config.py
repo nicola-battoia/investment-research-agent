@@ -17,6 +17,7 @@ CONFIG_ENV_NAMES = {
     "OPENAI_ASSISTANT_MODEL",
     "OPENAI_ASSISTANT_REASONING_EFFORT",
     "OPENAI_ASSISTANT_MAX_OUTPUT_TOKENS",
+    "CHAT_TURN_TIMEOUT_SECONDS",
     "ALLOWED_ORIGINS",
 }
 VALID_ENV = {
@@ -31,6 +32,7 @@ VALID_ENV = {
     "OPENAI_ASSISTANT_MODEL": "gpt-5.6-terra",
     "OPENAI_ASSISTANT_REASONING_EFFORT": "medium",
     "OPENAI_ASSISTANT_MAX_OUTPUT_TOKENS": "3000",
+    "CHAT_TURN_TIMEOUT_SECONDS": "180",
     "ALLOWED_ORIGINS": "http://localhost:5173, https://app.example.com/",
 }
 
@@ -74,7 +76,8 @@ def test_loads_and_normalizes_valid_settings(tmp_path: Path) -> None:
             "'assistant_model': settings.openai_assistant_model, "
             "'assistant_effort': settings.openai_assistant_reasoning_effort, "
             "'assistant_max_tokens': "
-            "settings.openai_assistant_max_output_tokens}))"
+            "settings.openai_assistant_max_output_tokens, "
+            "'chat_timeout': settings.chat_turn_timeout_seconds}))"
         ),
     )
 
@@ -86,6 +89,7 @@ def test_loads_and_normalizes_valid_settings(tmp_path: Path) -> None:
         "assistant_model": "gpt-5.6-terra",
         "assistant_effort": "medium",
         "assistant_max_tokens": 3000,
+        "chat_timeout": 180,
     }
 
 
@@ -151,6 +155,16 @@ def test_rejects_non_positive_embedding_dimensions(tmp_path: Path) -> None:
 
     assert result.returncode != 0
     assert "openai_embedding_dimensions" in result.stderr
+
+
+def test_rejects_non_positive_chat_timeout(tmp_path: Path) -> None:
+    result = run_config_import(
+        tmp_path,
+        overrides={"CHAT_TURN_TIMEOUT_SECONDS": "0"},
+    )
+
+    assert result.returncode != 0
+    assert "chat_turn_timeout_seconds" in result.stderr
 
 
 def test_requires_psycopg_3_database_url(tmp_path: Path) -> None:

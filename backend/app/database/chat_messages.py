@@ -37,6 +37,15 @@ class ChatMessage(TimestampMixin, Base):
             name="uq_chat_messages_thread_position",
         ),
         Index("ix_chat_messages_thread_created_at", "thread_id", "created_at"),
+        Index(
+            "uq_chat_messages_thread_client_message_id",
+            "thread_id",
+            sql_text("(message_data ->> 'clientMessageId')"),
+            unique=True,
+            postgresql_where=sql_text(
+                "role = 'user' AND message_data ? 'clientMessageId'"
+            ),
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(

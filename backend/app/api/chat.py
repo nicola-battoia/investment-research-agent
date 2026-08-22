@@ -1,8 +1,5 @@
-"""Owned chat thread CRUD and temporary assistant streaming."""
+"""Owned chat thread CRUD and complete grounded assistant streaming."""
 
-import asyncio
-import json
-from collections.abc import AsyncIterator
 from datetime import datetime
 from typing import Annotated
 from uuid import UUID
@@ -19,19 +16,11 @@ from app.chat.messages import (
     stored_messages_to_ui,
     to_internal_user_message,
 )
+from app.chat.orchestrator import ChatTurnOrchestrator
+from app.chat.streaming import chat_turn_events
 from app.database import chats
 
 router = APIRouter(prefix="/chat", tags=["chat"])
-
-STUB_ASSISTANT_TEXT = (
-    "Your message is saved. Document retrieval is not connected yet, but the "
-    "authenticated chat and streaming path are working."
-)
-STUB_DELTAS = (
-    "Your message is saved. ",
-    "Document retrieval is not connected yet, ",
-    "but the authenticated chat and streaming path are working.",
-)
 
 ChatContext = Annotated[AuthenticatedContext, Depends(get_authenticated_context)]
 
@@ -146,21 +135,24 @@ async def stream_chat(
     context: ChatContext,
 ) -> StreamingResponse:
     user_id = UUID(context.user.id)
-    await chats.require_owned_thread(
-        context.supabase,
-        request.app.state.settings,
-        payload.id,
-        user_id,
+    orchestrator = ChatTurnOrchestrator(
+        settings=request.app.state.settings,
+        supabase=context.supabase,
+        openai_client=request.app.state.openai_client,
+        assistant=request.app.state.document_assistant,
     )
-    assistant_message_id = await chats.append_stub_turn(
-        context.supabase,
-        payload.id,
-        user_id,
-        to_internal_user_message(payload.message),
-        STUB_ASSISTANT_TEXT,
+    prepared = await orchestrator.prepare(
+        thread_id=payload.id,
+        user_id=user_id,
+        user_message=to_internal_user_message(payload.message),
     )
     return StreamingResponse(
-        _stub_events(assistant_message_id),
+        chat_turn_events(
+            request=request,
+            orchestrator=orchestrator,
+            turn=prepared,
+            timeout_seconds=request.app.state.settings.chat_turn_timeout_seconds,
+        ),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
@@ -168,22 +160,6 @@ async def stream_chat(
             "x-vercel-ai-ui-message-stream": "v1",
         },
     )
-
-
-async def _stub_events(message_id: UUID) -> AsyncIterator[str]:
-    text_id = f"{message_id}-text"
-    yield _event({"type": "start", "messageId": str(message_id)})
-    yield _event({"type": "text-start", "id": text_id})
-    for delta in STUB_DELTAS:
-        yield _event({"type": "text-delta", "id": text_id, "delta": delta})
-        await asyncio.sleep(0.04)
-    yield _event({"type": "text-end", "id": text_id})
-    yield _event({"type": "finish"})
-    yield "data: [DONE]\n\n"
-
-
-def _event(payload: dict[str, object]) -> str:
-    return f"data: {json.dumps(payload, separators=(',', ':'))}\n\n"
 
 
 def _thread_summary(row: dict[str, object]) -> ThreadSummary:

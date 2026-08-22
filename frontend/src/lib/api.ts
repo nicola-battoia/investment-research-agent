@@ -17,19 +17,55 @@ export interface ChatThread {
   updatedAt: string
 }
 
-export interface MessageCitation {
+export type AnswerStatus =
+  | 'supported'
+  | 'insufficient_evidence'
+  | 'investment_advice_refused'
+
+export interface CitationData {
+  accessionNumber: string
   chunkId: string
+  chunkIndex: number
+  citationId: string
   citationIndex: number
+  company: string
+  documentId: string
   excerpt: string
-  id: string
+  filingDate: string
+  filingType: string
+  pageNumber: number | null
+  reportDate: string
+  secUrl: string
+  sectionTitle: string | null
+  sourceEnd: number | null
+  sourceId: string
+  sourceStart: number | null
+  ticker: string
+}
+
+export interface TurnStatusData {
+  message: string
+  state: 'researching'
+}
+
+export interface TurnErrorData {
+  code: string
+  message: string
+  retryable: boolean
+}
+
+export type ChatDataParts = {
+  citation: CitationData
+  'turn-error': TurnErrorData
+  'turn-status': TurnStatusData
 }
 
 export interface ChatMessageMetadata {
-  citations: MessageCitation[]
+  answerStatus?: AnswerStatus | null
   createdAt: string
 }
 
-export type ChatMessage = UIMessage<ChatMessageMetadata>
+export type ChatMessage = UIMessage<ChatMessageMetadata, ChatDataParts>
 
 export interface ChatThreadDetail {
   messages: ChatMessage[]

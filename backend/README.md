@@ -171,9 +171,10 @@ retriever and evaluation command use it by default. See
 
 ## Grounded document assistant
 
-Phase 8 adds a PydanticAI assistant behind a directly callable Python boundary. It
-is deliberately not connected to `POST /chat/stream` yet; Phase 9 will replace the
-stub only after the assistant returns a fully validated result.
+Phase 8 adds a PydanticAI assistant behind a directly callable Python boundary.
+Phase 9 connects that boundary to `POST /chat/stream` through the request-scoped
+chat orchestrator. The endpoint never exposes model text until the answer has passed
+grounding validation and the complete turn has been committed atomically.
 
 ```mermaid
 flowchart TD
@@ -226,7 +227,16 @@ Configure answer generation separately from embeddings and keyword extraction:
 OPENAI_ASSISTANT_MODEL=gpt-5.6-terra
 OPENAI_ASSISTANT_REASONING_EFFORT=medium
 OPENAI_ASSISTANT_MAX_OUTPUT_TOKENS=3000
+CHAT_TURN_TIMEOUT_SECONDS=180
 ```
+
+Successful streams emit AI SDK text parts, SEC `source-url` parts, and typed
+`data-citation` parts containing the exact excerpt and filing locators used by the
+frontend source panel. The user message, validated assistant message, normalized
+citations, model usage, thread timestamp, and first-question title are written by
+one RLS-aware Postgres function. A failed grounding check, upstream failure,
+timeout, or cancellation never creates a partial assistant message. Client message
+IDs make a retry idempotent when a completed response was lost in transit.
 
 The fast test suite never calls Supabase or OpenAI:
 

@@ -12,7 +12,7 @@ from app.database.chats import (
     ChatPositionConflictError,
     ChatThreadForbiddenError,
     ChatThreadNotFoundError,
-    append_stub_turn,
+    complete_chat_turn,
     list_threads,
     rename_thread,
     require_owned_thread,
@@ -87,6 +87,12 @@ class FakeClient:
         self.used.append((name, builder))
         return builder
 
+    def rpc(self, name: str, params: dict[str, object]) -> FakeBuilder:
+        builder = self.builders[name].pop(0)
+        builder.calls.append(("rpc", params))
+        self.used.append((name, builder))
+        return builder
+
 
 def test_list_threads_is_owner_scoped_and_newest_first() -> None:
     builder = FakeBuilder([{"id": str(uuid4())}])
@@ -150,44 +156,49 @@ def test_missing_user_scoped_thread_distinguishes_missing_from_forbidden(
         )
 
 
-def test_append_stub_turn_inserts_ordered_pair_and_touches_thread() -> None:
-    last_position = FakeBuilder([{"position": 4}])
-    message_insert = FakeBuilder()
-    thread_update = FakeBuilder()
-    client = FakeClient(
-        {
-            "chat_messages": [last_position, message_insert],
-            "chat_threads": [thread_update],
-        }
-    )
+def test_complete_turn_calls_atomic_rpc_with_messages_citations_and_usage() -> None:
+    rpc = FakeBuilder([{"assistant_created_at": "2026-08-21T12:00:00+00:00"}])
+    client = FakeClient({"complete_chat_turn": [rpc]})
     thread_id = uuid4()
-    user_id = uuid4()
+    user_message_id = uuid4()
+    assistant_message_id = uuid4()
+    citation_id = uuid4()
+    chunk_id = uuid4()
 
-    assistant_id = asyncio.run(
-        append_stub_turn(
+    result = asyncio.run(
+        complete_chat_turn(
             client,
             thread_id,
-            user_id,
+            4,
             InternalUserMessage(
                 client_id="client-1",
                 content="Question",
-                message_data={"parts": []},
+                message_data={"clientMessageId": "client-1", "parts": []},
             ),
-            "Stub answer",
+            user_message_id,
+            assistant_message_id,
+            "Grounded answer [S1].",
+            {"answerStatus": "supported", "parts": []},
+            {"totalTokens": 123},
+            [
+                {
+                    "id": str(citation_id),
+                    "chunk_id": str(chunk_id),
+                    "citation_index": 0,
+                    "excerpt": "Exact evidence",
+                }
+            ],
+            "Question",
         )
     )
 
-    inserted_rows = next(
-        value for action, value in message_insert.calls if action == "insert"
-    )
-    assert [row["position"] for row in inserted_rows] == [5, 6]
-    assert [row["role"] for row in inserted_rows] == ["user", "assistant"]
-    assert inserted_rows[1]["id"] == str(assistant_id)
-    updated_values = next(
-        value for action, value in thread_update.calls if action == "update"
-    )
-    assert "updated_at" in updated_values
-    assert ("eq", ("owner_id", str(user_id))) in thread_update.calls
+    params = next(value for action, value in rpc.calls if action == "rpc")
+    assert params["p_expected_position"] == 4
+    assert params["p_user_message_id"] == str(user_message_id)
+    assert params["p_assistant_message_id"] == str(assistant_message_id)
+    assert params["p_citations"][0]["chunk_id"] == str(chunk_id)
+    assert params["p_model_usage"] == {"totalTokens": 123}
+    assert result.assistant_created_at.isoformat() == "2026-08-21T12:00:00+00:00"
 
 
 def test_rename_thread_sets_updated_at_and_owner_filter() -> None:
@@ -215,26 +226,28 @@ def test_rename_thread_sets_updated_at_and_owner_filter() -> None:
     assert ("eq", ("owner_id", str(user_id))) in update.calls
 
 
-def test_duplicate_message_position_becomes_conflict() -> None:
-    conflict = APIError({"code": "23505", "message": "duplicate position"})
-    client = FakeClient(
-        {
-            "chat_messages": [FakeBuilder([]), FakeBuilder(error=conflict)],
-            "chat_threads": [],
-        }
-    )
+@pytest.mark.parametrize("code", ["23505", "40001"])
+def test_duplicate_or_changed_message_position_becomes_conflict(code: str) -> None:
+    conflict = APIError({"code": code, "message": "message position conflict"})
+    client = FakeClient({"complete_chat_turn": [FakeBuilder(error=conflict)]})
 
     with pytest.raises(ChatPositionConflictError):
         asyncio.run(
-            append_stub_turn(
+            complete_chat_turn(
                 client,
                 uuid4(),
-                uuid4(),
+                0,
                 InternalUserMessage(
                     client_id="client-1",
                     content="Question",
                     message_data={},
                 ),
-                "Stub answer",
+                uuid4(),
+                uuid4(),
+                "Answer",
+                {"parts": []},
+                {},
+                [],
+                "Question",
             )
         )

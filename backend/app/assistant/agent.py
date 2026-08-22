@@ -128,12 +128,16 @@ class DocumentAssistant:
         )
 
 
-def create_document_assistant(settings: Settings) -> DocumentAssistant:
+def create_document_assistant(
+    settings: Settings,
+    openai_client: AsyncOpenAI | None = None,
+) -> DocumentAssistant:
     """Create the reusable model boundary without request-scoped retrieval state."""
-    openai_client = AsyncOpenAI(
-        api_key=settings.openai_api_key.get_secret_value(),
-        max_retries=3,
-    )
+    if openai_client is None:
+        openai_client = AsyncOpenAI(
+            api_key=settings.openai_api_key.get_secret_value(),
+            max_retries=3,
+        )
     model = OpenAIResponsesModel(
         settings.openai_assistant_model,
         provider=OpenAIProvider(openai_client=openai_client),

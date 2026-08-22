@@ -131,28 +131,41 @@ Phase complete when the assistant either returns a validated, cited answer or a 
 
 ## 9. Replace the stub with the complete chat turn
 
-- [ ] Make the chat orchestrator own the full turn: authorize the thread, normalize messages, retrieve evidence, run the agent, validate citations, persist results, and report usage.
-- [ ] Send answer text as streaming message parts and citations as structured source parts understood by the frontend.
-- [ ] Define a streaming failure protocol that prevents a failed grounding check from appearing as a completed answer.
-- [ ] Persist the user message, validated assistant message, citation rows, and model usage together after a successful run.
-- [ ] Map authentication, ownership, validation, missing-record, Supabase, OpenAI, timeout, and unexpected failures to the documented HTTP or stream errors.
-- [ ] Handle client cancellation and server timeouts without leaving a false completed assistant message.
-- [ ] Confirm that follow-up questions use the saved conversation while retrieval stays focused on the new question.
-- [ ] Add end-to-end backend integration coverage for one successful cited turn, one insufficient-evidence turn, one upstream failure, and one forbidden thread.
+- [x] Make the chat orchestrator own the full turn: authorize the thread, normalize messages, retrieve evidence, run the agent, validate citations, persist results, and report usage.
+- [x] Send answer text as streaming message parts and citations as structured source parts understood by the frontend.
+- [x] Define a streaming failure protocol that prevents a failed grounding check from appearing as a completed answer.
+- [x] Persist the user message, validated assistant message, citation rows, and model usage together after a successful run.
+- [x] Map authentication, ownership, validation, missing-record, Supabase, OpenAI, timeout, and unexpected failures to the documented HTTP or stream errors.
+- [x] Handle client cancellation and server timeouts without leaving a false completed assistant message.
+- [x] Confirm that follow-up questions use the saved conversation while retrieval stays focused on the new question.
+- [x] Add end-to-end backend integration coverage for one successful cited turn, one insufficient-evidence turn, one upstream failure, and one forbidden thread.
+
+Implementation status: complete. The RLS-aware atomic turn function and idempotency
+index are applied through Alembic revision `20260821_0007`. Offline orchestration,
+stream, persistence, timeout, cancellation, conflict, and HTTP scenarios are covered.
+A database-only live test passes against Supabase and verifies grants, RLS, atomic
+rollback, citation and usage persistence, conflicts, and first-turn titles. The
+marked OpenAI endpoint cases are checked in but require a configured
+`SUPABASE_TEST_ACCESS_TOKEN` before they can run.
 
 Phase complete when the real assistant completes reliable multi-turn conversations through the same path proven by the stub.
 
 ## 10. Finish the analyst chat experience
 
-- [ ] Build the final thread sidebar, new-chat flow, thread titles, message list, composer, loading state, and empty state.
-- [ ] Render assistant answers with citation markers beside the claims they support.
-- [ ] Let a user open each citation and see the company, filing, date, page or section, exact excerpt, and SEC source link.
-- [ ] Clearly distinguish a normal answer, an insufficient-evidence refusal, an investment-advice refusal, and a system error.
-- [ ] Preserve useful draft and retry behavior when a network request fails.
-- [ ] Add accessible labels, keyboard behavior, focus handling, readable contrast, and sensible desktop and narrow-browser layouts.
-- [ ] Keep all backend calls in the shared API layer and all environment reads in `src/lib/env.ts`.
-- [ ] Run `pnpm tsc --noEmit` and `pnpm lint`.
+- [x] Build the final thread sidebar, new-chat flow, thread titles, message list, composer, loading state, and empty state.
+- [x] Render assistant answers with citation markers beside the claims they support.
+- [x] Let a user open each citation and see the company, filing, date, page or section, exact excerpt, and SEC source link.
+- [x] Clearly distinguish a normal answer, an insufficient-evidence refusal, an investment-advice refusal, and a system error.
+- [x] Preserve useful draft and retry behavior when a network request fails.
+- [x] Add accessible labels, keyboard behavior, focus handling, readable contrast, and sensible desktop and narrow-browser layouts.
+- [x] Keep all backend calls in the shared API layer and all environment reads in `src/lib/env.ts`.
+- [x] Run `pnpm tsc --noEmit` and `pnpm lint`.
 - [ ] Manually verify sign-in, sign-out, session expiry, thread ownership, streaming, citations, refresh, empty results, and failures in the browser.
+
+Implementation status: complete pending the authenticated browser matrix. TypeScript,
+lint, and the production build pass, and the signed-out desktop and narrow-browser
+layouts have been inspected. Credentialed chat, ownership, expiry, and failure-flow
+verification remains intentionally open.
 
 Phase complete when an analyst can ask, verify, revisit, and continue a conversation without needing developer help.
 

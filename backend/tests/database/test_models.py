@@ -64,6 +64,16 @@ def test_chat_ownership_ordering_and_citation_links() -> None:
     assert ("message_id", "citation_index") in unique_column_sets("message_citations")
     assert ("message_id", "chunk_id") in unique_column_sets("message_citations")
     assert "ck_chat_messages_valid_role" in check_constraint_names("chat_messages")
+    messages = Base.metadata.tables["chat_messages"]
+    idempotency_index = next(
+        index
+        for index in messages.indexes
+        if index.name == "uq_chat_messages_thread_client_message_id"
+    )
+    assert idempotency_index.unique is True
+    assert str(idempotency_index.dialect_options["postgresql"]["where"]) == (
+        "role = 'user' AND message_data ? 'clientMessageId'"
+    )
 
 
 def test_document_and_chunk_integrity() -> None:

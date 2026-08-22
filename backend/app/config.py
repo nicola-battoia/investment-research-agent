@@ -36,6 +36,7 @@ class Settings(BaseSettings):
         "max",
     ]
     openai_assistant_max_output_tokens: PositiveInt
+    chat_turn_timeout_seconds: PositiveInt = 180
     allowed_origins: Annotated[tuple[AnyHttpUrl, ...], NoDecode]
 
     @field_validator("database_url")

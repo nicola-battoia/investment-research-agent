@@ -1,15 +1,13 @@
 """User-scoped chat thread and message persistence."""
 
+from dataclasses import dataclass
 from datetime import UTC, datetime
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from postgrest import APIError
 from supabase import AsyncClient
 
-from app.chat.messages import (
-    InternalUserMessage,
-    assistant_message_data,
-)
+from app.chat.messages import InternalUserMessage
 from app.config import Settings
 from app.database.supabase import create_admin_supabase_client
 
@@ -28,6 +26,11 @@ class ChatThreadForbiddenError(Exception):
 
 class ChatPositionConflictError(Exception):
     """Two turns attempted to claim the same message positions."""
+
+
+@dataclass(frozen=True)
+class TurnPersistenceResult:
+    assistant_created_at: datetime
 
 
 async def list_threads(
@@ -153,62 +156,57 @@ async def delete_thread(
     )
 
 
-async def append_stub_turn(
+async def complete_chat_turn(
     client: AsyncClient,
     thread_id: UUID,
-    user_id: UUID,
+    expected_position: int,
     user_message: InternalUserMessage,
+    user_message_id: UUID,
+    assistant_message_id: UUID,
     assistant_content: str,
-) -> UUID:
-    last_message_response = await (
-        client.table("chat_messages")
-        .select("position")
-        .eq("thread_id", str(thread_id))
-        .order("position", desc=True)
-        .limit(1)
-        .execute()
-    )
-    next_position = (
-        int(last_message_response.data[0]["position"]) + 1
-        if last_message_response.data
-        else 0
-    )
-    user_message_id = uuid4()
-    assistant_message_id = uuid4()
-    rows = [
-        {
-            "id": str(user_message_id),
-            "thread_id": str(thread_id),
-            "position": next_position,
-            "role": "user",
-            "content": user_message.content,
-            "message_data": user_message.message_data,
-        },
-        {
-            "id": str(assistant_message_id),
-            "thread_id": str(thread_id),
-            "position": next_position + 1,
-            "role": "assistant",
-            "content": assistant_content,
-            "message_data": assistant_message_data(assistant_content),
-        },
-    ]
+    assistant_message_data: dict[str, object],
+    model_usage: dict[str, object],
+    citations: list[dict[str, object]],
+    first_turn_title: str,
+) -> TurnPersistenceResult:
     try:
-        await client.table("chat_messages").insert(rows).execute()
+        response = await client.rpc(
+            "complete_chat_turn",
+            {
+                "p_thread_id": str(thread_id),
+                "p_expected_position": expected_position,
+                "p_user_message_id": str(user_message_id),
+                "p_user_content": user_message.content,
+                "p_user_message_data": user_message.message_data,
+                "p_assistant_message_id": str(assistant_message_id),
+                "p_assistant_content": assistant_content,
+                "p_assistant_message_data": assistant_message_data,
+                "p_model_usage": model_usage,
+                "p_citations": citations,
+                "p_first_turn_title": first_turn_title,
+            },
+        ).execute()
     except APIError as error:
-        if error.code == "23505":
+        if error.code in {"23505", "40001"}:
             raise ChatPositionConflictError from error
+        if error.code == "P0002":
+            raise ChatThreadNotFoundError from error
         raise
-
-    await (
-        client.table("chat_threads")
-        .update({"updated_at": _now()})
-        .eq("id", str(thread_id))
-        .eq("owner_id", str(user_id))
-        .execute()
+    if not isinstance(response.data, list) or len(response.data) != 1:
+        raise TypeError("Supabase complete_chat_turn returned an invalid response")
+    row = response.data[0]
+    if not isinstance(row, dict) or "assistant_created_at" not in row:
+        raise TypeError("Supabase complete_chat_turn omitted the assistant timestamp")
+    return TurnPersistenceResult(
+        assistant_created_at=_parse_datetime(row["assistant_created_at"]),
     )
-    return assistant_message_id
 
 
 def _now() -> str:
     return datetime.now(UTC).isoformat()
+
+
+def _parse_datetime(value: object) -> datetime:
+    if isinstance(value, datetime):
+        return value
+    return datetime.fromisoformat(str(value))

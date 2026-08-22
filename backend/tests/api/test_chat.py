@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from unittest.mock import AsyncMock, patch
 from uuid import UUID, uuid4
 
@@ -7,8 +7,17 @@ from fastapi.testclient import TestClient
 from postgrest import APIError
 from supabase_auth import User
 
-from app.api.chat import STUB_ASSISTANT_TEXT
 from app.auth.dependencies import AuthenticatedContext, get_authenticated_context
+from app.chat.messages import (
+    CitationData,
+    CitationPart,
+    InternalUserMessage,
+    MessageMetadata,
+    SourceUrlPart,
+    TextPart,
+    UIMessageResponse,
+)
+from app.chat.orchestrator import PreparedChatTurn
 from app.config import Settings
 from app.database.chats import (
     ChatPositionConflictError,
@@ -113,6 +122,10 @@ def test_loads_ordered_history_and_citations() -> None:
                     "id": str(message_id),
                     "role": "assistant",
                     "content": "Stored answer",
+                    "message_data": {
+                        "answerStatus": "supported",
+                        "parts": [{"type": "text", "text": "Stored answer"}],
+                    },
                     "created_at": CREATED_AT,
                 }
             ],
@@ -140,19 +153,65 @@ def test_loads_ordered_history_and_citations() -> None:
     assert payload["messages"][0]["parts"] == [
         {"type": "text", "text": "Stored answer"}
     ]
-    assert payload["messages"][0]["metadata"]["citations"] == [
-        {
-            "id": str(citation_id),
-            "chunkId": str(chunk_id),
-            "citationIndex": 0,
-            "excerpt": "Evidence",
-        }
-    ]
+    assert payload["messages"][0]["metadata"]["answerStatus"] == "supported"
 
 
-def test_stream_persists_then_emits_ai_sdk_message_events() -> None:
-    require_owned = AsyncMock(return_value=thread_row())
-    append_turn = AsyncMock(return_value=ASSISTANT_ID)
+def test_stream_emits_only_completed_ai_sdk_message_events() -> None:
+    prepared = PreparedChatTurn(
+        thread_id=THREAD_ID,
+        user_id=USER_ID,
+        user_message=InternalUserMessage(
+            client_id="client-message-1",
+            content="What changed?",
+            message_data={},
+        ),
+        expected_position=0,
+        history_rows=(),
+    )
+    prepare = AsyncMock(return_value=prepared)
+    complete = AsyncMock(
+        return_value=UIMessageResponse(
+            id=str(ASSISTANT_ID),
+            role="assistant",
+            parts=[
+                TextPart(type="text", text="A grounded answer [S1]."),
+                SourceUrlPart(
+                    type="source-url",
+                    source_id="S1",
+                    url="https://www.sec.gov/example",
+                    title="Apple 10-K",
+                ),
+                CitationPart(
+                    type="data-citation",
+                    id=str(uuid4()),
+                    data=CitationData(
+                        citation_id=uuid4(),
+                        source_id="S1",
+                        citation_index=0,
+                        chunk_id=uuid4(),
+                        document_id=uuid4(),
+                        chunk_index=3,
+                        excerpt="An exact filing excerpt supporting the grounded answer.",
+                        company="Apple Inc.",
+                        ticker="AAPL",
+                        filing_type="10-K",
+                        filing_date=date(2024, 11, 1),
+                        report_date=date(2024, 9, 28),
+                        accession_number="0000320193-24-000123",
+                        sec_url="https://www.sec.gov/example",
+                        page_number=12,
+                        section_title="Results of Operations",
+                        source_start=100,
+                        source_end=180,
+                    ),
+                ),
+            ],
+            metadata=MessageMetadata(
+                created_at=datetime.fromisoformat(CREATED_AT),
+                answer_status="supported",
+            ),
+        )
+    )
     request_payload = {
         "id": str(THREAD_ID),
         "message": {
@@ -163,8 +222,8 @@ def test_stream_persists_then_emits_ai_sdk_message_events() -> None:
     }
 
     with (
-        patch("app.api.chat.chats.require_owned_thread", require_owned),
-        patch("app.api.chat.chats.append_stub_turn", append_turn),
+        patch("app.api.chat.ChatTurnOrchestrator.prepare", prepare),
+        patch("app.api.chat.ChatTurnOrchestrator.complete", complete),
         make_client() as client,
     ):
         response = client.post("/chat/stream", json=request_payload)
@@ -173,28 +232,143 @@ def test_stream_persists_then_emits_ai_sdk_message_events() -> None:
     assert response.headers["content-type"].startswith("text/event-stream")
     assert response.headers["cache-control"] == "no-cache"
     assert response.headers["x-vercel-ai-ui-message-stream"] == "v1"
-    assert response.text.split("\n\n")[:-1] == [
-        f'data: {{"type":"start","messageId":"{ASSISTANT_ID}"}}',
-        f'data: {{"type":"text-start","id":"{ASSISTANT_ID}-text"}}',
-        (
-            f'data: {{"type":"text-delta","id":"{ASSISTANT_ID}-text",'
-            '"delta":"Your message is saved. "}'
+    events = response.text.split("\n\n")[:-1]
+    assert '"type":"data-turn-status"' in events[0]
+    assert f'"type":"start","messageId":"{ASSISTANT_ID}"' in events[1]
+    assert '"answerStatus":"supported"' in events[1]
+    assert '"type":"text-delta"' in events[3]
+    assert '"delta":"A grounded answer [S1]."' in events[3]
+    assert any('"type":"source-url"' in event for event in events)
+    assert any('"type":"data-citation"' in event for event in events)
+    assert '"type":"finish","finishReason":"stop"' in events[-2]
+    assert events[-1] == "data: [DONE]"
+    assert prepare.await_args.kwargs["user_message"].content == "What changed?"
+    complete.assert_awaited_once_with(prepared)
+
+
+def test_streams_an_insufficient_evidence_turn_without_sources() -> None:
+    prepared = PreparedChatTurn(
+        thread_id=THREAD_ID,
+        user_id=USER_ID,
+        user_message=InternalUserMessage(
+            client_id="client-message-1",
+            content="Unsupported question",
+            message_data={},
         ),
-        (
-            f'data: {{"type":"text-delta","id":"{ASSISTANT_ID}-text",'
-            '"delta":"Document retrieval is not connected yet, "}'
+        expected_position=0,
+        history_rows=(),
+    )
+    complete = AsyncMock(
+        return_value=UIMessageResponse(
+            id=str(ASSISTANT_ID),
+            role="assistant",
+            parts=[
+                TextPart(
+                    type="text",
+                    text=(
+                        "The available SEC filing corpus does not contain enough "
+                        "evidence to answer that question."
+                    ),
+                )
+            ],
+            metadata=MessageMetadata(
+                created_at=datetime.fromisoformat(CREATED_AT),
+                answer_status="insufficient_evidence",
+            ),
+        )
+    )
+    with (
+        patch(
+            "app.api.chat.ChatTurnOrchestrator.prepare",
+            AsyncMock(return_value=prepared),
         ),
-        (
-            f'data: {{"type":"text-delta","id":"{ASSISTANT_ID}-text",'
-            '"delta":"but the authenticated chat and streaming path are working."}'
+        patch("app.api.chat.ChatTurnOrchestrator.complete", complete),
+        make_client() as client,
+    ):
+        response = client.post(
+            "/chat/stream",
+            json={
+                "id": str(THREAD_ID),
+                "message": {
+                    "id": "client-message-1",
+                    "role": "user",
+                    "parts": [{"type": "text", "text": "Unsupported question"}],
+                },
+            },
+        )
+
+    assert response.status_code == 200
+    assert '"answerStatus":"insufficient_evidence"' in response.text
+    assert '"type":"source-url"' not in response.text
+    assert '"type":"data-citation"' not in response.text
+
+
+def test_upstream_stream_failure_has_no_completed_assistant_message() -> None:
+    from openai import APIConnectionError
+
+    prepared = PreparedChatTurn(
+        thread_id=THREAD_ID,
+        user_id=USER_ID,
+        user_message=InternalUserMessage(
+            client_id="client-message-1",
+            content="Question",
+            message_data={},
         ),
-        f'data: {{"type":"text-end","id":"{ASSISTANT_ID}-text"}}',
-        'data: {"type":"finish"}',
-        "data: [DONE]",
-    ]
-    internal_message = append_turn.await_args.args[3]
-    assert internal_message.content == "What changed?"
-    assert append_turn.await_args.args[4] == STUB_ASSISTANT_TEXT
+        expected_position=0,
+        history_rows=(),
+    )
+    with (
+        patch(
+            "app.api.chat.ChatTurnOrchestrator.prepare",
+            AsyncMock(return_value=prepared),
+        ),
+        patch(
+            "app.api.chat.ChatTurnOrchestrator.complete",
+            AsyncMock(side_effect=APIConnectionError(request=object())),
+        ),
+        make_client() as client,
+    ):
+        response = client.post(
+            "/chat/stream",
+            json={
+                "id": str(THREAD_ID),
+                "message": {
+                    "id": "client-message-1",
+                    "role": "user",
+                    "parts": [{"type": "text", "text": "Question"}],
+                },
+            },
+        )
+
+    assert response.status_code == 200
+    assert '"code":"assistant_unavailable"' in response.text
+    assert '"type":"error"' in response.text
+    assert '"type":"start"' not in response.text
+    assert '"type":"finish"' not in response.text
+
+
+def test_forbidden_thread_is_rejected_before_streaming() -> None:
+    with (
+        patch(
+            "app.api.chat.ChatTurnOrchestrator.prepare",
+            AsyncMock(side_effect=ChatThreadForbiddenError()),
+        ),
+        make_client() as client,
+    ):
+        response = client.post(
+            "/chat/stream",
+            json={
+                "id": str(THREAD_ID),
+                "message": {
+                    "id": "client-message-1",
+                    "role": "user",
+                    "parts": [{"type": "text", "text": "Question"}],
+                },
+            },
+        )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "You do not have access to this chat thread"
 
 
 @pytest.mark.parametrize(

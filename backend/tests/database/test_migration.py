@@ -69,6 +69,14 @@ def test_initial_migration_renders_expected_offline_sql() -> None:
         ("GRANT EXECUTE ON FUNCTION public.match_document_chunks_lexical"),
         ("REVOKE ALL ON FUNCTION public.match_document_chunks_semantic"),
         ("REVOKE ALL ON FUNCTION public.match_document_chunks_lexical"),
+        "CREATE UNIQUE INDEX uq_chat_messages_thread_client_message_id",
+        "CREATE FUNCTION public.complete_chat_turn",
+        "FOR UPDATE",
+        "jsonb_to_recordset",
+        "p_expected_position",
+        "Chat message position changed during the turn",
+        "GRANT EXECUTE ON FUNCTION public.complete_chat_turn",
+        "REVOKE ALL ON FUNCTION public.complete_chat_turn",
     )
     for statement in expected_sql:
         assert statement in sql
@@ -84,6 +92,16 @@ def test_initial_migration_renders_expected_offline_sql() -> None:
         r"ORDER BY chunk\.embedding OPERATOR\(public\.<=>\) "
         r"\$1, chunk\.id",
         final_semantic_function,
+    )
+
+    complete_turn_function = sql.split(
+        "CREATE FUNCTION public.complete_chat_turn",
+        1,
+    )[1].split("$$;", 1)[0]
+    assert "SECURITY INVOKER" in complete_turn_function
+    assert "SET search_path = ''" in complete_turn_function
+    assert complete_turn_function.index("INSERT INTO public.chat_messages") < (
+        complete_turn_function.index("INSERT INTO public.message_citations")
     )
 
 

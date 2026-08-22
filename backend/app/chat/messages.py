@@ -1,12 +1,15 @@
-"""AI SDK UI message validation and persistence conversion."""
+"""AI SDK UI message validation, history conversion, and persisted parts."""
 
-from collections import defaultdict
+from __future__ import annotations
+
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, field_validator
+
+from app.assistant.outputs import AnswerStatus, Citation, GroundedAnswer, HistoryMessage
 
 
 def to_camel(value: str) -> str:
@@ -21,13 +24,15 @@ class ApiModel(BaseModel):
     )
 
 
-class TextPart(ApiModel):
+class StrictApiModel(ApiModel):
     model_config = ConfigDict(
         alias_generator=to_camel,
         populate_by_name=True,
         extra="forbid",
     )
 
+
+class TextPart(StrictApiModel):
     type: Literal["text"]
     text: str = Field(max_length=10_000)
 
@@ -40,13 +45,45 @@ class TextPart(ApiModel):
         return value
 
 
-class UserUIMessage(ApiModel):
-    model_config = ConfigDict(
-        alias_generator=to_camel,
-        populate_by_name=True,
-        extra="forbid",
-    )
+class SourceUrlPart(StrictApiModel):
+    type: Literal["source-url"]
+    source_id: str
+    url: str
+    title: str | None = None
 
+
+class CitationData(StrictApiModel):
+    citation_id: UUID
+    source_id: str
+    citation_index: int = Field(ge=0)
+    chunk_id: UUID
+    document_id: UUID
+    chunk_index: int = Field(ge=0)
+    excerpt: str
+    company: str
+    ticker: str
+    filing_type: str
+    filing_date: date
+    report_date: date
+    accession_number: str
+    sec_url: str
+    page_number: int | None = Field(default=None, gt=0)
+    section_title: str | None = None
+    source_start: int | None = Field(default=None, ge=0)
+    source_end: int | None = Field(default=None, gt=0)
+
+
+class CitationPart(StrictApiModel):
+    type: Literal["data-citation"]
+    id: str
+    data: CitationData
+
+
+type UIMessagePart = TextPart | SourceUrlPart | CitationPart
+PART_ADAPTER = TypeAdapter(UIMessagePart)
+
+
+class UserUIMessage(StrictApiModel):
     id: str = Field(min_length=1, max_length=200)
     role: Literal["user"]
     parts: list[TextPart] = Field(min_length=1, max_length=1)
@@ -58,22 +95,15 @@ class ChatStreamRequest(ApiModel):
     message: UserUIMessage
 
 
-class CitationResponse(ApiModel):
-    id: UUID
-    chunk_id: UUID
-    citation_index: int
-    excerpt: str
-
-
 class MessageMetadata(ApiModel):
     created_at: datetime
-    citations: list[CitationResponse]
+    answer_status: AnswerStatus | None = None
 
 
 class UIMessageResponse(ApiModel):
     id: str
     role: Literal["user", "assistant"]
-    parts: list[TextPart]
+    parts: list[UIMessagePart]
     metadata: MessageMetadata
 
 
@@ -96,47 +126,124 @@ def to_internal_user_message(message: UserUIMessage) -> InternalUserMessage:
     )
 
 
-def assistant_message_data(content: str) -> dict[str, object]:
+def assistant_ui_parts(
+    answer: GroundedAnswer,
+    citation_ids: tuple[UUID, ...],
+) -> list[UIMessagePart]:
+    if len(answer.citations) != len(citation_ids):
+        raise ValueError("Every validated citation requires a persistence ID")
+
+    parts: list[UIMessagePart] = [TextPart(type="text", text=answer.answer)]
+    for citation, citation_id in zip(answer.citations, citation_ids, strict=True):
+        parts.append(
+            SourceUrlPart(
+                type="source-url",
+                source_id=citation.source_id,
+                url=citation.sec_url,
+                title=_source_title(citation),
+            )
+        )
+        data = CitationData(
+            citation_id=citation_id,
+            **citation.model_dump(),
+        )
+        parts.append(
+            CitationPart(
+                type="data-citation",
+                id=str(citation_id),
+                data=data,
+            )
+        )
+    return parts
+
+
+def assistant_message_data(
+    answer_status: AnswerStatus,
+    parts: list[UIMessagePart],
+) -> dict[str, object]:
     return {
-        "parts": [{"type": "text", "text": content}],
-        "stub": True,
+        "answerStatus": answer_status,
+        "parts": [part.model_dump(mode="json", by_alias=True) for part in parts],
     }
 
 
 def stored_messages_to_ui(
     message_rows: list[dict[str, object]],
-    citation_rows: list[dict[str, object]],
+    _citation_rows: list[dict[str, object]],
 ) -> list[UIMessageResponse]:
-    citations_by_message: dict[str, list[dict[str, object]]] = defaultdict(list)
-    for citation in citation_rows:
-        citations_by_message[str(citation["message_id"])].append(citation)
-
-    messages: list[UIMessageResponse] = []
+    messages = []
     for message in message_rows:
-        citations = sorted(
-            citations_by_message[str(message["id"])],
-            key=lambda citation: int(citation["citation_index"]),
-        )
+        message_data = _message_data(message)
+        role = str(message["role"])
+        ui_id = str(message["id"])
+        if role == "user":
+            client_id = message_data.get("clientMessageId")
+            if isinstance(client_id, str) and client_id:
+                ui_id = client_id
+
         messages.append(
             UIMessageResponse(
-                id=str(message["id"]),
-                role=str(message["role"]),
-                parts=[TextPart(type="text", text=str(message["content"]))],
+                id=ui_id,
+                role=role,
+                parts=_stored_parts(message, message_data),
                 metadata=MessageMetadata(
                     created_at=_parse_datetime(message["created_at"]),
-                    citations=[
-                        CitationResponse(
-                            id=UUID(str(citation["id"])),
-                            chunk_id=UUID(str(citation["chunk_id"])),
-                            citation_index=int(citation["citation_index"]),
-                            excerpt=str(citation["excerpt"]),
-                        )
-                        for citation in citations
-                    ],
+                    answer_status=_answer_status(message_data),
                 ),
             )
         )
     return messages
+
+
+def stored_messages_to_history(
+    message_rows: list[dict[str, object]],
+) -> tuple[HistoryMessage, ...]:
+    if len(message_rows) % 2:
+        raise ValueError("Stored chat history must contain complete turns")
+    history = tuple(
+        HistoryMessage(role=str(message["role"]), content=str(message["content"]))
+        for message in message_rows
+    )
+    for index, message in enumerate(history):
+        expected_role = "user" if index % 2 == 0 else "assistant"
+        if message.role != expected_role:
+            raise ValueError("Stored chat history must alternate user and assistant")
+    return history
+
+
+def _stored_parts(
+    message: dict[str, object],
+    message_data: dict[str, object],
+) -> list[UIMessagePart]:
+    raw_parts = message_data.get("parts")
+    if not isinstance(raw_parts, list):
+        return [TextPart(type="text", text=str(message["content"]))]
+    return [PART_ADAPTER.validate_python(part) for part in raw_parts]
+
+
+def _message_data(message: dict[str, object]) -> dict[str, object]:
+    value = message.get("message_data")
+    if isinstance(value, dict):
+        return value
+    return {}
+
+
+def _answer_status(message_data: dict[str, object]) -> AnswerStatus | None:
+    value = message_data.get("answerStatus")
+    if value in {
+        "supported",
+        "insufficient_evidence",
+        "investment_advice_refused",
+    }:
+        return value
+    return None
+
+
+def _source_title(citation: Citation) -> str:
+    return (
+        f"{citation.company} ({citation.ticker}) · {citation.filing_type} · "
+        f"{citation.filing_date.isoformat()}"
+    )
 
 
 def _parse_datetime(value: object) -> datetime:

@@ -1,4 +1,12 @@
-import { LogOut, MessageSquare, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react'
+import {
+  LogOut,
+  Menu,
+  MessageSquare,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Trash2,
+} from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 
 import {
@@ -19,6 +27,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet'
 import type { ChatThread } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
@@ -49,6 +64,7 @@ export function ThreadSidebar({
   const [renameValue, setRenameValue] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<ChatThread | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
 
   async function submitRename(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -67,6 +83,7 @@ export function ThreadSidebar({
     try {
       await onDelete(deleteTarget.id)
       setDeleteTarget(null)
+      setMobileOpen(false)
     } catch {
       // Keep the dialog open while the page-level alert explains the failure.
     } finally {
@@ -74,19 +91,24 @@ export function ThreadSidebar({
     }
   }
 
-  return (
-    <aside className="flex max-h-[45svh] w-full shrink-0 flex-col border-b bg-muted/30 md:max-h-none md:w-80 md:border-r md:border-b-0">
+  function selectThread(id: string) {
+    setMobileOpen(false)
+    onSelect(id)
+  }
+
+  function createChat() {
+    setMobileOpen(false)
+    void onCreate()
+  }
+
+  const sidebarBody = (
+    <div className="flex h-full min-h-0 flex-col bg-muted/30">
       <header className="flex items-center justify-between border-b px-5 py-5">
-        <div>
-          <p className="font-heading text-xl">10-K Club</p>
-          <p className="text-[0.65rem] tracking-[0.18em] text-muted-foreground uppercase">
-            Document Copilot
-          </p>
-        </div>
+        <Brand />
         <Button
           aria-label="Create new chat"
           disabled={isCreating}
-          onClick={() => void onCreate()}
+          onClick={createChat}
           size="icon-sm"
         >
           <Plus aria-hidden="true" />
@@ -132,10 +154,13 @@ export function ThreadSidebar({
                   >
                     <button
                       className="flex min-w-0 flex-1 items-center gap-2 px-3 py-3 text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-                      onClick={() => onSelect(thread.id)}
+                      onClick={() => selectThread(thread.id)}
                       type="button"
                     >
-                      <MessageSquare className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                      <MessageSquare
+                        className="size-3.5 shrink-0 text-muted-foreground"
+                        aria-hidden="true"
+                      />
                       <span className="truncate">{thread.title}</span>
                     </button>
                     <DropdownMenu>
@@ -191,8 +216,47 @@ export function ThreadSidebar({
           <LogOut aria-hidden="true" />
         </Button>
       </footer>
+    </div>
+  )
 
-      <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+  return (
+    <>
+      <header className="flex items-center justify-between border-b bg-muted/30 px-4 py-3 md:hidden">
+        <Button
+          aria-label="Open chat list"
+          onClick={() => setMobileOpen(true)}
+          size="icon-sm"
+          variant="ghost"
+        >
+          <Menu aria-hidden="true" />
+        </Button>
+        <Brand compact />
+        <Button
+          aria-label="Create new chat"
+          disabled={isCreating}
+          onClick={createChat}
+          size="icon-sm"
+        >
+          <Plus aria-hidden="true" />
+        </Button>
+      </header>
+
+      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+        <SheetContent className="w-[min(90vw,22rem)] p-0" side="left">
+          <SheetHeader className="sr-only">
+            <SheetTitle>Chat threads</SheetTitle>
+            <SheetDescription>Select or manage a research conversation.</SheetDescription>
+          </SheetHeader>
+          {sidebarBody}
+        </SheetContent>
+      </Sheet>
+
+      <aside className="hidden w-80 shrink-0 border-r md:block">{sidebarBody}</aside>
+
+      <AlertDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete chat?</AlertDialogTitle>
@@ -212,6 +276,17 @@ export function ThreadSidebar({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </aside>
+    </>
+  )
+}
+
+function Brand({ compact = false }: { compact?: boolean }) {
+  return (
+    <div className={compact ? 'text-center' : undefined}>
+      <p className={cn('font-heading', compact ? 'text-base' : 'text-xl')}>10-K Club</p>
+      <p className="text-[0.6rem] tracking-[0.18em] text-muted-foreground uppercase">
+        Document Copilot
+      </p>
+    </div>
   )
 }

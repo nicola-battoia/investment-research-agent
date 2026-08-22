@@ -134,7 +134,14 @@ export function ChatPage() {
   }
 
   function handleTurnFinished() {
-    void loadThreads().catch((loadError: unknown) => setError(loadError))
+    void Promise.all([
+      loadThreads(),
+      threadId ? api.getThread(threadId) : Promise.resolve(null),
+    ])
+      .then(([, detail]) => {
+        if (detail) setThreadDetail(detail)
+      })
+      .catch((loadError: unknown) => setError(loadError))
   }
 
   const showSignInAction = error instanceof ApiError && error.status === 401
@@ -180,7 +187,7 @@ export function ChatPage() {
               Loading chat…
             </p>
           </div>
-        ) : threadId && threadDetail ? (
+        ) : threadId && threadDetail?.thread.id === threadId ? (
           <>
             <header className="border-b px-5 py-4 sm:px-8">
               <h1 className="truncate font-heading text-xl">{threadDetail.thread.title}</h1>
