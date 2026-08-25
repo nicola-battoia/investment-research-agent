@@ -18,9 +18,46 @@ export interface ChatThread {
 }
 
 export type AnswerStatus =
+  | 'conversational'
+  | 'out_of_scope'
   | 'supported'
   | 'insufficient_evidence'
   | 'investment_advice_refused'
+
+export interface CitationTextHighlight {
+  end: number
+  start: number
+}
+
+export interface TextCitationPassage {
+  highlights: CitationTextHighlight[]
+  kind: 'text'
+  text: string
+  version: 1
+}
+
+export interface CitationTableCell {
+  columnHeader: boolean
+  columnIndex: number
+  columnSpan: number
+  highlighted: boolean
+  rowHeader: boolean
+  rowSpan: number
+  text: string
+}
+
+export interface CitationTableRow {
+  cells: CitationTableCell[]
+}
+
+export interface TableCitationPassage {
+  columnCount: number
+  kind: 'table'
+  rows: CitationTableRow[]
+  version: 1
+}
+
+export type CitationPassage = TextCitationPassage | TableCitationPassage
 
 export interface CitationData {
   accessionNumber: string
@@ -34,6 +71,7 @@ export interface CitationData {
   filingDate: string
   filingType: string
   pageNumber: number | null
+  passage: CitationPassage | null
   reportDate: string
   secUrl: string
   sectionTitle: string | null

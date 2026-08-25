@@ -72,6 +72,39 @@ def test_live_answerable_question_returns_current_turn_citations() -> None:
     asyncio.run(run())
 
 
+@pytest.mark.parametrize(
+    "question",
+    [
+        "Hi, how can you help me?",
+        "Hola, ¿cómo puedes ayudarme?",
+    ],
+)
+def test_live_onboarding_question_is_conversational_without_search(
+    question: str,
+) -> None:
+    async def run() -> None:
+        assistant, deps = await live_services()
+        result = await assistant.run(question, deps)
+
+        assert result.answer.status == "conversational"
+        assert result.answer.citations == ()
+        assert deps.counters.search_calls == 0
+
+    asyncio.run(run())
+
+
+def test_live_unrelated_question_is_redirected_without_search() -> None:
+    async def run() -> None:
+        assistant, deps = await live_services()
+        result = await assistant.run("Recommend a pizza place in Madrid.", deps)
+
+        assert result.answer.status == "out_of_scope"
+        assert result.answer.citations == ()
+        assert deps.counters.search_calls == 0
+
+    asyncio.run(run())
+
+
 def test_live_unsupported_question_returns_clear_refusal() -> None:
     async def run() -> None:
         assistant, deps = await live_services()

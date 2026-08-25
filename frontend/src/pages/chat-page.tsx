@@ -148,7 +148,7 @@ export function ChatPage() {
   const isLoadingThread = Boolean(threadId && resolvedThreadId !== threadId)
 
   return (
-    <main className="flex min-h-svh flex-col bg-background md:flex-row">
+    <main className="flex h-svh min-h-0 flex-col overflow-hidden bg-background md:flex-row">
       <ThreadSidebar
         isCreating={isCreating}
         onCreate={handleCreate}
@@ -161,7 +161,7 @@ export function ChatPage() {
         userEmail={user?.email}
       />
 
-      <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {error ? (
           <div className="flex items-center justify-between gap-4 border-b border-destructive/20 bg-destructive/5 px-5 py-3 text-sm text-destructive" role="alert">
             <span className="flex items-center gap-2">

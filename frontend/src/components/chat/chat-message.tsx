@@ -5,12 +5,14 @@ import type { AnswerStatus, ChatMessage, CitationData } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 interface ChatMessageProps {
+  citationNumbers: ReadonlyMap<string, number>
   message: ChatMessage
   onCitationSelect: (citation: CitationData, trigger: HTMLButtonElement) => void
   selectedCitationId?: string
 }
 
 export function ChatMessageView({
+  citationNumbers,
   message,
   onCitationSelect,
   selectedCitationId,
@@ -48,15 +50,22 @@ export function ChatMessageView({
       className={cn(
         'max-w-3xl space-y-3 border-l-2 pl-4',
         answerStatus === 'insufficient_evidence' && 'border-amber-500/70',
-        answerStatus === 'investment_advice_refused' && 'border-slate-400',
-        (!answerStatus || answerStatus === 'supported') && 'border-transparent pl-0',
+        (answerStatus === 'investment_advice_refused' ||
+          answerStatus === 'out_of_scope') &&
+          'border-slate-400',
+        (!answerStatus ||
+          answerStatus === 'supported' ||
+          answerStatus === 'conversational') &&
+          'border-transparent pl-0',
       )}
     >
       <div className="flex flex-wrap items-center gap-2">
         <p className="text-[0.65rem] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
           Document Copilot
         </p>
-        {answerStatus && answerStatus !== 'supported' ? (
+        {answerStatus &&
+        answerStatus !== 'supported' &&
+        answerStatus !== 'conversational' ? (
           <AnswerStatusLabel status={answerStatus} />
         ) : null}
       </div>
@@ -70,6 +79,7 @@ export function ChatMessageView({
             {renderCitedText(
               part.text,
               citationBySource,
+              citationNumbers,
               selectedCitationId,
               onCitationSelect,
             )}
@@ -87,8 +97,19 @@ export function ChatMessageView({
   )
 }
 
-function AnswerStatusLabel({ status }: { status: Exclude<AnswerStatus, 'supported'> }) {
+type LabeledAnswerStatus = Exclude<
+  AnswerStatus,
+  'conversational' | 'supported'
+>
+
+function AnswerStatusLabel({ status }: { status: LabeledAnswerStatus }) {
   const insufficient = status === 'insufficient_evidence'
+  const label =
+    status === 'insufficient_evidence'
+      ? 'Insufficient filing evidence'
+      : status === 'investment_advice_refused'
+        ? 'Investment advice declined'
+        : 'Outside filing research scope'
   return (
     <span
       className={cn(
@@ -103,7 +124,7 @@ function AnswerStatusLabel({ status }: { status: Exclude<AnswerStatus, 'supporte
       ) : (
         <Ban className="size-3" aria-hidden="true" />
       )}
-      {insufficient ? 'Insufficient filing evidence' : 'Investment advice declined'}
+      {label}
     </span>
   )
 }
@@ -111,6 +132,7 @@ function AnswerStatusLabel({ status }: { status: Exclude<AnswerStatus, 'supporte
 function renderCitedText(
   text: string,
   citations: Map<string, CitationData>,
+  citationNumbers: ReadonlyMap<string, number>,
   selectedCitationId: string | undefined,
   onCitationSelect: (citation: CitationData, trigger: HTMLButtonElement) => void,
 ): ReactNode[] {
@@ -123,16 +145,18 @@ function renderCitedText(
     if (match.index > offset) nodes.push(text.slice(offset, match.index))
     const citation = citations.get(match[1])
     if (citation) {
+      const citationNumber =
+        citationNumbers.get(citation.citationId) ?? citation.citationIndex + 1
       nodes.push(
         <button
-          aria-label={`Open source ${citation.citationIndex + 1}: ${citation.company} ${citation.filingType}`}
+          aria-label={`Open source ${citationNumber}: ${citation.company} ${citation.filingType}`}
           aria-pressed={selectedCitationId === citation.citationId}
           className="mx-0.5 inline-flex min-w-5 translate-y-[-0.05em] items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-[0.68rem] font-bold leading-none text-primary-foreground outline-none hover:bg-primary/80 focus-visible:ring-2 focus-visible:ring-ring/50"
           key={`${citation.citationId}-${match.index}`}
           onClick={(event) => onCitationSelect(citation, event.currentTarget)}
           type="button"
         >
-          {citation.citationIndex + 1}
+          {citationNumber}
         </button>,
       )
     } else {

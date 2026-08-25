@@ -9,6 +9,11 @@ from uuid import uuid4
 import pytest
 from postgrest import ReturnMethod
 
+from app.retrieval.display_tables import (
+    StoredDisplayTable,
+    StoredTableCell,
+    StoredTableRow,
+)
 from ingestion.chunk_documents import PreparedChunk
 from ingestion.ingest_chunks import (
     build_document_chunk_rows,
@@ -74,6 +79,7 @@ def test_build_document_chunk_rows_populates_retrieval_metadata() -> None:
                 "embedding_model": "text-embedding-3-small",
                 "embedding_dimensions": 1_536,
             },
+            "display_table": None,
             "embedding": embedding,
             "updated_at": "2026-08-19T14:00:00+00:00",
         }
@@ -90,6 +96,70 @@ def test_build_document_chunk_rows_rejects_schema_dimension_mismatch() -> None:
             embedding_model="text-embedding-3-small",
             embedding_dimensions=3,
         )
+
+
+def test_build_document_chunk_rows_serializes_display_table() -> None:
+    chunk = PreparedChunk(
+        chunk_index=0,
+        text="Revenue",
+        token_count=1,
+        page_number=None,
+        section_title=None,
+        source_start=None,
+        source_end=None,
+        metadata={"contains_table": True},
+        display_table=StoredDisplayTable(
+            table_ref="#/tables/0",
+            column_count=1,
+            rows=(
+                StoredTableRow(
+                    cells=(
+                        StoredTableCell(
+                            text="Revenue",
+                            column_index=0,
+                            row_span=1,
+                            column_span=1,
+                            row_header=True,
+                            text_start=0,
+                            text_end=7,
+                        ),
+                    )
+                ),
+            ),
+        ),
+    )
+
+    row = build_document_chunk_rows(
+        _source_row(),
+        str(uuid4()),
+        [chunk],
+        [[0.1] * 1_536],
+        embedding_model="text-embedding-3-small",
+        embedding_dimensions=1_536,
+        updated_at=UPDATED_AT,
+    )[0]
+
+    assert row["display_table"] == {
+        "version": 1,
+        "table_ref": "#/tables/0",
+        "column_count": 1,
+        "rows": [
+            {
+                "cells": [
+                    {
+                        "text": "Revenue",
+                        "column_index": 0,
+                        "row_span": 1,
+                        "column_span": 1,
+                        "column_header": False,
+                        "row_header": True,
+                        "text_start": 0,
+                        "text_end": 7,
+                    }
+                ]
+            }
+        ],
+    }
 
 
 def test_validate_stored_source_documents_checks_presence_and_checksum() -> None:
@@ -173,6 +243,7 @@ def _chunk_row(document_id: str, chunk_index: int) -> dict[str, object]:
         "source_start": None,
         "source_end": None,
         "metadata": {},
+        "display_table": None,
         "embedding": [0.1] * 1_536,
         "updated_at": "2026-08-19T14:00:00+00:00",
     }

@@ -20,6 +20,11 @@ from docling_core.transforms.serializer.base import BaseDocSerializer
 from docling_core.transforms.serializer.markdown import MarkdownTableSerializer
 from docling_core.types.doc import DocItemLabel, DoclingDocument, TableItem, TextItem
 
+from app.retrieval.display_tables import (
+    StoredDisplayTable,
+    StoredTableCell,
+    StoredTableRow,
+)
 from ingestion.ingest_documents import SourceDocumentRow, load_source_document_rows
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
@@ -63,6 +68,13 @@ class PreparedChunk:
     source_start: int | None
     source_end: int | None
     metadata: dict[str, object]
+    display_table: StoredDisplayTable | None = None
+
+
+@dataclass(frozen=True)
+class CompactedTable:
+    text: str
+    cell_ranges: dict[int, tuple[int, int]]
 
 
 class ChunkTooLargeError(ValueError):
@@ -89,6 +101,8 @@ def chunk_document(
     for chunk_index, source_chunk in enumerate(source_chunks):
         chunk = _compact_table_chunk(source_chunk)
         text = chunker.contextualize(chunk)
+        display_table = _display_table(source_chunk, chunk, text)
+        _validate_display_table(source_chunk, display_table, text)
         token_count = token_counter.count_tokens(text)
         if token_count > max_tokens:
             labels = sorted({item.label.value for item in chunk.meta.doc_items})
@@ -143,6 +157,7 @@ def chunk_document(
                     "source_offset_basis": "normalized_markdown",
                     "source_offset_found": source_start is not None,
                 },
+                display_table=display_table,
             )
         )
 
@@ -199,18 +214,185 @@ def _compact_table_chunk(chunk: DocChunk) -> DocChunk:
 
 
 def _compact_table_text(table: TableItem) -> str:
-    rows: dict[int, list[tuple[int, str]]] = {}
-    for cell in table.data.table_cells:
+    return _compacted_table(table).text
+
+
+def _compacted_table(table: TableItem) -> CompactedTable:
+    rows: dict[int, list[tuple[int, str, int]]] = {}
+    for origin_index, cell in enumerate(table.data.table_cells):
         text = " ".join(cell.text.split())
         if text:
             rows.setdefault(cell.start_row_offset_idx, []).append(
-                (cell.start_col_offset_idx, text)
+                (cell.start_col_offset_idx, text, origin_index)
             )
-    lines = [
-        " | ".join(text for _, text in sorted(rows[row_index]))
-        for row_index in sorted(rows)
+    parts = ["[TABLE]\n"]
+    text_length = len(parts[0])
+    cell_ranges = {}
+    for line_index, row_index in enumerate(sorted(rows)):
+        if line_index:
+            parts.append("\n")
+            text_length += 1
+        for cell_index, (_column_index, text, origin_index) in enumerate(
+            sorted(rows[row_index])
+        ):
+            if cell_index:
+                parts.append(" | ")
+                text_length += 3
+            start = text_length
+            parts.append(text)
+            text_length += len(text)
+            cell_ranges[origin_index] = (start, text_length)
+    return CompactedTable(text="".join(parts), cell_ranges=cell_ranges)
+
+
+def _display_table(
+    source_chunk: DocChunk,
+    compacted_chunk: DocChunk,
+    contextualized_text: str,
+) -> StoredDisplayTable | None:
+    table_items = [
+        item for item in source_chunk.meta.doc_items if isinstance(item, TableItem)
     ]
-    return "[TABLE]\n" + "\n".join(lines)
+    nonempty_text_items = [
+        item
+        for item in source_chunk.meta.doc_items
+        if isinstance(item, TextItem) and item.text
+    ]
+    if len(table_items) != 1 or nonempty_text_items:
+        return None
+
+    table = table_items[0]
+    if (
+        table.data.num_rows <= 0
+        or table.data.num_cols <= 0
+        or not any(" ".join(cell.text.split()) for cell in table.data.table_cells)
+    ):
+        return None
+    compacted = _compacted_table(table)
+    if compacted.text != compacted_chunk.text:
+        return None
+    chunk_start = contextualized_text.rfind(compacted.text)
+    if chunk_start < 0:
+        return None
+
+    rows: list[list[StoredTableCell]] = [[] for _ in range(_physical_row_count(table))]
+    for origin_index, cell in enumerate(table.data.table_cells):
+        text = " ".join(cell.text.split())
+        relative_range = compacted.cell_ranges.get(origin_index)
+        text_start = (
+            chunk_start + relative_range[0] if relative_range is not None else None
+        )
+        text_end = (
+            chunk_start + relative_range[1] if relative_range is not None else None
+        )
+        rows[cell.start_row_offset_idx].append(
+            StoredTableCell(
+                text=text,
+                column_index=cell.start_col_offset_idx,
+                row_span=cell.end_row_offset_idx - cell.start_row_offset_idx,
+                column_span=cell.end_col_offset_idx - cell.start_col_offset_idx,
+                column_header=cell.column_header,
+                row_header=cell.row_header,
+                text_start=text_start,
+                text_end=text_end,
+            )
+        )
+
+    return StoredDisplayTable(
+        table_ref=table.self_ref,
+        column_count=_physical_column_count(table),
+        rows=tuple(
+            StoredTableRow(cells=tuple(sorted(row, key=lambda cell: cell.column_index)))
+            for row in rows
+        ),
+    )
+
+
+def _validate_display_table(
+    source_chunk: DocChunk,
+    display_table: StoredDisplayTable | None,
+    chunk_text: str,
+) -> None:
+    table_items = [
+        item for item in source_chunk.meta.doc_items if isinstance(item, TableItem)
+    ]
+    nonempty_text_items = [
+        item
+        for item in source_chunk.meta.doc_items
+        if isinstance(item, TextItem) and item.text
+    ]
+    supported_table = (
+        len(table_items) == 1
+        and not nonempty_text_items
+        and table_items[0].data.num_rows > 0
+        and table_items[0].data.num_cols > 0
+        and any(" ".join(cell.text.split()) for cell in table_items[0].data.table_cells)
+    )
+    if not supported_table:
+        if display_table is not None:
+            raise ValueError("Unsupported or empty table chunk has display metadata")
+        return
+    if display_table is None:
+        raise ValueError("Supported table chunk is missing display metadata")
+
+    table = table_items[0]
+    if (
+        display_table.table_ref != table.self_ref
+        or display_table.column_count != _physical_column_count(table)
+        or len(display_table.rows) != _physical_row_count(table)
+    ):
+        raise ValueError("Display table does not match Docling table geometry")
+
+    expected_cells = sorted(
+        (
+            cell.start_row_offset_idx,
+            cell.start_col_offset_idx,
+            cell.end_row_offset_idx - cell.start_row_offset_idx,
+            cell.end_col_offset_idx - cell.start_col_offset_idx,
+            " ".join(cell.text.split()),
+            cell.column_header,
+            cell.row_header,
+        )
+        for cell in table.data.table_cells
+    )
+    actual_cells = sorted(
+        (
+            row_index,
+            cell.column_index,
+            cell.row_span,
+            cell.column_span,
+            cell.text,
+            cell.column_header,
+            cell.row_header,
+        )
+        for row_index, row in enumerate(display_table.rows)
+        for cell in row.cells
+    )
+    if actual_cells != expected_cells:
+        raise ValueError("Display cells do not match Docling origin cells")
+    for row in display_table.rows:
+        for cell in row.cells:
+            if cell.text:
+                if cell.text_start is None or cell.text_end is None:
+                    raise ValueError("Non-empty display cell is missing text offsets")
+                if chunk_text[cell.text_start : cell.text_end] != cell.text:
+                    raise ValueError("Display cell offsets do not map to chunk text")
+            elif cell.text_start is not None or cell.text_end is not None:
+                raise ValueError("Empty display cell unexpectedly has text offsets")
+
+
+def _physical_row_count(table: TableItem) -> int:
+    return max(
+        [table.data.num_rows]
+        + [cell.end_row_offset_idx for cell in table.data.table_cells]
+    )
+
+
+def _physical_column_count(table: TableItem) -> int:
+    return max(
+        [table.data.num_cols]
+        + [cell.end_col_offset_idx for cell in table.data.table_cells]
+    )
 
 
 def source_row_for_accession(accession_number: str) -> SourceDocumentRow:

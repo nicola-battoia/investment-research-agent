@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from datetime import date
+from typing import Self
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic_ai import ModelRetry, RunContext
 
 from app.assistant.deps import AssistantDeps
@@ -20,7 +21,7 @@ MAX_SEARCH_QUERY_CHARACTERS = 500
 
 
 class FilingSearchFilters(BaseModel):
-    """Small model-controlled subset of explicit Phase 7 filing filters."""
+    """Explicit filing scope for one model-controlled search."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -30,21 +31,51 @@ class FilingSearchFilters(BaseModel):
     filing_years: tuple[int, ...] = Field(default=(), max_length=5)
     filed_on_or_after: date | None = None
     filed_on_or_before: date | None = None
+    corpus_wide: bool = False
+
+    @model_validator(mode="after")
+    def require_explicit_scope(self) -> Self:
+        has_filing_filter = bool(
+            self.companies
+            or self.tickers
+            or self.filing_types
+            or self.filing_years
+            or self.filed_on_or_after
+            or self.filed_on_or_before
+        )
+        if not has_filing_filter and not self.corpus_wide:
+            raise ValueError(
+                "A filing search requires at least one filter or corpus_wide=true"
+            )
+        if has_filing_filter and self.corpus_wide:
+            raise ValueError(
+                "corpus_wide=true cannot be combined with filing filters"
+            )
+        return self
 
     def to_retrieval_filters(self) -> RetrievalFilters:
-        return RetrievalFilters.model_validate(self.model_dump())
+        return RetrievalFilters(
+            companies=self.companies,
+            tickers=self.tickers,
+            filing_types=self.filing_types,
+            filing_years=self.filing_years,
+            filed_on_or_after=self.filed_on_or_after,
+            filed_on_or_before=self.filed_on_or_before,
+        )
 
 
 async def search_filings(
     ctx: RunContext[AssistantDeps],
     query: str,
-    filters: FilingSearchFilters | None = None,
+    filters: FilingSearchFilters,
 ) -> SearchToolResult:
     """Search SEC filings with hybrid retrieval.
 
     Args:
         query: Focused evidence question or SEC filing concepts to retrieve.
-        filters: Optional company, ticker, form, fiscal year, or filing-date filters.
+        filters: Required explicit search scope. Supply at least one company,
+            ticker, form, fiscal year, or filing-date filter; use corpus_wide=true
+            only for an intentionally corpus-wide search.
     """
     query = query.strip()
     if not query:
@@ -62,7 +93,7 @@ async def search_filings(
 
     result = await ctx.deps.retriever.search(
         query,
-        (filters or FilingSearchFilters()).to_retrieval_filters(),
+        filters.to_retrieval_filters(),
         limit=SEARCH_RESULT_LIMIT,
         candidate_limit=SEARCH_CANDIDATE_LIMIT,
     )

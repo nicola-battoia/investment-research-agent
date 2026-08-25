@@ -1,12 +1,22 @@
+from datetime import date
 from uuid import uuid4
 
 import pytest
 from pydantic import ValidationError
 
+from app.assistant.outputs import (
+    Citation,
+    CitationTableCell,
+    CitationTableRow,
+    GroundedAnswer,
+    TableCitationPassage,
+)
 from app.chat.messages import (
     CitationPart,
     SourceUrlPart,
     UserUIMessage,
+    assistant_message_data,
+    assistant_ui_parts,
     stored_messages_to_history,
     stored_messages_to_ui,
     to_internal_user_message,
@@ -111,6 +121,96 @@ def test_serializes_persisted_source_and_citation_parts() -> None:
     assert isinstance(messages[0].parts[2], CitationPart)
     assert messages[0].parts[2].data.company == "Apple Inc."
     assert messages[0].metadata.answer_status == "supported"
+
+
+@pytest.mark.parametrize("status", ["conversational", "out_of_scope"])
+def test_reloads_non_retrieval_answer_status(status: str) -> None:
+    messages = stored_messages_to_ui(
+        [
+            {
+                "id": str(uuid4()),
+                "role": "assistant",
+                "content": "A short response.",
+                "message_data": {
+                    "answerStatus": status,
+                    "parts": [{"type": "text", "text": "A short response."}],
+                },
+                "created_at": "2026-08-19T09:30:00+00:00",
+            }
+        ],
+        [],
+    )
+
+    assert messages[0].metadata.answer_status == status
+    assert [part.type for part in messages[0].parts] == ["text"]
+
+
+def test_persists_and_reloads_citation_passage_with_camel_case_cells() -> None:
+    citation_id = uuid4()
+    citation = Citation(
+        source_id="S1",
+        citation_index=0,
+        chunk_id=uuid4(),
+        document_id=uuid4(),
+        chunk_index=4,
+        excerpt="Revenue | <script>alert(1)</script>",
+        company="Apple Inc.",
+        ticker="AAPL",
+        filing_type="10-K",
+        filing_date=date(2024, 11, 1),
+        report_date=date(2024, 9, 28),
+        accession_number="0000320193-24-000123",
+        sec_url="https://www.sec.gov/example",
+        passage=TableCitationPassage(
+            column_count=4,
+            rows=(
+                CitationTableRow(
+                    cells=(
+                        CitationTableCell(
+                            text="<script>alert(1)</script>",
+                            column_index=2,
+                            row_span=1,
+                            column_span=2,
+                            highlighted=True,
+                        ),
+                    )
+                ),
+            ),
+        ),
+    )
+    answer = GroundedAnswer(
+        status="supported",
+        answer="Revenue was disclosed [S1].",
+        citations=(citation,),
+    )
+    message_data = assistant_message_data(
+        answer.status,
+        assistant_ui_parts(answer, (citation_id,)),
+    )
+
+    passage_data = message_data["parts"][2]["data"]["passage"]
+    cell_data = passage_data["rows"][0]["cells"][0]
+    assert cell_data["columnIndex"] == 2
+    assert "column_index" not in cell_data
+
+    messages = stored_messages_to_ui(
+        [
+            {
+                "id": str(uuid4()),
+                "role": "assistant",
+                "content": answer.answer,
+                "message_data": message_data,
+                "created_at": "2026-08-19T09:30:00+00:00",
+            }
+        ],
+        [],
+    )
+
+    part = messages[0].parts[2]
+    assert isinstance(part, CitationPart)
+    assert part.data.passage is not None
+    assert part.data.passage.kind == "table"
+    assert part.data.passage.rows[0].cells[0].text == "<script>alert(1)</script>"
 
 
 def test_uses_client_message_id_when_reloading_a_user_message() -> None:

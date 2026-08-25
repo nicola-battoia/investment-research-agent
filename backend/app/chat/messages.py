@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, field_validator
@@ -52,6 +52,45 @@ class SourceUrlPart(StrictApiModel):
     title: str | None = None
 
 
+class CitationTextHighlightData(StrictApiModel):
+    start: int = Field(ge=0)
+    end: int = Field(gt=0)
+
+
+class TextCitationPassageData(StrictApiModel):
+    version: Literal[1]
+    kind: Literal["text"]
+    text: str
+    highlights: tuple[CitationTextHighlightData, ...]
+
+
+class CitationTableCellData(StrictApiModel):
+    text: str
+    column_index: int = Field(ge=0)
+    row_span: int = Field(gt=0)
+    column_span: int = Field(gt=0)
+    column_header: bool
+    row_header: bool
+    highlighted: bool
+
+
+class CitationTableRowData(StrictApiModel):
+    cells: tuple[CitationTableCellData, ...]
+
+
+class TableCitationPassageData(StrictApiModel):
+    version: Literal[1]
+    kind: Literal["table"]
+    column_count: int = Field(gt=0)
+    rows: tuple[CitationTableRowData, ...]
+
+
+CitationPassageData = Annotated[
+    TextCitationPassageData | TableCitationPassageData,
+    Field(discriminator="kind"),
+]
+
+
 class CitationData(StrictApiModel):
     citation_id: UUID
     source_id: str
@@ -71,6 +110,7 @@ class CitationData(StrictApiModel):
     section_title: str | None = None
     source_start: int | None = Field(default=None, ge=0)
     source_end: int | None = Field(default=None, gt=0)
+    passage: CitationPassageData | None = None
 
 
 class CitationPart(StrictApiModel):
@@ -231,6 +271,8 @@ def _message_data(message: dict[str, object]) -> dict[str, object]:
 def _answer_status(message_data: dict[str, object]) -> AnswerStatus | None:
     value = message_data.get("answerStatus")
     if value in {
+        "conversational",
+        "out_of_scope",
         "supported",
         "insufficient_evidence",
         "investment_advice_refused",

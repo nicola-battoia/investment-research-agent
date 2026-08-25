@@ -21,7 +21,12 @@ SECOND_TEXT = (
 )
 
 
-def passage(value: int, text: str) -> SourcePassage:
+def passage(
+    value: int,
+    text: str,
+    *,
+    display_table: dict[str, object] | None = None,
+) -> SourcePassage:
     return SourcePassage(
         chunk_id=UUID(int=value),
         document_id=UUID(int=100),
@@ -33,6 +38,7 @@ def passage(value: int, text: str) -> SourcePassage:
         source_start=value * 100,
         source_end=value * 100 + len(text),
         metadata={},
+        display_table=display_table,
         company="Apple Inc.",
         ticker="AAPL",
         filing_type="10-K",
@@ -86,6 +92,114 @@ def test_resolves_valid_citations_in_first_marker_order(
     assert [citation.source_id for citation in answer.citations] == ["S2", "S1"]
     assert [citation.citation_index for citation in answer.citations] == [0, 1]
     assert answer.citations[0].chunk_id == evidence["S2"].chunk_id
+    resolved_passage = answer.citations[0].passage
+    assert resolved_passage is not None
+    assert resolved_passage.kind == "text"
+    assert resolved_passage.text == SECOND_TEXT
+    assert (
+        SECOND_TEXT[
+            resolved_passage.highlights[0].start : resolved_passage.highlights[0].end
+        ]
+        == "foreign exchange had an unfavorable effect on total net sales"
+    )
+
+
+def test_text_passage_highlights_every_normalized_occurrence() -> None:
+    phrase = "Recurring revenue increased strongly."
+    full_text = f"{phrase}\n\n{phrase}"
+
+    answer = _validated_citation(
+        passage(1, full_text),
+        phrase.lower(),
+    )
+
+    resolved = answer.citations[0].passage
+    assert resolved is not None
+    assert resolved.kind == "text"
+    assert len(resolved.highlights) == 2
+    assert [
+        full_text[highlight.start : highlight.end] for highlight in resolved.highlights
+    ] == [phrase, phrase]
+
+
+@pytest.mark.parametrize(
+    ("excerpt", "highlighted_rows"),
+    [
+        ("Revenue | $100 million | $80 million", {1}),
+        (
+            "Metric | 2024 | 2023 Revenue | $100 million | $80 million",
+            {0, 1},
+        ),
+        (
+            "Revenue | $100 million | $80 million Margin | 45 percent | 40 percent",
+            {1, 2},
+        ),
+    ],
+)
+def test_table_passage_highlights_excerpt_cells(
+    excerpt: str,
+    highlighted_rows: set[int],
+) -> None:
+    table_text, display_table = _table_fixture()
+
+    answer = _validated_citation(
+        passage(1, table_text, display_table=display_table),
+        excerpt,
+    )
+
+    resolved = answer.citations[0].passage
+    assert resolved is not None
+    assert resolved.kind == "table"
+    assert resolved.column_count == 3
+    assert len(resolved.rows) == 3
+    actual_rows = {
+        row_index
+        for row_index, row in enumerate(resolved.rows)
+        if any(cell.highlighted for cell in row.cells)
+    }
+    assert actual_rows == highlighted_rows
+
+
+@pytest.mark.parametrize(
+    "display_table",
+    [
+        {"version": 2},
+        {
+            "version": 1,
+            "table_ref": "#/tables/0",
+            "column_count": 1,
+            "rows": [
+                {
+                    "cells": [
+                        {
+                            "text": "Recurring revenue increased strongly.",
+                            "column_index": 0,
+                            "row_span": 1,
+                            "column_span": 1,
+                            "column_header": False,
+                            "row_header": False,
+                            "text_start": None,
+                            "text_end": None,
+                        }
+                    ]
+                }
+            ],
+        },
+    ],
+)
+def test_table_metadata_safely_falls_back_to_text(
+    display_table: dict[str, object],
+) -> None:
+    text = "Recurring revenue increased strongly."
+
+    answer = _validated_citation(
+        passage(1, text, display_table=display_table),
+        text,
+    )
+
+    resolved = answer.citations[0].passage
+    assert resolved is not None
+    assert resolved.kind == "text"
 
 
 @pytest.mark.parametrize(
@@ -170,6 +284,65 @@ def test_accepts_clear_uncited_insufficient_evidence_refusal() -> None:
 
     assert answer.status == "insufficient_evidence"
     assert answer.citations == ()
+
+
+@pytest.mark.parametrize(
+    ("status", "text"),
+    [
+        ("conversational", "Hello! I’m Document Copilot. How can I help?"),
+        (
+            "out_of_scope",
+            "I focus on SEC-filing research. Ask me about a company filing instead.",
+        ),
+    ],
+)
+def test_accepts_short_non_retrieval_answers(status: str, text: str) -> None:
+    answer = GroundingValidator().validate(
+        DraftGroundedAnswer(status=status, answer=text),
+        evidence={},
+        read_source_ids=set(),
+        search_calls=0,
+    )
+
+    assert answer.status == status
+    assert answer.answer == text
+    assert answer.citations == ()
+
+
+@pytest.mark.parametrize("status", ["conversational", "out_of_scope"])
+@pytest.mark.parametrize(
+    ("search_calls", "answer", "citations", "error"),
+    [
+        (1, "A short reply.", (), "cannot follow a filing search"),
+        (0, "A reply with a marker [S1].", (), "cannot contain citations"),
+        (
+            0,
+            "A reply with a reference.",
+            (CitationReference(source_id="S1", excerpt="x" * 20),),
+            "cannot contain citations",
+        ),
+        (0, "x" * 1_001, (), "cannot exceed 1000 characters"),
+        (0, "You should buy the stock.", (), "prohibited"),
+    ],
+)
+def test_rejects_invalid_non_retrieval_answers(
+    status: str,
+    search_calls: int,
+    answer: str,
+    citations: tuple[CitationReference, ...],
+    error: str,
+) -> None:
+    with pytest.raises(GroundingValidationError, match=error):
+        GroundingValidator().validate(
+            DraftGroundedAnswer(
+                status=status,
+                answer=answer,
+                citations=citations,
+            ),
+            evidence={},
+            read_source_ids=set(),
+            search_calls=search_calls,
+        )
 
 
 @pytest.mark.parametrize(
@@ -262,3 +435,52 @@ def test_rejects_uncited_context_attached_to_advice_refusal() -> None:
             read_source_ids=set(),
             search_calls=0,
         )
+
+
+def _validated_citation(source: SourcePassage, excerpt: str):
+    return GroundingValidator().validate(
+        DraftGroundedAnswer(
+            status="supported",
+            answer="The filing supports this statement [S1].",
+            citations=(CitationReference(source_id="S1", excerpt=excerpt),),
+        ),
+        evidence={"S1": source},
+        read_source_ids={"S1"},
+        search_calls=1,
+    )
+
+
+def _table_fixture() -> tuple[str, dict[str, object]]:
+    values = [
+        ["Metric", "2024", "2023"],
+        ["Revenue", "$100 million", "$80 million"],
+        ["Margin", "45 percent", "40 percent"],
+    ]
+    text = "[TABLE]\n" + "\n".join(" | ".join(row) for row in values)
+    search_start = 0
+    rows = []
+    for row_index, row in enumerate(values):
+        cells = []
+        for column_index, value in enumerate(row):
+            start = text.index(value, search_start)
+            end = start + len(value)
+            search_start = end
+            cells.append(
+                {
+                    "text": value,
+                    "column_index": column_index,
+                    "row_span": 1,
+                    "column_span": 1,
+                    "column_header": row_index == 0,
+                    "row_header": column_index == 0 and row_index > 0,
+                    "text_start": start,
+                    "text_end": end,
+                }
+            )
+        rows.append({"cells": cells})
+    return text, {
+        "version": 1,
+        "table_ref": "#/tables/0",
+        "column_count": 3,
+        "rows": rows,
+    }

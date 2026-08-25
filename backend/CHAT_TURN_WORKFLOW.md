@@ -5,14 +5,74 @@ This is the actual backend path for one new frontend chat message, from
 current implementation rather than an intended design. File links and the
 short excerpts below are the authoritative starting points for each step.
 
-## 1. The frontend sends one user message
+## 1. Exact frontend-to-agent call chain
 
-`ChatConversation` calls `sendMessage({ text: message })`. The AI SDK transport
-posts the thread id and the newest UI message to the backend and adds the
-Supabase access token:
+The frontend does **not** import or call
+[`app/assistant/agent.py`](app/assistant/agent.py). The browser can only make an
+HTTP request. The following handoffs connect the Send button to the agent:
+
+```text
+ChatComposer.onSubmit
+  -> ChatConversation.handleSubmit
+  -> AI SDK useChat.sendMessage
+  -> DefaultChatTransport POST /chat/stream
+  -> FastAPI stream_chat
+  -> chat_turn_events creates orchestrator.complete task
+  -> ChatTurnOrchestrator.complete calls DocumentAssistant.run
+  -> DocumentAssistant.run calls its PydanticAI Agent.run
+  -> PydanticAI calls the OpenAI Responses API and executes tool calls
+```
+
+### 1.1 Send button to `useChat.sendMessage`
+
+[`frontend/src/components/chat/chat-composer.tsx`](../frontend/src/components/chat/chat-composer.tsx)
+owns the `<form>`. Clicking Send, or pressing Enter without Shift, submits that
+form and calls the `onSubmit` callback supplied by `ChatConversation`:
+
+```tsx
+// frontend/src/components/chat/chat-composer.tsx
+function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  event.preventDefault()
+  if (!input.trim() || isRunning) return
+  onSubmit()
+}
+
+return <form onSubmit={handleSubmit}>...</form>
+```
+
+[`frontend/src/components/chat/chat-conversation.tsx`](../frontend/src/components/chat/chat-conversation.tsx)
+passes its local `handleSubmit` function. That function clears the input and
+calls `sendMessage`, which comes from the AI SDK's `useChat` hook:
+
+```tsx
+// frontend/src/components/chat/chat-conversation.tsx
+const { messages, sendMessage, status, stop } = useChat<ChatMessage>({
+  id: threadId,
+  messages: initialMessages,
+  transport,
+  ...
+})
+
+function handleSubmit() {
+  const message = input.trim()
+  if (!message || isRunning) return
+  ...
+  void sendMessage({ text: message })
+}
+```
+
+At this point no backend Python function has been called yet. `sendMessage`
+adds a user `UIMessage` to the frontend state and asks the configured transport
+to send it.
+
+### 1.2 The transport creates the HTTP request
+
+`transport` is created by
+[`frontend/src/lib/chat-transport.ts`](../frontend/src/lib/chat-transport.ts).
+It uses `VITE_API_BASE_URL` and posts only the thread id and newest user
+message—not the complete frontend message array—to `/chat/stream`:
 
 ```ts
-// frontend/src/lib/chat-transport.ts
 return new DefaultChatTransport<ChatMessage>({
   api: `${env.apiBaseUrl}/chat/stream`,
   fetch: authenticatedChatFetch,
@@ -24,27 +84,101 @@ return new DefaultChatTransport<ChatMessage>({
 })
 ```
 
-The rest of this document is about the backend. The HTTP boundary is
-[`app/api/chat.py`](app/api/chat.py): FastAPI validates the JSON as
-`ChatStreamRequest`, authenticates the bearer token via `ChatContext`, and
-starts the streaming response.
+`authenticatedChatFetch` gets the current Supabase access token and adds it to
+the request:
+
+```ts
+const headers = new Headers(init?.headers)
+headers.set('Authorization', `Bearer ${accessToken}`)
+const response = await fetch(input, { ...init, headers })
+```
+
+The JSON body has this effective shape (the AI SDK creates the message id):
+
+```json
+{
+  "id": "<thread UUID>",
+  "message": {
+    "id": "<client message id>",
+    "role": "user",
+    "parts": [{ "type": "text", "text": "What drove revenue growth?" }]
+  }
+}
+```
+
+This streaming call does not use the ordinary `api.post` helper from
+`frontend/src/lib/api.ts`; it uses `DefaultChatTransport` because the response
+is an AI SDK-compatible Server-Sent Event stream.
+
+### 1.3 FastAPI maps the URL to `stream_chat`
+
+The backend route is assembled in two pieces:
 
 ```py
+# app/api/chat.py
+router = APIRouter(prefix="/chat", tags=["chat"])
+
 @router.post("/stream")
-async def stream_chat(payload: ChatStreamRequest, request: Request,
-                      context: ChatContext) -> StreamingResponse:
-    orchestrator = ChatTurnOrchestrator(
-        settings=request.app.state.settings,
-        supabase=context.supabase,
-        openai_client=request.app.state.openai_client,
-        assistant=request.app.state.document_assistant,
-    )
-    prepared = await orchestrator.prepare(
-        thread_id=payload.id,
-        user_id=UUID(context.user.id),
-        user_message=to_internal_user_message(payload.message),
-    )
-    return StreamingResponse(chat_turn_events(...), media_type="text/event-stream", ...)
+async def stream_chat(...): ...
+
+# app/main.py
+application.include_router(chat_router)
+```
+
+Together they produce `POST /chat/stream`. Before `stream_chat` runs, FastAPI:
+
+1. validates the body using `ChatStreamRequest` from
+   [`app/chat/messages.py`](app/chat/messages.py);
+2. resolves `ChatContext = Depends(get_authenticated_context)`;
+3. verifies the bearer token with Supabase and creates a user-scoped Supabase
+   client whose database access is subject to RLS.
+
+```py
+# app/chat/messages.py
+class ChatStreamRequest(ApiModel):
+    id: UUID
+    message: UserUIMessage
+
+# app/auth/dependencies.py
+access_token = credentials.credentials
+client = await create_user_supabase_client(app_settings, access_token)
+response = await client.auth.get_user(access_token)
+return AuthenticatedContext(user=response.user, supabase=client)
+```
+
+The route then obtains the already-created assistant from FastAPI application
+state, puts it into a per-request orchestrator, prepares the turn, and returns
+the SSE response:
+
+```py
+# app/api/chat.py
+orchestrator = ChatTurnOrchestrator(
+    settings=request.app.state.settings,
+    supabase=context.supabase,
+    openai_client=request.app.state.openai_client,
+    assistant=request.app.state.document_assistant,
+)
+prepared = await orchestrator.prepare(
+    thread_id=payload.id,
+    user_id=UUID(context.user.id),
+    user_message=to_internal_user_message(payload.message),
+)
+return StreamingResponse(
+    chat_turn_events(request=request, orchestrator=orchestrator, turn=prepared, ...),
+    media_type="text/event-stream",
+    ...,
+)
+```
+
+`to_internal_user_message` extracts the one text part. Consequently, the exact
+string eventually passed to the agent is `payload.message.parts[0].text`:
+
+```py
+return InternalUserMessage(
+    client_id=message.id,
+    content=message.parts[0].text,
+    message_data=...,
+)
 ```
 
 ## 2. The turn is authorized and its prior conversation is loaded
@@ -84,12 +218,87 @@ _remove_old_source_ids(user.content)
 _remove_old_source_ids(assistant.content)
 ```
 
-## 3. The request-scoped assistant is built and run
+## 3. Where `agent.py` is created and called
 
-[`complete`](app/chat/orchestrator.py) constructs a fresh retriever, evidence
-store, counters, and grounding validator for every non-cached turn. The shared
-application-level `DocumentAssistant` is created at startup in
-[`app/main.py`](app/main.py), but all mutable evidence is per request.
+There are two distinct lifetimes: the reusable agent definition is created once
+when the backend process starts, while retrieval and evidence state are created
+fresh for every user message.
+
+### 3.1 Backend startup creates the shared `DocumentAssistant`
+
+Importing [`app/main.py`](app/main.py) executes `app = create_app(settings)`.
+`create_app` creates one shared OpenAI client and passes it into
+`create_document_assistant` from
+[`app/assistant/agent.py`](app/assistant/agent.py). The resulting
+`DocumentAssistant` is stored at `application.state.document_assistant`:
+
+```py
+# app/main.py
+shared_openai_client = openai_client or AsyncOpenAI(...)
+shared_assistant = document_assistant or create_document_assistant(
+    app_settings,
+    shared_openai_client,
+)
+...
+application.state.openai_client = shared_openai_client
+application.state.document_assistant = shared_assistant
+```
+
+`create_document_assistant` wraps that OpenAI client in PydanticAI's OpenAI
+Responses model and constructs `DocumentAssistant`:
+
+```py
+# app/assistant/agent.py
+model = OpenAIResponsesModel(
+    settings.openai_assistant_model,
+    provider=OpenAIProvider(openai_client=openai_client),
+)
+return DocumentAssistant(model)
+```
+
+The `DocumentAssistant` constructor creates the actual PydanticAI `Agent` and
+registers its instructions, tools, structured output, and output validator. It
+is safe to reuse this definition because request-specific mutable state is not
+stored on it:
+
+```py
+self._agent = Agent(
+    model,
+    name="document_copilot",
+    deps_type=AssistantDeps,
+    output_type=NativeOutput(DraftGroundedAnswer, ...),
+    instructions=ASSISTANT_INSTRUCTIONS,
+    tools=[search_filings, read_chunk, read_surrounding_chunks],
+    retries={"tools": 1, "output": 1},
+    tool_timeout=60,
+)
+```
+
+### 3.2 Consuming the SSE response starts the turn task
+
+`stream_chat` does not call the agent directly. Its `StreamingResponse` consumes
+the async generator in [`app/chat/streaming.py`](app/chat/streaming.py). That
+generator first sends `Researching filings…`, then starts
+`orchestrator.complete(turn)` as an asynchronous task:
+
+```py
+# app/chat/streaming.py
+async def chat_turn_events(...):
+    yield _status_event()
+    task = asyncio.create_task(orchestrator.complete(turn))
+    ...
+```
+
+This task boundary lets the stream send a heartbeat every 15 seconds, detect a
+browser disconnect, enforce the whole-turn timeout, and cancel the ongoing turn
+when necessary.
+
+### 3.3 `ChatTurnOrchestrator.complete` calls `DocumentAssistant.run`
+
+[`complete`](app/chat/orchestrator.py) first returns a stored result immediately
+when this client message id has already completed. Otherwise it constructs a
+fresh retriever, evidence store, counters, model settings, and grounding
+validator for this one message:
 
 ```py
 # app/chat/orchestrator.py
@@ -104,6 +313,48 @@ deps = AssistantDeps(user_id=turn.user_id, thread_id=turn.thread_id,
 result = await self._assistant.run(turn.user_message.content, deps,
     stored_messages_to_history(list(turn.history_rows)))
 ```
+
+`self._assistant` is the same `request.app.state.document_assistant` passed from
+the route into the orchestrator. Therefore the line above is the direct call
+from the chat request workflow into `app/assistant/agent.py`.
+
+Its three arguments are:
+
+- `question`: the new frontend text;
+- `deps`: fresh current-turn retrieval, evidence, counters, validation, and
+  model settings;
+- `history`: a bounded conversion of earlier stored user/assistant messages.
+
+### 3.4 `DocumentAssistant.run` starts the actual model/tool loop
+
+Finally, [`DocumentAssistant.run`](app/assistant/agent.py) validates the question
+and calls `self._agent.run(...)`. This is the point where PydanticAI sends the
+request through `OpenAIResponsesModel` to the OpenAI Responses API:
+
+```py
+# app/assistant/agent.py
+result = await self._agent.run(
+    question,
+    deps=deps,
+    message_history=build_message_history(history),
+    model_settings=deps.model_settings.to_pydantic_ai(),
+    usage_limits=UsageLimits(
+        request_limit=8,
+        tool_calls_limit=12,
+        output_tokens_limit=6_000,
+        per_request_input_tokens_limit=64_000,
+    ),
+    event_stream_handler=event_stream_handler,
+)
+```
+
+The orchestrator does not pass an `event_stream_handler`, so it is `None` here.
+PydanticAI internally performs the model/tool loop: it sends the instructions,
+history, question, tool schemas, and structured output schema; executes a local
+Python tool when the model requests one; sends that tool result back to the
+model; and repeats until the model returns the final structured answer or a
+limit/error stops the run. The browser does not call these tools and does not
+see their intermediate events.
 
 The agent identity, output contract, and tool list are defined in
 [`app/assistant/agent.py`](app/assistant/agent.py):
@@ -123,9 +374,11 @@ self._agent = Agent(
 ```
 
 Its system instructions in [`app/assistant/policy.py`](app/assistant/policy.py)
-make it an SEC-filing research assistant. In particular, factual answers must
-search current-turn evidence first; a passage must be read before it is cited;
-and the agent must return structured `status`, `answer`, and `citations`.
+make it an SEC-filing research assistant with two no-retrieval conversation
+paths. Greetings, identity, capabilities, scope, and question-formulation help
+use `conversational`; unrelated requests use `out_of_scope`. Company or filing
+facts must search current-turn evidence first, and a passage must be read before
+it is cited. Every path returns structured `status`, `answer`, and `citations`.
 
 This is an iterative tool-using model run, not a fixed retrieval pipeline. The
 model can inspect a tool result and call another tool before producing its final
@@ -150,14 +403,16 @@ model one configured tool retry, rather than exposing arbitrary database access.
 ## 4. `search_filings`: what it returns and how it retrieves
 
 The model may call `search_filings(query, filters)`. It accepts a focused query
-plus optional company, ticker, filing type, filing-year, and filing-date filters.
-At most three searches are allowed, and one search requests 50 candidates and
-returns at most 10 fused ranked passages:
+plus an explicit search scope. Every call must include at least one company,
+ticker, filing type, report/fiscal year, or filing-date filter, unless the model
+deliberately sets `corpus_wide=true`. Corpus-wide scope cannot be combined with
+filing filters. At most three searches are allowed, and one search requests 50
+candidates and returns at most 10 fused ranked passages:
 
 ```py
 # app/assistant/tools.py
 result = await ctx.deps.retriever.search(
-    query, (filters or FilingSearchFilters()).to_retrieval_filters(),
+    query, filters.to_retrieval_filters(),
     limit=SEARCH_RESULT_LIMIT, candidate_limit=SEARCH_CANDIDATE_LIMIT,
 )
 ranked = tuple(ctx.deps.evidence.preview(item) for item in result.passages)
@@ -287,7 +542,8 @@ read.
 ## 6. Final answer and deterministic grounding validation
 
 The model finally emits strict structured `DraftGroundedAnswer` output. It can
-choose `supported`, `insufficient_evidence`, or `investment_advice_refused`.
+choose `conversational`, `out_of_scope`, `supported`, `insufficient_evidence`,
+or `investment_advice_refused`.
 Before anything leaves the assistant boundary, the output validator in
 [`app/assistant/agent.py`](app/assistant/agent.py) validates it against only
 the request-local evidence:
@@ -309,11 +565,14 @@ async def validate_grounding(ctx, output):
 ```
 
 [`GroundingValidator`](app/grounding/validator.py) is deterministic Python code;
-it is not another LLM judgment. For a supported answer it requires at least one
-search and one citation. For every inline `[S<number>]` marker, it requires one
-matching structured citation, verifies that the source was retrieved **and
-read**, and verifies the proposed 20–500 character excerpt occurs in that full
-passage:
+it is not another LLM judgment. `conversational` and `out_of_scope` answers must
+use zero searches, contain no citations or source-like markers, and stay within
+1,000 characters. Their semantic routing is controlled by the same agent policy;
+there is no second classifier. For a supported answer the validator requires at
+least one search and one citation. For every inline `[S<number>]` marker, it
+requires one matching structured citation, verifies that the source was
+retrieved **and read**, and verifies the proposed 20–500 character excerpt occurs
+in that full passage:
 
 ```py
 if source_id not in read_source_ids:
@@ -326,10 +585,10 @@ if _normalized_text(excerpt) not in _normalized_text(passage.text):
 
 It also enforces exact insufficient-evidence wording with no citations, required
 investment-advice refusal wording, marker/reference agreement, and a set of
-prohibited investment-advice patterns. On the first invalid final output,
-`ModelRetry` asks the agent to correct its answer. If its allowed output retry is
-exhausted, `GroundingFailureError` prevents a response from being persisted or
-shown; streaming maps it to `grounding_failed`.
+prohibited investment-advice patterns across every status. On the first invalid
+final output, `ModelRetry` asks the agent to correct its answer. If its allowed
+output retry is exhausted, `GroundingFailureError` prevents a response from being
+persisted or shown; streaming maps it to `grounding_failed`.
 
 ## 7. Persist first, then stream the completed answer
 
@@ -361,7 +620,7 @@ END IF;
 ```
 
 Finally [`chat_turn_events`](app/chat/streaming.py) sends Server-Sent Events.
-The UI receives an early `researching` status and periodic heartbeats. It does
+The UI receives an early `Preparing response…` status and periodic heartbeats. It does
 **not** receive live model-token streaming: the backend waits for the complete,
 grounded, persisted result, then splits its already-final text into 160-character
 SSE deltas followed by citation parts and `finish`.

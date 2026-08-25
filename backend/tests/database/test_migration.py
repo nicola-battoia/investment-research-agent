@@ -70,6 +70,7 @@ def test_initial_migration_renders_expected_offline_sql() -> None:
         ("REVOKE ALL ON FUNCTION public.match_document_chunks_semantic"),
         ("REVOKE ALL ON FUNCTION public.match_document_chunks_lexical"),
         "CREATE UNIQUE INDEX uq_chat_messages_thread_client_message_id",
+        "ADD COLUMN display_table JSONB",
         "CREATE FUNCTION public.complete_chat_turn",
         "FOR UPDATE",
         "jsonb_to_recordset",

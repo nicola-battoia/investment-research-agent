@@ -8,6 +8,7 @@ from uuid import UUID, uuid4
 import pytest
 
 from app.assistant.outputs import (
+    AnswerStatus,
     AssistantRunResult,
     AssistantUsage,
     Citation,
@@ -77,27 +78,28 @@ def citation() -> Citation:
     )
 
 
-def result(status: str = "supported") -> AssistantRunResult:
-    answer = (
-        GroundedAnswer(
+def result(status: AnswerStatus = "supported") -> AssistantRunResult:
+    if status == "supported":
+        answer = GroundedAnswer(
             status="supported",
             answer="Services increased because of advertising and cloud revenue [S1].",
             citations=(citation(),),
         )
-        if status == "supported"
-        else GroundedAnswer(
+    elif status == "insufficient_evidence":
+        answer = GroundedAnswer(
             status="insufficient_evidence",
             answer=(
                 "The available SEC filing corpus does not contain enough evidence "
                 "to answer that question."
             ),
         )
-    )
+    else:
+        answer = GroundedAnswer(status=status, answer="A short response.")
     return AssistantRunResult(
         answer=answer,
         usage=AssistantUsage(
             requests=3,
-            tool_calls=2,
+            tool_calls=2 if status == "supported" else 0,
             input_tokens=100,
             output_tokens=30,
             total_tokens=130,
@@ -209,6 +211,35 @@ def test_insufficient_evidence_turn_persists_without_citations() -> None:
 
     assert completed.metadata.answer_status == "insufficient_evidence"
     assert [part.type for part in completed.parts] == ["text"]
+    assert persist.await_args.args[9] == []
+
+
+@pytest.mark.parametrize("status", ["conversational", "out_of_scope"])
+def test_non_retrieval_turn_persists_without_citations(status: AnswerStatus) -> None:
+    assistant = SimpleNamespace(run=AsyncMock(return_value=result(status)))
+    persist = AsyncMock(return_value=TurnPersistenceResult(assistant_created_at=NOW))
+    service = orchestrator(assistant)
+
+    async def run():
+        with (
+            patch(
+                "app.chat.orchestrator.chats.load_thread",
+                AsyncMock(return_value=({"id": str(THREAD_ID)}, [], [])),
+            ),
+            patch("app.chat.orchestrator.chats.complete_chat_turn", persist),
+        ):
+            prepared = await service.prepare(
+                thread_id=THREAD_ID,
+                user_id=USER_ID,
+                user_message=user_message(),
+            )
+            return await service.complete(prepared)
+
+    completed = asyncio.run(run())
+
+    assert completed.metadata.answer_status == status
+    assert [part.type for part in completed.parts] == ["text"]
+    assert persist.await_args.args[7]["answerStatus"] == status
     assert persist.await_args.args[9] == []
 
 

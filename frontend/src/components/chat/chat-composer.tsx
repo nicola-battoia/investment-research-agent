@@ -78,7 +78,7 @@ export function ChatComposer({
         {isRunning ? (
           <span className="flex items-center gap-1">
             <LoaderCircle className="animate-spin" aria-hidden="true" />
-            Researching filings
+            Preparing response
           </span>
         ) : null}
       </span>

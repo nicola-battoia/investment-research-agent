@@ -49,6 +49,7 @@ class DocumentChunkRow(TypedDict):
     source_start: int | None
     source_end: int | None
     metadata: dict[str, object]
+    display_table: dict[str, object] | None
     embedding: list[float]
     updated_at: str
 
@@ -165,6 +166,11 @@ def build_document_chunk_rows(
                 source_start=chunk.source_start,
                 source_end=chunk.source_end,
                 metadata=metadata,
+                display_table=(
+                    chunk.display_table.model_dump(mode="json")
+                    if chunk.display_table is not None
+                    else None
+                ),
                 embedding=list(embedding),
                 updated_at=timestamp,
             )

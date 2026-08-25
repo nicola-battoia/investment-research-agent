@@ -20,7 +20,10 @@ from app.assistant.outputs import (
     DraftGroundedAnswer,
     HistoryMessage,
 )
-from app.assistant.policy import ASSISTANT_INSTRUCTIONS
+from app.assistant.policy import (
+    ASSISTANT_INSTRUCTIONS,
+    current_spain_time_instruction,
+)
 from app.assistant.tools import (
     read_chunk,
     read_surrounding_chunks,
@@ -34,7 +37,7 @@ from app.grounding.validator import (
 if TYPE_CHECKING:
     from app.config import Settings
 
-MAX_MODEL_REQUESTS = 8
+MAX_MODEL_REQUESTS = 12
 MAX_TOOL_CALLS = 12
 MAX_TOTAL_OUTPUT_TOKENS = 6_000
 MAX_REQUEST_INPUT_TOKENS = 64_000
@@ -53,12 +56,12 @@ class DocumentAssistant:
                 DraftGroundedAnswer,
                 name="grounded_document_answer",
                 description=(
-                    "A supported SEC-filing answer, insufficient-evidence refusal, "
-                    "or investment-advice refusal with current-turn citations."
+                    "A validated SEC-filing answer, evidence or advice refusal, "
+                    "conversational onboarding reply, or out-of-scope redirect."
                 ),
                 strict=True,
             ),
-            instructions=ASSISTANT_INSTRUCTIONS,
+            instructions=[ASSISTANT_INSTRUCTIONS, current_spain_time_instruction],
             tools=[search_filings, read_chunk, read_surrounding_chunks],
             retries={"tools": 1, "output": 1},
             tool_timeout=60,

@@ -3,6 +3,8 @@ import {
   Menu,
   MessageSquare,
   MoreHorizontal,
+  PanelLeftClose,
+  PanelLeftOpen,
   Pencil,
   Plus,
   Trash2,
@@ -65,6 +67,7 @@ export function ThreadSidebar({
   const [deleteTarget, setDeleteTarget] = useState<ChatThread | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [desktopOpen, setDesktopOpen] = useState(true)
 
   async function submitRename(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -101,21 +104,36 @@ export function ThreadSidebar({
     void onCreate()
   }
 
-  const sidebarBody = (
-    <div className="flex h-full min-h-0 flex-col bg-muted/30">
-      <header className="flex items-center justify-between border-b px-5 py-5">
+  const sidebarBody = (showCollapseButton: boolean) => (
+    <div className="flex h-full min-h-0 w-full flex-col bg-muted/30">
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b px-5 py-5">
         <Brand />
-        <Button
-          aria-label="Create new chat"
-          disabled={isCreating}
-          onClick={createChat}
-          size="icon-sm"
-        >
-          <Plus aria-hidden="true" />
-        </Button>
+        <div className="flex items-center gap-1">
+          {showCollapseButton ? (
+            <Button
+              aria-label="Hide chats sidebar"
+              onClick={() => setDesktopOpen(false)}
+              size="icon-sm"
+              variant="ghost"
+            >
+              <PanelLeftClose aria-hidden="true" />
+            </Button>
+          ) : null}
+          <Button
+            aria-label="Create new chat"
+            disabled={isCreating}
+            onClick={createChat}
+            size="icon-sm"
+          >
+            <Plus aria-hidden="true" />
+          </Button>
+        </div>
       </header>
 
-      <nav className="min-h-0 flex-1 overflow-y-auto p-3" aria-label="Chat threads">
+      <nav
+        className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3"
+        aria-label="Chat threads"
+      >
         {threads.length === 0 ? (
           <p className="px-3 py-8 text-center text-xs leading-5 text-muted-foreground">
             No chats yet. Create one to start a conversation.
@@ -203,7 +221,7 @@ export function ThreadSidebar({
         )}
       </nav>
 
-      <footer className="flex items-center justify-between gap-3 border-t px-4 py-3">
+      <footer className="flex shrink-0 items-center justify-between gap-3 border-t px-4 py-3">
         <span className="min-w-0 truncate text-xs text-muted-foreground">
           {userEmail ?? 'Pilot account'}
         </span>
@@ -247,11 +265,32 @@ export function ThreadSidebar({
             <SheetTitle>Chat threads</SheetTitle>
             <SheetDescription>Select or manage a research conversation.</SheetDescription>
           </SheetHeader>
-          {sidebarBody}
+          {sidebarBody(false)}
         </SheetContent>
       </Sheet>
 
-      <aside className="hidden w-80 shrink-0 border-r md:block">{sidebarBody}</aside>
+      <aside
+        className={cn(
+          'hidden h-full min-h-0 shrink-0 overflow-hidden border-r bg-muted/30 transition-[width] duration-200 motion-reduce:transition-none md:flex',
+          desktopOpen ? 'w-80' : 'w-12',
+        )}
+        aria-label="Chats sidebar"
+      >
+        {desktopOpen ? (
+          sidebarBody(true)
+        ) : (
+          <div className="flex h-full w-full flex-col items-center py-3">
+            <Button
+              aria-label="Show chats sidebar"
+              onClick={() => setDesktopOpen(true)}
+              size="icon-sm"
+              variant="ghost"
+            >
+              <PanelLeftOpen aria-hidden="true" />
+            </Button>
+          </div>
+        )}
+      </aside>
 
       <AlertDialog
         open={deleteTarget !== null}

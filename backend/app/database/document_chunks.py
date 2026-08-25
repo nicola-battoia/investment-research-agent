@@ -89,6 +89,7 @@ class DocumentChunk(TimestampMixin, Base):
         server_default=sql_text("'{}'::jsonb"),
         nullable=False,
     )
+    display_table: Mapped[dict[str, object] | None] = mapped_column(JSONB)
     embedding: Mapped[list[float]] = mapped_column(
         Vector(EMBEDDING_DIMENSIONS),
         nullable=False,

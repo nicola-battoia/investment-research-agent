@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock
 from uuid import UUID
 
 import pytest
+from pydantic import ValidationError
 from pydantic_ai import ModelRetry
 
 from app.assistant.deps import AssistantDeps, AssistantModelSettings
@@ -19,6 +20,7 @@ from app.grounding.validator import GroundingValidator
 from app.retrieval.models import (
     ExtractedKeywords,
     KeywordGroup,
+    RetrievalFilters,
     RetrievalResult,
     SourcePassage,
 )
@@ -109,13 +111,26 @@ def test_search_uses_fixed_bounds_filters_and_stable_source_ids() -> None:
 def test_search_rejects_a_fourth_attempt() -> None:
     retriever = SimpleNamespace(search=AsyncMock(return_value=retrieval_result()))
     context = SimpleNamespace(deps=deps(retriever))
+    filters = FilingSearchFilters(corpus_wide=True)
 
     for _ in range(3):
-        asyncio.run(search_filings(context, "Services"))
+        asyncio.run(search_filings(context, "Services", filters))
 
     with pytest.raises(ModelRetry, match="maximum of three"):
-        asyncio.run(search_filings(context, "One more search"))
+        asyncio.run(search_filings(context, "One more search", filters))
     assert retriever.search.await_count == 3
+
+
+def test_search_scope_requires_filters_or_explicit_corpus_wide() -> None:
+    with pytest.raises(ValidationError, match="at least one filter"):
+        FilingSearchFilters()
+
+    with pytest.raises(ValidationError, match="cannot be combined"):
+        FilingSearchFilters(tickers=("AAPL",), corpus_wide=True)
+
+    corpus_wide = FilingSearchFilters(corpus_wide=True)
+
+    assert corpus_wide.to_retrieval_filters() == RetrievalFilters()
 
 
 def test_read_requires_current_turn_source_and_marks_it_read() -> None:

@@ -303,6 +303,56 @@ def test_streams_an_insufficient_evidence_turn_without_sources() -> None:
     assert '"type":"data-citation"' not in response.text
 
 
+@pytest.mark.parametrize("answer_status", ["conversational", "out_of_scope"])
+def test_streams_non_retrieval_turn_without_sources(answer_status: str) -> None:
+    prepared = PreparedChatTurn(
+        thread_id=THREAD_ID,
+        user_id=USER_ID,
+        user_message=InternalUserMessage(
+            client_id="client-message-1",
+            content="Hello",
+            message_data={},
+        ),
+        expected_position=0,
+        history_rows=(),
+    )
+    complete = AsyncMock(
+        return_value=UIMessageResponse(
+            id=str(ASSISTANT_ID),
+            role="assistant",
+            parts=[TextPart(type="text", text="A short response.")],
+            metadata=MessageMetadata(
+                created_at=datetime.fromisoformat(CREATED_AT),
+                answer_status=answer_status,
+            ),
+        )
+    )
+    with (
+        patch(
+            "app.api.chat.ChatTurnOrchestrator.prepare",
+            AsyncMock(return_value=prepared),
+        ),
+        patch("app.api.chat.ChatTurnOrchestrator.complete", complete),
+        make_client() as client,
+    ):
+        response = client.post(
+            "/chat/stream",
+            json={
+                "id": str(THREAD_ID),
+                "message": {
+                    "id": "client-message-1",
+                    "role": "user",
+                    "parts": [{"type": "text", "text": "Hello"}],
+                },
+            },
+        )
+
+    assert response.status_code == 200
+    assert f'"answerStatus":"{answer_status}"' in response.text
+    assert '"type":"source-url"' not in response.text
+    assert '"type":"data-citation"' not in response.text
+
+
 def test_upstream_stream_failure_has_no_completed_assistant_message() -> None:
     from openai import APIConnectionError
 

@@ -144,6 +144,9 @@ def test_hydration_returns_requested_order_and_source_metadata() -> None:
     assert [passage.chunk_id for passage in passages] == [CHUNK_ID, second_id]
     assert passages[0].ticker == "AAPL"
     assert passages[0].filing_date == date(2024, 11, 1)
+    select_call = client.table_query.calls[0]
+    assert select_call[0] == "select"
+    assert "display_table" in str(select_call[1])
 
 
 def passage_row(chunk_id: UUID, chunk_index: int) -> dict[str, object]:
@@ -158,6 +161,7 @@ def passage_row(chunk_id: UUID, chunk_index: int) -> dict[str, object]:
         "source_start": 0,
         "source_end": 10,
         "metadata": {"contains_table": False},
+        "display_table": None,
         "source_documents": {
             "company": "Apple Inc.",
             "ticker": "AAPL",

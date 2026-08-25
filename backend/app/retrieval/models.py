@@ -129,6 +129,7 @@ class SourcePassage(BaseModel):
     source_start: int | None = Field(default=None, ge=0)
     source_end: int | None = Field(default=None, gt=0)
     metadata: dict[str, object] = Field(default_factory=dict)
+    display_table: dict[str, object] | None = None
     company: str = Field(min_length=1)
     ticker: str = Field(min_length=1)
     filing_type: str = Field(min_length=1)

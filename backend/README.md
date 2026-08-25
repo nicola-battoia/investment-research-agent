@@ -56,7 +56,9 @@ Rows are matched by SEC accession number, so the command is safe to rerun.
 The chunking pipeline loads the native Docling JSON files and uses Docling's
 `HierarchicalChunker`. Each table stays in one chunk. Tables use a compact row
 serialization for embedding, while source offsets are located against the
-non-compact normalized Markdown.
+non-compact normalized Markdown. In parallel, table chunks persist Docling's native
+cell spans and canonical-text offsets in `document_chunks.display_table` for citation
+rendering; this display payload does not change retrieval text or embeddings.
 
 Validate one filing's hierarchy, table integrity, source offsets, and token limits:
 
@@ -84,6 +86,10 @@ After `source_documents` has been ingested, embed and upsert the complete corpus
 ```bash
 uv run python -m ingestion.ingest_chunks
 ```
+
+After applying the migration that adds `display_table`, rerun this same command to
+backfill existing chunks. The `(document_id, chunk_index)` upsert keeps chunk IDs and
+their citation foreign keys stable.
 
 To embed and upsert one complete filing instead, add
 `--accession-number <accession>`. Chunk rows are matched by document ID and chunk
@@ -179,6 +185,7 @@ grounding validation and the complete turn has been committed atomically.
 ```mermaid
 flowchart TD
     Q["Current question and recent chat context"] --> A["PydanticAI document assistant"]
+    A -->|"conversational or out_of_scope; no tools"| D
     A -->|"search_filings, at most 3"| R["Phase 7 hybrid retriever"]
     R --> E["Current-turn source registry<br/>S1, S2, S3..."]
     E --> A
@@ -196,9 +203,12 @@ Search results expose bounded previews. The agent must explicitly read a passage
 before it can cite it, and citations use current-turn labels such as `[S1]` rather
 than model-supplied database UUIDs. The grounding validator then verifies that
 inline markers, structured citation references, exact excerpts, and retrieved
-passages agree. Unsupported questions return a fixed, uncited corpus-insufficiency
-statement. Investment questions may receive cited factual context, but always end
-with the fixed investment-advice refusal.
+passages agree. Greetings and onboarding can return concise `conversational`
+answers without retrieval, while unrelated requests return an `out_of_scope`
+redirect. Both paths prohibit searches, citations, and source markers. Unsupported
+filing questions return a fixed, uncited corpus-insufficiency statement. Investment
+questions may receive cited factual context, but always end with the fixed
+investment-advice refusal.
 
 Each run receives a fresh `AssistantDeps` containing the authenticated user and
 thread IDs, the Phase 7 retriever, model settings, validator, and evidence registry.

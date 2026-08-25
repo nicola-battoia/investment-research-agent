@@ -15,7 +15,7 @@ LEXICAL_RPC = "match_document_chunks_lexical"
 MAX_CANDIDATES = 100
 SOURCE_PASSAGE_COLUMNS = (
     "id,document_id,chunk_index,text,token_count,page_number,section_title,"
-    "source_start,source_end,metadata,"
+    "source_start,source_end,metadata,display_table,"
     "source_documents!inner(company,ticker,filing_type,filing_date,report_date,"
     "accession_number,sec_url)"
 )

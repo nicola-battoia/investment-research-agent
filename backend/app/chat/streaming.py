@@ -39,6 +39,63 @@ class StreamFailure:
     retryable: bool
 
 
+@dataclass(frozen=True)
+class UsageLimitFailure:
+    limit: str
+    code: str
+    message: str
+
+
+USAGE_LIMIT_FAILURES = (
+    UsageLimitFailure(
+        "per_request_input_tokens_limit",
+        "assistant_context_limit",
+        "The conversation and source context are too large for this turn. "
+        "Try a narrower question or start a new chat.",
+    ),
+    UsageLimitFailure(
+        "input_tokens_limit",
+        "assistant_input_tokens_limit",
+        "The research assistant reached its cumulative input-token limit. "
+        "Try a narrower question or start a new chat.",
+    ),
+    UsageLimitFailure(
+        "output_tokens_limit",
+        "assistant_output_tokens_limit",
+        "The research assistant reached its response-token limit. "
+        "Try a narrower question.",
+    ),
+    UsageLimitFailure(
+        "total_tokens_limit",
+        "assistant_total_tokens_limit",
+        "The research assistant reached its total-token limit. "
+        "Try a narrower question.",
+    ),
+    UsageLimitFailure(
+        "tool_calls_limit",
+        "assistant_tool_calls_limit",
+        "The research assistant reached its tool-call limit. Try a narrower question.",
+    ),
+    UsageLimitFailure(
+        "request_limit",
+        "assistant_request_limit",
+        "The research assistant reached its model-request limit. "
+        "Try a narrower question.",
+    ),
+    UsageLimitFailure(
+        "cost_limit",
+        "assistant_cost_limit",
+        "The research assistant reached its configured cost limit. "
+        "Try a narrower question.",
+    ),
+)
+UNKNOWN_USAGE_LIMIT_FAILURE = UsageLimitFailure(
+    "unknown",
+    "assistant_usage_limit",
+    "The research assistant reached a configured usage limit. Try a narrower question.",
+)
+
+
 async def chat_turn_events(
     *,
     request: Request,
@@ -87,6 +144,7 @@ async def chat_turn_events(
             user_id=str(turn.user_id),
             error_class=type(error).__name__,
             error_code=failure.code,
+            **_error_log_context(error),
         )
         async for event in _failure_events(failure):
             yield event
@@ -155,7 +213,7 @@ def _status_event() -> str:
             "type": "data-turn-status",
             "data": {
                 "state": "researching",
-                "message": "Researching filings…",
+                "message": "Preparing response…",
             },
             "transient": True,
         }
@@ -187,9 +245,16 @@ def _mapped_failure(error: Exception) -> StreamFailure:
             "The chat database is temporarily unavailable.",
             True,
         )
+    if isinstance(error, UsageLimitExceeded):
+        usage_failure = _usage_limit_failure(error)
+        return StreamFailure(
+            usage_failure.code,
+            usage_failure.message,
+            True,
+        )
     if isinstance(
         error,
-        (OpenAIError, ModelAPIError, UnexpectedModelBehavior, UsageLimitExceeded),
+        (OpenAIError, ModelAPIError, UnexpectedModelBehavior),
     ):
         return StreamFailure(
             "assistant_unavailable",
@@ -201,6 +266,30 @@ def _mapped_failure(error: Exception) -> StreamFailure:
         "The research turn could not be completed.",
         True,
     )
+
+
+def _usage_limit_failure(error: UsageLimitExceeded) -> UsageLimitFailure:
+    message = str(error)
+    return next(
+        (failure for failure in USAGE_LIMIT_FAILURES if failure.limit in message),
+        UNKNOWN_USAGE_LIMIT_FAILURE,
+    )
+
+
+def _error_log_context(error: Exception) -> dict[str, str]:
+    if not isinstance(error, UsageLimitExceeded):
+        return {}
+    failure = _usage_limit_failure(error)
+    return {
+        "usage_limit": failure.limit,
+        "error_message": _usage_limit_reason(error),
+    }
+
+
+def _usage_limit_reason(error: UsageLimitExceeded) -> str:
+    message = str(error)
+    reason, separator, _hint = message.partition(". Consider raising the limit")
+    return reason if separator else message
 
 
 async def _cancel(task: asyncio.Task[object]) -> None:

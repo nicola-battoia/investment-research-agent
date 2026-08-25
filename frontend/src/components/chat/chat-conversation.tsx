@@ -35,6 +35,7 @@ export function ChatConversation({
   const [turnStatus, setTurnStatus] = useState<TurnStatusData | null>(null)
   const [turnFailure, setTurnFailure] = useState<TurnErrorData | null>(null)
   const [failedUserId, setFailedUserId] = useState<string | null>(null)
+  const [citationPanelOpen, setCitationPanelOpen] = useState(true)
   const transport = useMemo(() => createChatTransport(), [])
   const endRef = useRef<HTMLDivElement>(null)
   const citationTriggerRef = useRef<HTMLButtonElement | null>(null)
@@ -90,6 +91,24 @@ export function ChatConversation({
     transport,
   })
   const isRunning = status === 'submitted' || status === 'streaming'
+  const citationNumbers = useMemo(() => {
+    const numbers = new Map<string, number>()
+    let nextNumber = 1
+
+    for (const message of messages) {
+      const citations = message.parts
+        .filter((part) => part.type === 'data-citation')
+        .map((part) => part.data)
+        .sort((left, right) => left.citationIndex - right.citationIndex)
+
+      for (const citation of citations) {
+        if (numbers.has(citation.citationId)) continue
+        numbers.set(citation.citationId, nextNumber)
+        nextNumber += 1
+      }
+    }
+    return numbers
+  }, [messages])
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -140,9 +159,9 @@ export function ChatConversation({
   const sessionExpired = error instanceof ApiError && error.status === 401
 
   return (
-    <section className="flex min-h-0 flex-1 bg-background">
-      <div className="flex min-w-0 flex-1 flex-col">
-        <div className="min-h-0 flex-1 overflow-y-auto">
+    <section className="flex min-h-0 flex-1 overflow-hidden bg-background">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <div className="mx-auto flex min-h-full w-full max-w-4xl flex-col px-5 py-8 sm:px-8 lg:px-12">
             {messages.length === 0 ? (
               <div className="my-auto space-y-4 py-16 text-center">
@@ -163,10 +182,12 @@ export function ChatConversation({
                 {messages.map((message) => (
                   <ChatMessageView
                     key={message.id}
+                    citationNumbers={citationNumbers}
                     message={message}
                     onCitationSelect={(citation, trigger) => {
                       citationTriggerRef.current = trigger
                       setSelectedCitation(citation)
+                      setCitationPanelOpen(true)
                     }}
                     selectedCitationId={selectedCitation?.citationId}
                   />
@@ -177,7 +198,7 @@ export function ChatConversation({
                     aria-live="polite"
                   >
                     <LoaderCircle className="size-3.5 animate-spin" aria-hidden="true" />
-                    {turnStatus?.message ?? 'Starting research…'}
+                    {turnStatus?.message ?? 'Preparing response…'}
                   </div>
                 ) : null}
               </div>
@@ -186,7 +207,7 @@ export function ChatConversation({
           </div>
         </div>
 
-        <div className="border-t bg-background px-5 py-4 sm:px-8 lg:px-12">
+        <div className="shrink-0 border-t bg-background px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-8 lg:px-12">
           <div className="mx-auto max-w-4xl space-y-3">
             <ChatComposer
               input={input}
@@ -242,7 +263,18 @@ export function ChatConversation({
         </div>
       </div>
 
-      <CitationPanel citation={selectedCitation} onClose={closeCitation} />
+      <CitationPanel
+        citation={selectedCitation}
+        citationNumber={
+          selectedCitation
+            ? citationNumbers.get(selectedCitation.citationId) ??
+              selectedCitation.citationIndex + 1
+            : null
+        }
+        desktopOpen={citationPanelOpen}
+        onClose={closeCitation}
+        onDesktopOpenChange={setCitationPanelOpen}
+      />
     </section>
   )
 }

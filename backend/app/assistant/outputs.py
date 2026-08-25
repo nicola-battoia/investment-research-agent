@@ -4,15 +4,17 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
-from typing import Literal
+from typing import Annotated, Literal, Self
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic_ai.usage import RunUsage
 
 SOURCE_ID_PATTERN = r"^S[1-9][0-9]*$"
 
 AnswerStatus = Literal[
+    "conversational",
+    "out_of_scope",
     "supported",
     "insufficient_evidence",
     "investment_advice_refused",
@@ -36,7 +38,7 @@ class CitationReference(FrozenModel):
 
 
 class DraftGroundedAnswer(FrozenModel):
-    """Strict native structured output produced by the model."""
+    """Strict structured output produced by the model for every response path."""
 
     status: AnswerStatus
     answer: str = Field(min_length=1, max_length=10_000)
@@ -46,6 +48,65 @@ class DraftGroundedAnswer(FrozenModel):
     @classmethod
     def normalize_answer(cls, value: str) -> str:
         return value.strip()
+
+
+class CitationTextHighlight(FrozenModel):
+    """One raw character range highlighted within a full text passage."""
+
+    start: int = Field(ge=0)
+    end: int = Field(gt=0)
+
+    @model_validator(mode="after")
+    def validate_range(self) -> Self:
+        if self.end <= self.start:
+            raise ValueError("Citation highlight end must be after its start")
+        return self
+
+
+class TextCitationPassage(FrozenModel):
+    """A complete retrieved text chunk and all exact excerpt occurrences."""
+
+    version: Literal[1] = 1
+    kind: Literal["text"] = "text"
+    text: str = Field(min_length=1)
+    highlights: tuple[CitationTextHighlight, ...] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_highlights(self) -> Self:
+        if any(highlight.end > len(self.text) for highlight in self.highlights):
+            raise ValueError("Citation highlight extends beyond passage text")
+        return self
+
+
+class CitationTableCell(FrozenModel):
+    """A render-safe table cell with Docling span semantics."""
+
+    text: str
+    column_index: int = Field(ge=0)
+    row_span: int = Field(gt=0)
+    column_span: int = Field(gt=0)
+    column_header: bool = False
+    row_header: bool = False
+    highlighted: bool = False
+
+
+class CitationTableRow(FrozenModel):
+    cells: tuple[CitationTableCell, ...] = ()
+
+
+class TableCitationPassage(FrozenModel):
+    """A complete citation table with excerpt-overlapping cells marked."""
+
+    version: Literal[1] = 1
+    kind: Literal["table"] = "table"
+    column_count: int = Field(gt=0)
+    rows: tuple[CitationTableRow, ...] = Field(min_length=1)
+
+
+CitationPassage = Annotated[
+    TextCitationPassage | TableCitationPassage,
+    Field(discriminator="kind"),
+]
 
 
 class Citation(FrozenModel):
@@ -68,10 +129,11 @@ class Citation(FrozenModel):
     section_title: str | None = None
     source_start: int | None = Field(default=None, ge=0)
     source_end: int | None = Field(default=None, gt=0)
+    passage: CitationPassage | None = None
 
 
 class GroundedAnswer(FrozenModel):
-    """Only answer type allowed to cross the assistant boundary successfully."""
+    """Only validated answer type allowed to cross the assistant boundary."""
 
     status: AnswerStatus
     answer: str

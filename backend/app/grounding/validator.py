@@ -1,20 +1,35 @@
-"""Validate model citations against evidence retrieved in the current turn."""
+"""Validate assistant response paths and current-turn filing citations."""
 
 from __future__ import annotations
 
 import re
 from collections.abc import Mapping
 from collections.abc import Set as AbstractSet
+from dataclasses import dataclass
 
-from app.assistant.outputs import Citation, DraftGroundedAnswer, GroundedAnswer
+from pydantic import ValidationError
+
+from app.assistant.outputs import (
+    Citation,
+    CitationTableCell,
+    CitationTableRow,
+    CitationTextHighlight,
+    DraftGroundedAnswer,
+    GroundedAnswer,
+    TableCitationPassage,
+    TextCitationPassage,
+)
 from app.assistant.policy import (
     INSUFFICIENT_EVIDENCE_STATEMENT,
     INVESTMENT_ADVICE_STATEMENT,
 )
+from app.retrieval.display_tables import StoredDisplayTable
 from app.retrieval.models import SourcePassage
 
 SOURCE_MARKER_RE = re.compile(r"\[(S[1-9][0-9]*)\]")
 SOURCE_LIKE_MARKER_RE = re.compile(r"\[S[^\]]*\]")
+MAX_NON_RETRIEVAL_ANSWER_CHARACTERS = 1_000
+NON_RETRIEVAL_STATUSES = frozenset(("conversational", "out_of_scope"))
 PROHIBITED_ADVICE_PATTERNS = (
     re.compile(r"\b(?:i|we)\s+(?:would\s+)?recommend\b", re.IGNORECASE),
     re.compile(
@@ -36,11 +51,11 @@ class GroundingValidationError(ValueError):
 
 
 class GroundingFailureError(Exception):
-    """The model exhausted its chance to produce a grounded answer."""
+    """The model exhausted its chance to produce a valid answer."""
 
 
 class GroundingValidator:
-    """Resolve only current-turn, explicitly read evidence into citations."""
+    """Validate response paths and resolve current-turn evidence into citations."""
 
     def validate(
         self,
@@ -51,6 +66,8 @@ class GroundingValidator:
         search_calls: int,
     ) -> GroundedAnswer:
         self._validate_advice_language(draft.answer)
+        if draft.status in NON_RETRIEVAL_STATUSES:
+            return self._validate_non_retrieval(draft, search_calls)
         if draft.status == "insufficient_evidence":
             return self._validate_insufficient_evidence(draft, search_calls)
         if draft.status == "supported":
@@ -89,6 +106,30 @@ class GroundingValidator:
             status=draft.status,
             answer=draft.answer,
             citations=citations,
+        )
+
+    def _validate_non_retrieval(
+        self,
+        draft: DraftGroundedAnswer,
+        search_calls: int,
+    ) -> GroundedAnswer:
+        if search_calls:
+            raise GroundingValidationError(
+                f"A {draft.status} answer cannot follow a filing search"
+            )
+        if draft.citations or SOURCE_LIKE_MARKER_RE.search(draft.answer):
+            raise GroundingValidationError(
+                f"A {draft.status} answer cannot contain citations"
+            )
+        if len(draft.answer) > MAX_NON_RETRIEVAL_ANSWER_CHARACTERS:
+            raise GroundingValidationError(
+                f"A {draft.status} answer cannot exceed "
+                f"{MAX_NON_RETRIEVAL_ANSWER_CHARACTERS} characters"
+            )
+        return GroundedAnswer(
+            status=draft.status,
+            answer=draft.answer,
+            citations=(),
         )
 
     def _validate_insufficient_evidence(
@@ -171,6 +212,7 @@ class GroundingValidator:
                     section_title=passage.section_title,
                     source_start=passage.source_start,
                     source_end=passage.source_end,
+                    passage=_citation_passage(excerpt, passage),
                 )
             )
         return tuple(resolved)
@@ -186,3 +228,117 @@ class GroundingValidator:
 
 def _normalized_text(value: str) -> str:
     return " ".join(value.split()).casefold()
+
+
+@dataclass(frozen=True)
+class _NormalizedText:
+    text: str
+    raw_starts: tuple[int, ...]
+    raw_ends: tuple[int, ...]
+
+
+def _normalized_text_with_offsets(value: str) -> _NormalizedText:
+    normalized = []
+    raw_starts = []
+    raw_ends = []
+    previous_end = 0
+    for token_index, match in enumerate(re.finditer(r"\S+", value)):
+        if token_index:
+            normalized.append(" ")
+            raw_starts.append(previous_end)
+            raw_ends.append(match.start())
+        for raw_index, character in enumerate(match.group(), start=match.start()):
+            folded = character.casefold()
+            normalized.extend(folded)
+            raw_starts.extend([raw_index] * len(folded))
+            raw_ends.extend([raw_index + 1] * len(folded))
+        previous_end = match.end()
+    return _NormalizedText(
+        text="".join(normalized),
+        raw_starts=tuple(raw_starts),
+        raw_ends=tuple(raw_ends),
+    )
+
+
+def _exact_raw_ranges(excerpt: str, passage_text: str) -> tuple[tuple[int, int], ...]:
+    normalized_excerpt = _normalized_text(excerpt)
+    normalized_passage = _normalized_text_with_offsets(passage_text)
+    ranges = []
+    search_start = 0
+    while True:
+        match_start = normalized_passage.text.find(normalized_excerpt, search_start)
+        if match_start < 0:
+            break
+        match_end = match_start + len(normalized_excerpt)
+        ranges.append(
+            (
+                normalized_passage.raw_starts[match_start],
+                normalized_passage.raw_ends[match_end - 1],
+            )
+        )
+        search_start = match_start + 1
+    return tuple(ranges)
+
+
+def _citation_passage(
+    excerpt: str,
+    passage: SourcePassage,
+) -> TextCitationPassage | TableCitationPassage:
+    ranges = _exact_raw_ranges(excerpt, passage.text)
+    if not ranges:
+        raise AssertionError("Validated citation excerpt has no raw passage range")
+
+    table_passage = _table_citation_passage(passage.display_table, ranges)
+    if table_passage is not None:
+        return table_passage
+    return TextCitationPassage(
+        text=passage.text,
+        highlights=tuple(
+            CitationTextHighlight(start=start, end=end) for start, end in ranges
+        ),
+    )
+
+
+def _table_citation_passage(
+    raw_table: dict[str, object] | None,
+    excerpt_ranges: tuple[tuple[int, int], ...],
+) -> TableCitationPassage | None:
+    if raw_table is None:
+        return None
+    try:
+        table = StoredDisplayTable.model_validate(raw_table)
+    except ValidationError:
+        return None
+
+    highlighted_any = False
+    rows = []
+    for row in table.rows:
+        cells = []
+        for cell in row.cells:
+            highlighted = (
+                cell.text_start is not None
+                and cell.text_end is not None
+                and any(
+                    start < cell.text_end and end > cell.text_start
+                    for start, end in excerpt_ranges
+                )
+            )
+            highlighted_any = highlighted_any or highlighted
+            cells.append(
+                CitationTableCell(
+                    text=cell.text,
+                    column_index=cell.column_index,
+                    row_span=cell.row_span,
+                    column_span=cell.column_span,
+                    column_header=cell.column_header,
+                    row_header=cell.row_header,
+                    highlighted=highlighted,
+                )
+            )
+        rows.append(CitationTableRow(cells=tuple(cells)))
+    if not highlighted_any:
+        return None
+    return TableCitationPassage(
+        column_count=table.column_count,
+        rows=tuple(rows),
+    )

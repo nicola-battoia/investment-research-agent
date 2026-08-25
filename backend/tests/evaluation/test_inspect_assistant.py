@@ -59,7 +59,12 @@ def test_inspection_runs_real_agent_loop_and_returns_evidence_trace() -> None:
             yield {
                 0: DeltaToolCall(
                     name="search_filings",
-                    json_args=json.dumps({"query": "Services"}),
+                    json_args=json.dumps(
+                        {
+                            "query": "Services",
+                            "filters": {"corpus_wide": True},
+                        }
+                    ),
                     tool_call_id="s",
                 )
             }

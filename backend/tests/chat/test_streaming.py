@@ -4,7 +4,10 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 from uuid import UUID
 
+import pytest
 from openai import APIConnectionError
+from pydantic_ai.exceptions import UsageLimitExceeded
+from structlog.testing import capture_logs
 
 from app.chat.messages import MessageMetadata, TextPart, UIMessageResponse
 from app.chat.orchestrator import PreparedChatTurn
@@ -90,6 +93,73 @@ def test_openai_failure_uses_retryable_upstream_protocol() -> None:
     assert '"code":"assistant_unavailable"' in payload
     assert '"retryable":true' in payload
     assert '"type":"start"' not in payload
+
+
+@pytest.mark.parametrize(
+    ("reason", "expected_limit", "expected_code"),
+    [
+        (
+            "The next request would exceed the request_limit of 8",
+            "request_limit",
+            "assistant_request_limit",
+        ),
+        (
+            (
+                "The next tool call(s) would exceed the tool_calls_limit of 12 "
+                "(tool_calls=13)"
+            ),
+            "tool_calls_limit",
+            "assistant_tool_calls_limit",
+        ),
+        (
+            "Exceeded the output_tokens_limit of 6000 (output_tokens=7000)",
+            "output_tokens_limit",
+            "assistant_output_tokens_limit",
+        ),
+        (
+            (
+                "Exceeded the per_request_input_tokens_limit of 64000 "
+                "(request_input_tokens=65000)"
+            ),
+            "per_request_input_tokens_limit",
+            "assistant_context_limit",
+        ),
+    ],
+)
+def test_usage_limit_failure_identifies_limit_in_stream_and_log(
+    reason: str,
+    expected_limit: str,
+    expected_code: str,
+) -> None:
+    orchestrator = SimpleNamespace(
+        complete=AsyncMock(side_effect=UsageLimitExceeded(reason))
+    )
+
+    with capture_logs() as logs:
+        payload = asyncio.run(collect(orchestrator))
+
+    assert f'"code":"{expected_code}"' in payload
+    assert '"retryable":true' in payload
+    assert '"type":"start"' not in payload
+    failure_log = next(log for log in logs if log["event"] == "chat_turn_failed")
+    assert failure_log["error_code"] == expected_code
+    assert failure_log["usage_limit"] == expected_limit
+    assert failure_log["error_message"] == reason
+
+
+def test_unknown_usage_limit_has_stable_fallback_and_diagnostic() -> None:
+    reason = "A future usage constraint was exceeded"
+    orchestrator = SimpleNamespace(
+        complete=AsyncMock(side_effect=UsageLimitExceeded(reason))
+    )
+
+    with capture_logs() as logs:
+        payload = asyncio.run(collect(orchestrator))
+
+    assert '"code":"assistant_usage_limit"' in payload
+    failure_log = next(log for log in logs if log["event"] == "chat_turn_failed")
+    assert failure_log["usage_limit"] == "unknown"
+    assert failure_log["error_message"] == reason
 
 
 def test_timeout_cancels_the_turn_without_streaming_completion() -> None:
