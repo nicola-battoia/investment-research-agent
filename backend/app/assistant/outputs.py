@@ -79,7 +79,7 @@ class TextCitationPassage(FrozenModel):
 
 
 class CitationTableCell(FrozenModel):
-    """A render-safe table cell with Docling span semantics."""
+    """A render-safe table cell with source-table span semantics."""
 
     text: str
     column_index: int = Field(ge=0)

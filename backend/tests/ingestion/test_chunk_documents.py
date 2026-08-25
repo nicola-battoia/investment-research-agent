@@ -1,16 +1,17 @@
 from __future__ import annotations
 
-from pathlib import Path
+import json
 
 import pytest
-from docling_core.types.doc import (
-    DocItemLabel,
-    DoclingDocument,
-    TableCell,
-    TableData,
-)
 
 from ingestion.chunk_documents import ChunkTooLargeError, chunk_document
+from ingestion.sec_parser import (
+    ParsedBlock,
+    ParsedDocument,
+    ParsedSection,
+    ParsedTableCell,
+    render_markdown,
+)
 
 
 class WordTokenCounter:
@@ -23,199 +24,340 @@ class OversizedTokenCounter:
         return 9_000
 
 
-def test_hierarchical_chunks_preserve_headings_tables_and_offsets(tmp_path) -> None:
-    docling_path, markdown_path = _write_structured_document(tmp_path)
+def test_packs_prose_by_section_and_preserves_offsets(tmp_path) -> None:
+    document = ParsedDocument(
+        form="10-K",
+        source_path="sample.htm",
+        audit={},
+        sections=[
+            ParsedSection(
+                key="item_1a",
+                title="Item 1A. Risk Factors",
+                detection_method="body_heading",
+                blocks=[
+                    _block("b00001", "paragraph", "Competition is intense."),
+                    _block("b00002", "paragraph", "Demand may change rapidly."),
+                ],
+            ),
+            ParsedSection(
+                key="item_7",
+                title="Item 7. Management Discussion",
+                detection_method="body_heading",
+                blocks=[_block("b00003", "paragraph", "Revenue increased.")],
+            ),
+        ],
+    )
+    parsed_path, markdown_path = _write_document(tmp_path, document)
 
-    chunks = chunk_document(docling_path, markdown_path, WordTokenCounter())
+    chunks = chunk_document(
+        parsed_path,
+        markdown_path,
+        WordTokenCounter(),
+        min_tokens=1,
+        max_tokens=20,
+        max_merged_tokens=20,
+    )
 
     assert len(chunks) == 2
-    paragraph_chunk, table_chunk = chunks
-    assert paragraph_chunk.text == "Risk Factors\nRevenue concentration is a risk."
-    assert paragraph_chunk.section_title == "Risk Factors"
-    assert paragraph_chunk.source_start is not None
-    assert paragraph_chunk.source_end is not None
-    assert table_chunk.section_title == "Risk Factors"
-    assert table_chunk.metadata["contains_table"] is True
-    assert table_chunk.metadata["doc_item_labels"] == ["table"]
-    assert len(table_chunk.metadata["table_refs"]) == 1
-    assert "North America" in table_chunk.text
-    assert "$100" in table_chunk.text
-    assert "$80" in table_chunk.text
-    assert table_chunk.source_start is not None
-    assert table_chunk.source_end is not None
-
-
-def test_oversized_table_is_rejected_instead_of_split(tmp_path) -> None:
-    docling_path, markdown_path = _write_table_only_document(tmp_path)
-
-    with pytest.raises(ChunkTooLargeError, match="tables, are never split"):
-        chunk_document(
-            docling_path,
-            markdown_path,
-            OversizedTokenCounter(),
-            max_tokens=8_192,
-        )
-
-
-def test_table_display_preserves_geometry_headers_empty_cells_and_text_ranges(
-    tmp_path,
-) -> None:
-    doc = DoclingDocument(name="spanning-table-fixture")
-    doc.add_heading("Segment results", level=1)
-    doc.add_table(data=_spanning_table_data())
-    docling_path, markdown_path = _write_document(tmp_path, doc)
-
-    chunk = chunk_document(docling_path, markdown_path, WordTokenCounter())[0]
-
-    assert chunk.text == (
-        "Segment results\n[TABLE]\nRegion | Net sales\n2024 | 2023\n"
-        "North America | $100 | $80"
+    assert chunks[0].text == (
+        "Item 1A. Risk Factors\n\nCompetition is intense.\n\nDemand may change rapidly."
     )
-    table = chunk.display_table
-    assert table is not None
-    assert table.version == 1
-    assert table.table_ref == "#/tables/0"
-    assert table.column_count == 4
-    assert len(table.rows) == 3
-    assert sum(len(row.cells) for row in table.rows) == 10
+    assert chunks[0].metadata["block_ids"] == ["b00001", "b00002"]
+    assert chunks[0].source_start is not None
+    assert chunks[0].source_end is not None
+    assert chunks[0].token_count <= 20
+    assert chunks[1].section_title == "Item 7. Management Discussion"
 
-    region = table.rows[0].cells[0]
-    assert region.row_span == 2
-    assert region.column_span == 1
-    assert region.column_header is True
-    net_sales = table.rows[0].cells[1]
-    assert net_sales.column_span == 2
-    assert net_sales.column_header is True
-    north_america = table.rows[2].cells[0]
-    assert north_america.row_header is True
 
-    empty_cells = [cell for row in table.rows for cell in row.cells if not cell.text]
-    assert len(empty_cells) == 3
-    assert all(
-        cell.text_start is None and cell.text_end is None for cell in empty_cells
+def test_splits_oversized_paragraph_without_overlap(tmp_path) -> None:
+    words = " ".join(f"word{index}" for index in range(30))
+    document = _document_with_blocks([_block("b00001", "paragraph", words)])
+    parsed_path, markdown_path = _write_document(tmp_path, document)
+
+    chunks = chunk_document(
+        parsed_path,
+        markdown_path,
+        WordTokenCounter(),
+        min_tokens=1,
+        max_tokens=12,
+        max_merged_tokens=12,
     )
-    for row in table.rows:
+
+    assert len(chunks) > 1
+    assert all(chunk.token_count <= 12 for chunk in chunks)
+    bodies = [chunk.text.split("\n\n", 1)[1] for chunk in chunks]
+    assert " ".join(bodies).split() == words.split()
+
+
+def test_complete_table_can_exceed_prose_limit_and_preserves_geometry(tmp_path) -> None:
+    table = ParsedBlock(
+        id="b00001",
+        kind="table",
+        text="[TABLE]\nYear | Revenue\n2025 | $100",
+        html_locator="/html/body/table",
+        row_count=2,
+        column_count=2,
+        cells=[
+            ParsedTableCell("Year", 0, 0, column_header=True),
+            ParsedTableCell("Revenue", 0, 1, column_header=True),
+            ParsedTableCell("2025", 1, 0),
+            ParsedTableCell("$100", 1, 1),
+        ],
+    )
+    parsed_path, markdown_path = _write_document(
+        tmp_path, _document_with_blocks([table])
+    )
+
+    chunk = chunk_document(
+        parsed_path,
+        markdown_path,
+        WordTokenCounter(),
+        max_tokens=3,
+    )[0]
+
+    assert chunk.token_count > 3
+    assert chunk.display_table is not None
+    assert chunk.display_table.column_count == 2
+    for row in chunk.display_table.rows:
         for cell in row.cells:
-            if cell.text:
-                assert cell.text_start is not None
-                assert cell.text_end is not None
-                assert chunk.text[cell.text_start : cell.text_end] == cell.text
+            assert chunk.text[cell.text_start : cell.text_end] == cell.text
 
 
-def test_empty_table_has_no_display_payload(tmp_path) -> None:
-    doc = DoclingDocument(name="empty-table-fixture")
-    doc.add_table(
-        data=TableData(
-            table_cells=[_cell("", 0, 0)],
-            num_rows=1,
-            num_cols=1,
-        )
+def test_merges_small_prose_forward_and_allows_larger_merge_limit(tmp_path) -> None:
+    document = ParsedDocument(
+        form="10-K",
+        source_path="sample.htm",
+        audit={},
+        sections=[
+            ParsedSection(
+                key="item_1b",
+                title="Short",
+                detection_method="body_heading",
+                blocks=[_block("b00001", "paragraph", "None here.")],
+            ),
+            ParsedSection(
+                key="item_1c",
+                title="Long",
+                detection_method="body_heading",
+                blocks=[
+                    _block(
+                        "b00002",
+                        "paragraph",
+                        "one two three four five six seven eight nine ten eleven "
+                        "twelve thirteen fourteen fifteen sixteen seventeen eighteen",
+                    )
+                ],
+            ),
+        ],
     )
-    docling_path, markdown_path = _write_document(tmp_path, doc)
+    parsed_path, markdown_path = _write_document(tmp_path, document)
 
-    chunk = chunk_document(docling_path, markdown_path, WordTokenCounter())[0]
-
-    assert chunk.text == "[TABLE]\n"
-    assert chunk.display_table is None
-
-
-def _write_structured_document(tmp_path: Path) -> tuple[Path, Path]:
-    doc = DoclingDocument(name="structured-fixture")
-    doc.add_heading("Risk Factors", level=1)
-    doc.add_text(
-        label=DocItemLabel.PARAGRAPH,
-        text="Revenue concentration is a risk.",
+    chunks = chunk_document(
+        parsed_path,
+        markdown_path,
+        WordTokenCounter(),
+        min_tokens=10,
+        max_tokens=20,
+        max_merged_tokens=30,
     )
-    doc.add_table(data=_table_data())
-    return _write_document(tmp_path, doc)
+
+    assert len(chunks) == 1
+    assert 20 < chunks[0].token_count <= 30
+    assert chunks[0].metadata["merged_for_min_tokens"] is True
+    assert chunks[0].metadata["section_keys"] == ["item_1b", "item_1c"]
+    assert chunks[0].text.index("Short") < chunks[0].text.index("Long")
 
 
-def _write_table_only_document(tmp_path: Path) -> tuple[Path, Path]:
-    doc = DoclingDocument(name="table-fixture")
-    doc.add_table(data=_table_data())
-    return _write_document(tmp_path, doc)
+def test_merges_trailing_small_prose_backward(tmp_path) -> None:
+    document = ParsedDocument(
+        form="10-K",
+        source_path="sample.htm",
+        audit={},
+        sections=[
+            ParsedSection(
+                key="item_1",
+                title="Main",
+                detection_method="body_heading",
+                blocks=[
+                    _block(
+                        "b00001",
+                        "paragraph",
+                        "one two three four five six seven eight nine ten eleven twelve",
+                    )
+                ],
+            ),
+            ParsedSection(
+                key="item_1b",
+                title="Tail",
+                detection_method="body_heading",
+                blocks=[_block("b00002", "paragraph", "None.")],
+            ),
+        ],
+    )
+    parsed_path, markdown_path = _write_document(tmp_path, document)
+
+    chunks = chunk_document(
+        parsed_path,
+        markdown_path,
+        WordTokenCounter(),
+        min_tokens=10,
+        max_tokens=20,
+        max_merged_tokens=25,
+    )
+
+    assert len(chunks) == 1
+    assert chunks[0].token_count >= 10
+    assert chunks[0].metadata["section_keys"] == ["item_1", "item_1b"]
 
 
-def _write_document(
-    tmp_path: Path,
-    doc: DoclingDocument,
-) -> tuple[Path, Path]:
-    docling_path = tmp_path / "document.json"
-    markdown_path = tmp_path / "document.md"
-    doc.save_as_json(docling_path)
-    doc.save_as_markdown(markdown_path)
-    return docling_path, markdown_path
+def test_forward_merge_preserves_following_table_offsets(tmp_path) -> None:
+    table = ParsedBlock(
+        id="b00002",
+        kind="table",
+        text="[TABLE]\nYear | Revenue\n2025 | $100",
+        html_locator="/html/body/table",
+        row_count=2,
+        column_count=2,
+        cells=[
+            ParsedTableCell("Year", 0, 0, column_header=True),
+            ParsedTableCell("Revenue", 0, 1, column_header=True),
+            ParsedTableCell("2025", 1, 0),
+            ParsedTableCell("$100", 1, 1),
+        ],
+    )
+    document = ParsedDocument(
+        form="10-K",
+        source_path="sample.htm",
+        audit={},
+        sections=[
+            ParsedSection(
+                key="item_7",
+                title="Introduction",
+                detection_method="body_heading",
+                blocks=[_block("b00001", "paragraph", "Short note.")],
+            ),
+            ParsedSection(
+                key="item_8",
+                title="Financials",
+                detection_method="body_heading",
+                blocks=[table],
+            ),
+        ],
+    )
+    parsed_path, markdown_path = _write_document(tmp_path, document)
+
+    chunk = chunk_document(
+        parsed_path,
+        markdown_path,
+        WordTokenCounter(),
+        min_tokens=10,
+        max_tokens=20,
+        max_merged_tokens=30,
+    )[0]
+
+    assert chunk.display_table is not None
+    assert chunk.metadata["section_keys"] == ["item_7", "item_8"]
+    for row in chunk.display_table.rows:
+        for cell in row.cells:
+            assert chunk.text[cell.text_start : cell.text_end] == cell.text
 
 
-def _table_data() -> TableData:
-    values = [
-        ["Region", "Revenue"],
-        ["North America", "$100"],
-        ["Europe", "$80"],
-    ]
-    cells = [
-        TableCell(
-            text=value,
-            start_row_offset_idx=row_index,
-            end_row_offset_idx=row_index + 1,
-            start_col_offset_idx=column_index,
-            end_col_offset_idx=column_index + 1,
-            column_header=row_index == 0,
-        )
-        for row_index, row in enumerate(values)
-        for column_index, value in enumerate(row)
-    ]
-    return TableData(table_cells=cells, num_rows=len(values), num_cols=2)
+def test_adjacent_small_tables_keep_atomic_minimum_exception(tmp_path) -> None:
+    first = _table_block("b00001", "One")
+    second = _table_block("b00002", "Two")
+    document = ParsedDocument(
+        form="10-K",
+        source_path="sample.htm",
+        audit={},
+        sections=[
+            ParsedSection(
+                key="item_8",
+                title="Financials",
+                detection_method="body_heading",
+                blocks=[first, second],
+            )
+        ],
+    )
+    parsed_path, markdown_path = _write_document(tmp_path, document)
+
+    chunks = chunk_document(
+        parsed_path,
+        markdown_path,
+        WordTokenCounter(),
+        min_tokens=100,
+    )
+
+    assert len(chunks) == 2
+    assert all(chunk.token_count < 100 for chunk in chunks)
+    assert all(
+        chunk.metadata["minimum_token_exception"] == "atomic_table" for chunk in chunks
+    )
 
 
-def _spanning_table_data() -> TableData:
-    cells = [
-        TableCell(
-            text="Region",
-            row_span=2,
-            start_row_offset_idx=0,
-            end_row_offset_idx=2,
-            start_col_offset_idx=0,
-            end_col_offset_idx=1,
-            column_header=True,
-        ),
-        TableCell(
-            text="Net sales",
-            col_span=2,
-            start_row_offset_idx=0,
-            end_row_offset_idx=1,
-            start_col_offset_idx=1,
-            end_col_offset_idx=3,
-            column_header=True,
-        ),
-        _cell("", 0, 3),
-        _cell("2024", 1, 1, column_header=True),
-        _cell("2023", 1, 2, column_header=True),
-        _cell("", 1, 3),
-        _cell("North America", 2, 0, row_header=True),
-        _cell("$100", 2, 1),
-        _cell("$80", 2, 2),
-        _cell("", 2, 3),
-    ]
-    # The final empty layout column mirrors a Docling SEC edge case where origin
-    # cells extend beyond the declared count. Display geometry remains lossless.
-    return TableData(table_cells=cells, num_rows=3, num_cols=3)
+def test_table_over_embedding_limit_is_rejected(tmp_path) -> None:
+    table = ParsedBlock(
+        id="b00001",
+        kind="table",
+        text="[TABLE]\nValue",
+        html_locator="/html/body/table",
+        row_count=1,
+        column_count=1,
+        cells=[ParsedTableCell("Value", 0, 0)],
+    )
+    parsed_path, markdown_path = _write_document(
+        tmp_path, _document_with_blocks([table])
+    )
+
+    with pytest.raises(ChunkTooLargeError, match="kept atomic"):
+        chunk_document(parsed_path, markdown_path, OversizedTokenCounter())
 
 
-def _cell(
-    text: str,
-    row: int,
-    column: int,
-    *,
-    column_header: bool = False,
-    row_header: bool = False,
-) -> TableCell:
-    return TableCell(
+def _block(block_id: str, kind: str, text: str) -> ParsedBlock:
+    return ParsedBlock(
+        id=block_id,
+        kind=kind,  # type: ignore[arg-type]
         text=text,
-        start_row_offset_idx=row,
-        end_row_offset_idx=row + 1,
-        start_col_offset_idx=column,
-        end_col_offset_idx=column + 1,
-        column_header=column_header,
-        row_header=row_header,
+        html_locator=f"/html/body/{block_id}",
     )
+
+
+def _table_block(block_id: str, value: str) -> ParsedBlock:
+    return ParsedBlock(
+        id=block_id,
+        kind="table",
+        text=f"[TABLE]\nLabel | Value\nRow | {value}",
+        html_locator=f"/html/body/{block_id}",
+        row_count=2,
+        column_count=2,
+        cells=[
+            ParsedTableCell("Label", 0, 0, column_header=True),
+            ParsedTableCell("Value", 0, 1, column_header=True),
+            ParsedTableCell("Row", 1, 0),
+            ParsedTableCell(value, 1, 1),
+        ],
+    )
+
+
+def _document_with_blocks(blocks: list[ParsedBlock]) -> ParsedDocument:
+    return ParsedDocument(
+        form="10-K",
+        source_path="sample.htm",
+        audit={},
+        sections=[
+            ParsedSection(
+                key="item_1a",
+                title="Item 1A. Risk Factors",
+                detection_method="body_heading",
+                blocks=blocks,
+            )
+        ],
+    )
+
+
+def _write_document(tmp_path, document: ParsedDocument):
+    markdown = render_markdown(document)
+    parsed_path = tmp_path / "document.json"
+    markdown_path = tmp_path / "document.md"
+    parsed_path.write_text(json.dumps(document.to_dict()), encoding="utf-8")
+    markdown_path.write_text(markdown, encoding="utf-8")
+    return parsed_path, markdown_path

@@ -292,6 +292,15 @@ Supabase tables should be small and product-oriented:
 - token count
 - metadata JSON for ticker, company, filing type, filing date, year, accession number, page, section, and source offsets
 
+The ingestion path is deliberately checkpointed rather than streamed directly from
+HTML to Supabase. A custom SEC parser writes deterministic Markdown plus structured
+section/block JSON. Section-aware chunking then writes readable `chunks.md` and
+complete `chunks.jsonl` files per accession. OpenAI vectors are saved in a separate
+compressed checkpoint tied to the chunk checksum. Only after those local artifacts
+validate are `source_documents` and `document_chunks` upserted and independently
+verified against the checkpoints. This makes paid embedding work resumable and
+keeps a human-inspectable record of exactly what was uploaded.
+
 Hybrid retrieval runs two bounded queries against `document_chunks`: a semantic `pgvector` query and a Postgres full-text query. The backend fuses those ranked lists with Reciprocal Rank Fusion, then fetches the selected chunks and neighboring context for grounding.
 
 ## Schema Management
@@ -378,7 +387,7 @@ Railway should run two services:
 - Frontend: static Vite build served as a web app.
 - Backend: FastAPI service running Uvicorn.
 
-Supabase remains hosted and stores the durable retrieval data. The Railway backend can stay stateless because document chunks, embeddings, full-text search vectors, chats, and citations all live in Supabase Postgres. Raw downloaded filings remain gitignored local ingestion inputs unless a later workflow stores them in object storage.
+Supabase remains hosted and stores the durable retrieval data. The Railway backend can stay stateless because document chunks, embeddings, full-text search vectors, chats, and citations all live in Supabase Postgres. Raw filings, parsed documents, normalized Markdown, and resumable ingestion checkpoints remain gitignored local operator artifacts unless a later workflow stores them in object storage.
 
 ## Implementation Sequence
 

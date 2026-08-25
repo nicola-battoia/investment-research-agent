@@ -1,24 +1,16 @@
-"""Create structure-aware chunks from native Docling documents."""
+"""Create section-aware chunks from parsed SEC filing documents."""
 
 from __future__ import annotations
 
 import argparse
+import json
 import logging
-from collections import Counter
-from dataclasses import dataclass
+import re
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
 
 import tiktoken
-from docling_core.transforms.chunker.hierarchical_chunker import (
-    ChunkingDocSerializer,
-    ChunkingSerializerProvider,
-    DocChunk,
-    HierarchicalChunker,
-)
-from docling_core.transforms.serializer.base import BaseDocSerializer
-from docling_core.transforms.serializer.markdown import MarkdownTableSerializer
-from docling_core.types.doc import DocItemLabel, DoclingDocument, TableItem, TextItem
 
 from app.retrieval.display_tables import (
     StoredDisplayTable,
@@ -26,12 +18,19 @@ from app.retrieval.display_tables import (
     StoredTableRow,
 )
 from ingestion.ingest_documents import SourceDocumentRow, load_source_document_rows
+from ingestion.sec_parser import PARSER_VERSION, ParsedBlock, ParsedDocument
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
-DOCLING_DOCUMENTS_DIR = REPOSITORY_ROOT / "data" / "docling_documents"
+PARSED_DOCUMENTS_DIR = REPOSITORY_ROOT / "data" / "parsed_documents"
 MARKDOWN_DIR = REPOSITORY_ROOT / "data" / "markdown"
+MIN_TARGET_TOKENS = 150
+MIN_CHUNK_TOKENS = 100
+MAX_CHUNK_TOKENS = 500
+MAX_MERGED_CHUNK_TOKENS = 600
 MAX_EMBEDDING_INPUT_TOKENS = 8_192
-DOCLING_VERSION = "2.119.0"
+CHUNKER_VERSION = "sec_sections_v2"
+
+_SENTENCE_BOUNDARY_RE = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9(\[\"'])")
 
 logger = logging.getLogger(__name__)
 
@@ -49,15 +48,6 @@ class OpenAITokenCounter:
         return len(self._encoding.encode(text, disallowed_special=()))
 
 
-class SourceMarkdownSerializerProvider(ChunkingSerializerProvider):
-    """Keep each complete table in one hierarchical Markdown chunk."""
-
-    def get_serializer(self, doc: DoclingDocument) -> BaseDocSerializer:
-        return ChunkingDocSerializer(
-            doc=doc, table_serializer=MarkdownTableSerializer()
-        )
-
-
 @dataclass(frozen=True)
 class PreparedChunk:
     chunk_index: int
@@ -71,328 +61,408 @@ class PreparedChunk:
     display_table: StoredDisplayTable | None = None
 
 
-@dataclass(frozen=True)
-class CompactedTable:
-    text: str
-    cell_ranges: dict[int, tuple[int, int]]
+@dataclass
+class _DraftChunk:
+    section_key: str
+    section_title: str
+    headings: tuple[str, ...]
+    parts: list[str] = field(default_factory=list)
+    blocks: list[ParsedBlock] = field(default_factory=list)
+
+    @property
+    def text(self) -> str:
+        return _contextualize(self.headings, "\n\n".join(self.parts))
 
 
 class ChunkTooLargeError(ValueError):
-    """A structural chunk cannot be sent to the configured embedding model."""
+    """A complete table cannot be sent to the configured embedding model."""
 
 
 def chunk_document(
-    docling_path: Path,
+    parsed_path: Path,
     markdown_path: Path,
     token_counter: TokenCounter,
     *,
-    max_tokens: int = MAX_EMBEDDING_INPUT_TOKENS,
+    min_tokens: int = MIN_CHUNK_TOKENS,
+    max_tokens: int = MAX_CHUNK_TOKENS,
+    max_merged_tokens: int = MAX_MERGED_CHUNK_TOKENS,
 ) -> list[PreparedChunk]:
-    doc = DoclingDocument.load_from_json(docling_path)
-    normalized_markdown = markdown_path.read_text(encoding="utf-8")
-    chunker = HierarchicalChunker(
-        serializer_provider=SourceMarkdownSerializerProvider()
-    )
-    source_chunks = [DocChunk.model_validate(chunk) for chunk in chunker.chunk(doc)]
-    _validate_table_integrity(doc, source_chunks)
-
-    prepared_chunks = []
-    source_cursor = 0
-    for chunk_index, source_chunk in enumerate(source_chunks):
-        chunk = _compact_table_chunk(source_chunk)
-        text = chunker.contextualize(chunk)
-        display_table = _display_table(source_chunk, chunk, text)
-        _validate_display_table(source_chunk, display_table, text)
-        token_count = token_counter.count_tokens(text)
-        if token_count > max_tokens:
-            labels = sorted({item.label.value for item in chunk.meta.doc_items})
-            raise ChunkTooLargeError(
-                f"Chunk {chunk_index} in {docling_path.name} has {token_count} tokens "
-                f"(limit: {max_tokens}, labels: {labels}). Structural chunks, "
-                "including tables, are never split."
-            )
-
-        source_start = normalized_markdown.find(source_chunk.text, source_cursor)
-        if source_start >= 0:
-            source_end = source_start + len(source_chunk.text)
-            source_cursor = source_end
-        else:
-            source_start = None
-            source_end = None
-
-        headings = chunk.meta.headings or []
-        page_numbers = sorted(
-            {
-                provenance.page_no
-                for item in chunk.meta.doc_items
-                for provenance in item.prov
-            }
-        )
-        labels = [item.label.value for item in chunk.meta.doc_items]
-        table_refs = [
-            item.self_ref
-            for item in chunk.meta.doc_items
-            if item.label == DocItemLabel.TABLE
-        ]
-        prepared_chunks.append(
-            PreparedChunk(
-                chunk_index=chunk_index,
-                text=text,
-                token_count=token_count,
-                page_number=page_numbers[0] if len(page_numbers) == 1 else None,
-                section_title=headings[-1] if headings else None,
-                source_start=source_start,
-                source_end=source_end,
-                metadata={
-                    "chunker": "docling_hierarchical",
-                    "docling_version": DOCLING_VERSION,
-                    "table_serializer": "compact_rows",
-                    "source_table_serializer": "markdown",
-                    "doc_item_refs": [item.self_ref for item in chunk.meta.doc_items],
-                    "doc_item_labels": labels,
-                    "headings": headings,
-                    "page_numbers": page_numbers,
-                    "contains_table": bool(table_refs),
-                    "table_refs": table_refs,
-                    "source_offset_basis": "normalized_markdown",
-                    "source_offset_found": source_start is not None,
-                },
-                display_table=display_table,
-            )
-        )
-
-    if not prepared_chunks:
-        raise ValueError(f"Docling produced no chunks for {docling_path}")
-    return prepared_chunks
-
-
-def document_paths(row: SourceDocumentRow) -> tuple[Path, Path]:
-    metadata = row["extraction_metadata"]
-    source_local_path = metadata.get("source_local_path")
-    markdown_local_path = metadata.get("markdown_local_path")
-    if not isinstance(source_local_path, str) or not isinstance(
-        markdown_local_path, str
-    ):
-        raise TypeError("Source-document extraction metadata has invalid local paths")
-
-    docling_path = DOCLING_DOCUMENTS_DIR / Path(source_local_path).with_suffix(".json")
-    markdown_path = MARKDOWN_DIR / markdown_local_path
-    return docling_path, markdown_path
-
-
-def _validate_table_integrity(
-    doc: DoclingDocument,
-    chunks: list[DocChunk],
-) -> None:
-    expected_refs = {table.self_ref for table in doc.tables}
-    actual_counts = Counter(
-        item.self_ref
-        for chunk in chunks
-        for item in chunk.meta.doc_items
-        if item.label == DocItemLabel.TABLE
-    )
-    missing_refs = sorted(expected_refs - actual_counts.keys())
-    repeated_refs = sorted(ref for ref, count in actual_counts.items() if count != 1)
-    if missing_refs or repeated_refs:
+    if max_tokens <= 0 or max_tokens > MAX_EMBEDDING_INPUT_TOKENS:
         raise ValueError(
-            "Hierarchical chunking did not preserve one complete chunk per table: "
-            f"missing={missing_refs}, repeated={repeated_refs}"
+            f"Prose chunk limit must be between 1 and {MAX_EMBEDDING_INPUT_TOKENS}"
         )
+    if min_tokens <= 0 or min_tokens > max_merged_tokens:
+        raise ValueError("Minimum chunk tokens must be between 1 and the merge limit")
+    if max_merged_tokens < max_tokens or max_merged_tokens > MAX_EMBEDDING_INPUT_TOKENS:
+        raise ValueError(
+            "Merged chunk limit must be at least the prose limit and at most "
+            f"{MAX_EMBEDDING_INPUT_TOKENS}"
+        )
+    document = ParsedDocument.from_dict(
+        json.loads(parsed_path.read_text(encoding="utf-8"))
+    )
+    normalized_markdown = markdown_path.read_text(encoding="utf-8")
+    _validate_markdown_offsets(document, normalized_markdown)
 
+    prepared: list[PreparedChunk] = []
+    for section in document.sections:
+        headings = (section.title,)
+        draft: _DraftChunk | None = None
+        for block in section.blocks:
+            if block.kind == "subheading":
+                if draft is not None:
+                    prepared.append(_prepare_prose(draft, token_counter, len(prepared)))
+                    draft = None
+                headings = (section.title, block.text)
+                continue
+            if block.kind == "table":
+                table_intro = None
+                if draft is not None and _can_attach_to_table(
+                    draft,
+                    block,
+                    token_counter,
+                ):
+                    table_intro = draft
+                    draft = None
+                elif draft is not None:
+                    prepared.append(_prepare_prose(draft, token_counter, len(prepared)))
+                    draft = None
+                prepared.append(
+                    _prepare_table(
+                        section.key,
+                        section.title,
+                        headings,
+                        block,
+                        token_counter,
+                        len(prepared),
+                        intro=table_intro,
+                    )
+                )
+                continue
 
-def _compact_table_chunk(chunk: DocChunk) -> DocChunk:
-    if not any(item.label == DocItemLabel.TABLE for item in chunk.meta.doc_items):
-        return chunk
-
-    parts = []
-    for item in chunk.meta.doc_items:
-        if isinstance(item, TableItem):
-            parts.append(_compact_table_text(item))
-        elif isinstance(item, TextItem) and item.text:
-            parts.append(item.text)
-    return chunk.model_copy(update={"text": "\n".join(parts)})
-
-
-def _compact_table_text(table: TableItem) -> str:
-    return _compacted_table(table).text
-
-
-def _compacted_table(table: TableItem) -> CompactedTable:
-    rows: dict[int, list[tuple[int, str, int]]] = {}
-    for origin_index, cell in enumerate(table.data.table_cells):
-        text = " ".join(cell.text.split())
-        if text:
-            rows.setdefault(cell.start_row_offset_idx, []).append(
-                (cell.start_col_offset_idx, text, origin_index)
+            body = f"- {block.text}" if block.kind == "list_item" else block.text
+            fragments = _split_oversized_text(
+                body,
+                headings,
+                token_counter,
+                max_tokens,
             )
-    parts = ["[TABLE]\n"]
-    text_length = len(parts[0])
-    cell_ranges = {}
-    for line_index, row_index in enumerate(sorted(rows)):
-        if line_index:
-            parts.append("\n")
-            text_length += 1
-        for cell_index, (_column_index, text, origin_index) in enumerate(
-            sorted(rows[row_index])
+            for fragment in fragments:
+                if draft is None:
+                    draft = _DraftChunk(
+                        section_key=section.key,
+                        section_title=section.title,
+                        headings=headings,
+                    )
+                candidate_body = "\n\n".join([*draft.parts, fragment])
+                candidate_text = _contextualize(headings, candidate_body)
+                if (
+                    draft.parts
+                    and token_counter.count_tokens(candidate_text) > max_tokens
+                ):
+                    prepared.append(_prepare_prose(draft, token_counter, len(prepared)))
+                    draft = _DraftChunk(
+                        section_key=section.key,
+                        section_title=section.title,
+                        headings=headings,
+                    )
+                draft.parts.append(fragment)
+                if block not in draft.blocks:
+                    draft.blocks.append(block)
+
+        if draft is not None:
+            prepared.append(_prepare_prose(draft, token_counter, len(prepared)))
+
+    if not prepared:
+        raise ValueError(f"Parsed SEC document produced no chunks: {parsed_path}")
+    prepared = _merge_small_chunks(
+        prepared,
+        token_counter,
+        min_tokens=min_tokens,
+        max_merged_tokens=max_merged_tokens,
+    )
+    for chunk in prepared:
+        if not any(character.isalnum() for character in chunk.text):
+            raise ValueError(f"Chunk {chunk.chunk_index} contains no information")
+        if (
+            not chunk.metadata["contains_table"]
+            and not chunk.metadata.get("merged_for_min_tokens")
+            and chunk.token_count > max_tokens
         ):
-            if cell_index:
-                parts.append(" | ")
-                text_length += 3
-            start = text_length
-            parts.append(text)
-            text_length += len(text)
-            cell_ranges[origin_index] = (start, text_length)
-    return CompactedTable(text="".join(parts), cell_ranges=cell_ranges)
-
-
-def _display_table(
-    source_chunk: DocChunk,
-    compacted_chunk: DocChunk,
-    contextualized_text: str,
-) -> StoredDisplayTable | None:
-    table_items = [
-        item for item in source_chunk.meta.doc_items if isinstance(item, TableItem)
-    ]
-    nonempty_text_items = [
-        item
-        for item in source_chunk.meta.doc_items
-        if isinstance(item, TextItem) and item.text
-    ]
-    if len(table_items) != 1 or nonempty_text_items:
-        return None
-
-    table = table_items[0]
-    if (
-        table.data.num_rows <= 0
-        or table.data.num_cols <= 0
-        or not any(" ".join(cell.text.split()) for cell in table.data.table_cells)
-    ):
-        return None
-    compacted = _compacted_table(table)
-    if compacted.text != compacted_chunk.text:
-        return None
-    chunk_start = contextualized_text.rfind(compacted.text)
-    if chunk_start < 0:
-        return None
-
-    rows: list[list[StoredTableCell]] = [[] for _ in range(_physical_row_count(table))]
-    for origin_index, cell in enumerate(table.data.table_cells):
-        text = " ".join(cell.text.split())
-        relative_range = compacted.cell_ranges.get(origin_index)
-        text_start = (
-            chunk_start + relative_range[0] if relative_range is not None else None
-        )
-        text_end = (
-            chunk_start + relative_range[1] if relative_range is not None else None
-        )
-        rows[cell.start_row_offset_idx].append(
-            StoredTableCell(
-                text=text,
-                column_index=cell.start_col_offset_idx,
-                row_span=cell.end_row_offset_idx - cell.start_row_offset_idx,
-                column_span=cell.end_col_offset_idx - cell.start_col_offset_idx,
-                column_header=cell.column_header,
-                row_header=cell.row_header,
-                text_start=text_start,
-                text_end=text_end,
+            raise AssertionError(
+                f"Prose chunk {chunk.chunk_index} exceeded {max_tokens} tokens"
             )
+        if (
+            not chunk.metadata["contains_table"]
+            and chunk.metadata.get("merged_for_min_tokens")
+            and chunk.token_count > max_merged_tokens
+        ):
+            raise AssertionError(
+                f"Merged prose chunk {chunk.chunk_index} exceeded "
+                f"{max_merged_tokens} tokens"
+            )
+        if chunk.token_count < min_tokens and chunk.display_table is None:
+            raise AssertionError(
+                f"Prose chunk {chunk.chunk_index} is below {min_tokens} tokens"
+            )
+    return prepared
+
+
+def _merge_small_chunks(
+    chunks: list[PreparedChunk],
+    token_counter: TokenCounter,
+    *,
+    min_tokens: int,
+    max_merged_tokens: int,
+) -> list[PreparedChunk]:
+    pending = list(chunks)
+    merged: list[PreparedChunk] = []
+    index = 0
+    while index < len(pending):
+        chunk = pending[index]
+        if chunk.token_count >= min_tokens:
+            merged.append(chunk)
+            index += 1
+            continue
+
+        if index + 1 < len(pending):
+            combined = _try_merge_chunks(
+                chunk,
+                pending[index + 1],
+                token_counter,
+                token_limit=max_merged_tokens,
+            )
+            if combined is not None:
+                pending[index + 1] = combined
+                index += 1
+                continue
+
+        if merged:
+            combined = _try_merge_chunks(
+                merged[-1],
+                chunk,
+                token_counter,
+                token_limit=max_merged_tokens,
+            )
+            if combined is not None:
+                merged[-1] = combined
+                index += 1
+                continue
+
+        # A complete table may already exceed the prose merge limit. Attaching a
+        # small neighbor is still safe as long as the embedding limit is respected.
+        if index + 1 < len(pending):
+            combined = _try_merge_chunks(
+                chunk,
+                pending[index + 1],
+                token_counter,
+                token_limit=MAX_EMBEDDING_INPUT_TOKENS,
+                require_table=True,
+            )
+            if combined is not None:
+                pending[index + 1] = combined
+                index += 1
+                continue
+
+        if merged:
+            combined = _try_merge_chunks(
+                merged[-1],
+                chunk,
+                token_counter,
+                token_limit=MAX_EMBEDDING_INPUT_TOKENS,
+                require_table=True,
+            )
+            if combined is not None:
+                merged[-1] = combined
+                index += 1
+                continue
+
+        if chunk.display_table is not None:
+            merged.append(_mark_small_table_exception(chunk))
+            index += 1
+            continue
+        raise ValueError(
+            f"Could not merge chunk {chunk.chunk_index} to reach {min_tokens} tokens"
         )
 
+    return [_with_chunk_index(chunk, index) for index, chunk in enumerate(merged)]
+
+
+def _try_merge_chunks(
+    left: PreparedChunk,
+    right: PreparedChunk,
+    token_counter: TokenCounter,
+    *,
+    token_limit: int,
+    require_table: bool = False,
+) -> PreparedChunk | None:
+    if left.display_table is not None and right.display_table is not None:
+        return None
+    if require_table and left.display_table is None and right.display_table is None:
+        return None
+
+    separator = "\n\n"
+    text = left.text + separator + right.text
+    token_count = token_counter.count_tokens(text)
+    if token_count > token_limit:
+        return None
+
+    display_table = left.display_table
+    if right.display_table is not None:
+        display_table = _shift_display_table(
+            right.display_table,
+            len(left.text) + len(separator),
+        )
+    if display_table is not None:
+        _validate_display_offsets(display_table, text)
+
+    section_keys = _ordered_unique([*_section_keys(left), *_section_keys(right)])
+    section_titles = _ordered_unique([*_section_titles(left), *_section_titles(right)])
+    headings = _ordered_unique(
+        [*_metadata_strings(left, "headings"), *_metadata_strings(right, "headings")]
+    )
+    block_ids = _ordered_unique(
+        [
+            *_metadata_strings(left, "block_ids"),
+            *_metadata_strings(right, "block_ids"),
+        ]
+    )
+    metadata = {
+        "parser_version": left.metadata["parser_version"],
+        "chunker_version": CHUNKER_VERSION,
+        "section_key": section_keys[0],
+        "section_keys": section_keys,
+        "section_titles": section_titles,
+        "headings": headings,
+        "block_ids": block_ids,
+        "contains_table": display_table is not None,
+        "source_offset_basis": "normalized_markdown",
+        "merged_for_min_tokens": True,
+    }
+    return PreparedChunk(
+        chunk_index=left.chunk_index,
+        text=text,
+        token_count=token_count,
+        page_number=(
+            left.page_number if left.page_number == right.page_number else None
+        ),
+        section_title=" | ".join(section_titles) or None,
+        source_start=_minimum_optional(left.source_start, right.source_start),
+        source_end=_maximum_optional(left.source_end, right.source_end),
+        metadata=metadata,
+        display_table=display_table,
+    )
+
+
+def _shift_display_table(
+    table: StoredDisplayTable,
+    offset: int,
+) -> StoredDisplayTable:
     return StoredDisplayTable(
-        table_ref=table.self_ref,
-        column_count=_physical_column_count(table),
+        table_ref=table.table_ref,
+        column_count=table.column_count,
         rows=tuple(
-            StoredTableRow(cells=tuple(sorted(row, key=lambda cell: cell.column_index)))
-            for row in rows
+            StoredTableRow(
+                cells=tuple(
+                    StoredTableCell(
+                        text=cell.text,
+                        column_index=cell.column_index,
+                        row_span=cell.row_span,
+                        column_span=cell.column_span,
+                        column_header=cell.column_header,
+                        row_header=cell.row_header,
+                        text_start=(
+                            cell.text_start + offset
+                            if cell.text_start is not None
+                            else None
+                        ),
+                        text_end=(
+                            cell.text_end + offset
+                            if cell.text_end is not None
+                            else None
+                        ),
+                    )
+                    for cell in row.cells
+                )
+            )
+            for row in table.rows
         ),
     )
 
 
-def _validate_display_table(
-    source_chunk: DocChunk,
-    display_table: StoredDisplayTable | None,
-    chunk_text: str,
-) -> None:
-    table_items = [
-        item for item in source_chunk.meta.doc_items if isinstance(item, TableItem)
-    ]
-    nonempty_text_items = [
-        item
-        for item in source_chunk.meta.doc_items
-        if isinstance(item, TextItem) and item.text
-    ]
-    supported_table = (
-        len(table_items) == 1
-        and not nonempty_text_items
-        and table_items[0].data.num_rows > 0
-        and table_items[0].data.num_cols > 0
-        and any(" ".join(cell.text.split()) for cell in table_items[0].data.table_cells)
+def _mark_small_table_exception(chunk: PreparedChunk) -> PreparedChunk:
+    return PreparedChunk(
+        chunk_index=chunk.chunk_index,
+        text=chunk.text,
+        token_count=chunk.token_count,
+        page_number=chunk.page_number,
+        section_title=chunk.section_title,
+        source_start=chunk.source_start,
+        source_end=chunk.source_end,
+        metadata={
+            **chunk.metadata,
+            "minimum_token_exception": "atomic_table",
+        },
+        display_table=chunk.display_table,
     )
-    if not supported_table:
-        if display_table is not None:
-            raise ValueError("Unsupported or empty table chunk has display metadata")
-        return
-    if display_table is None:
-        raise ValueError("Supported table chunk is missing display metadata")
 
-    table = table_items[0]
-    if (
-        display_table.table_ref != table.self_ref
-        or display_table.column_count != _physical_column_count(table)
-        or len(display_table.rows) != _physical_row_count(table)
+
+def _with_chunk_index(chunk: PreparedChunk, chunk_index: int) -> PreparedChunk:
+    return PreparedChunk(
+        chunk_index=chunk_index,
+        text=chunk.text,
+        token_count=chunk.token_count,
+        page_number=chunk.page_number,
+        section_title=chunk.section_title,
+        source_start=chunk.source_start,
+        source_end=chunk.source_end,
+        metadata=chunk.metadata,
+        display_table=chunk.display_table,
+    )
+
+
+def _section_keys(chunk: PreparedChunk) -> list[str]:
+    keys = _metadata_strings(chunk, "section_keys")
+    return keys or [str(chunk.metadata["section_key"])]
+
+
+def _section_titles(chunk: PreparedChunk) -> list[str]:
+    titles = _metadata_strings(chunk, "section_titles")
+    if titles:
+        return titles
+    return [chunk.section_title] if chunk.section_title is not None else []
+
+
+def _metadata_strings(chunk: PreparedChunk, key: str) -> list[str]:
+    value = chunk.metadata.get(key)
+    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+        return []
+    return value
+
+
+def _ordered_unique(values: list[str]) -> list[str]:
+    return list(dict.fromkeys(values))
+
+
+def _minimum_optional(left: int | None, right: int | None) -> int | None:
+    values = [value for value in (left, right) if value is not None]
+    return min(values) if values else None
+
+
+def _maximum_optional(left: int | None, right: int | None) -> int | None:
+    values = [value for value in (left, right) if value is not None]
+    return max(values) if values else None
+
+
+def document_paths(row: SourceDocumentRow) -> tuple[Path, Path]:
+    metadata = row["extraction_metadata"]
+    parsed_local_path = metadata.get("parsed_local_path")
+    markdown_local_path = metadata.get("markdown_local_path")
+    if not isinstance(parsed_local_path, str) or not isinstance(
+        markdown_local_path, str
     ):
-        raise ValueError("Display table does not match Docling table geometry")
-
-    expected_cells = sorted(
-        (
-            cell.start_row_offset_idx,
-            cell.start_col_offset_idx,
-            cell.end_row_offset_idx - cell.start_row_offset_idx,
-            cell.end_col_offset_idx - cell.start_col_offset_idx,
-            " ".join(cell.text.split()),
-            cell.column_header,
-            cell.row_header,
-        )
-        for cell in table.data.table_cells
-    )
-    actual_cells = sorted(
-        (
-            row_index,
-            cell.column_index,
-            cell.row_span,
-            cell.column_span,
-            cell.text,
-            cell.column_header,
-            cell.row_header,
-        )
-        for row_index, row in enumerate(display_table.rows)
-        for cell in row.cells
-    )
-    if actual_cells != expected_cells:
-        raise ValueError("Display cells do not match Docling origin cells")
-    for row in display_table.rows:
-        for cell in row.cells:
-            if cell.text:
-                if cell.text_start is None or cell.text_end is None:
-                    raise ValueError("Non-empty display cell is missing text offsets")
-                if chunk_text[cell.text_start : cell.text_end] != cell.text:
-                    raise ValueError("Display cell offsets do not map to chunk text")
-            elif cell.text_start is not None or cell.text_end is not None:
-                raise ValueError("Empty display cell unexpectedly has text offsets")
-
-
-def _physical_row_count(table: TableItem) -> int:
-    return max(
-        [table.data.num_rows]
-        + [cell.end_row_offset_idx for cell in table.data.table_cells]
-    )
-
-
-def _physical_column_count(table: TableItem) -> int:
-    return max(
-        [table.data.num_cols]
-        + [cell.end_col_offset_idx for cell in table.data.table_cells]
-    )
+        raise TypeError("Source-document extraction metadata has invalid local paths")
+    return PARSED_DOCUMENTS_DIR / parsed_local_path, MARKDOWN_DIR / markdown_local_path
 
 
 def source_row_for_accession(accession_number: str) -> SourceDocumentRow:
@@ -403,9 +473,302 @@ def source_row_for_accession(accession_number: str) -> SourceDocumentRow:
     return matches[0]
 
 
+def _prepare_prose(
+    draft: _DraftChunk,
+    token_counter: TokenCounter,
+    chunk_index: int,
+) -> PreparedChunk:
+    text = draft.text
+    token_count = token_counter.count_tokens(text)
+    starts = [
+        block.markdown_start
+        for block in draft.blocks
+        if block.markdown_start is not None
+    ]
+    ends = [
+        block.markdown_end for block in draft.blocks if block.markdown_end is not None
+    ]
+    return PreparedChunk(
+        chunk_index=chunk_index,
+        text=text,
+        token_count=token_count,
+        page_number=None,
+        section_title=draft.section_title,
+        source_start=min(starts) if starts else None,
+        source_end=max(ends) if ends else None,
+        metadata=_metadata(
+            section_key=draft.section_key,
+            headings=draft.headings,
+            block_ids=[block.id for block in draft.blocks],
+            contains_table=False,
+        ),
+    )
+
+
+def _prepare_table(
+    section_key: str,
+    section_title: str,
+    headings: tuple[str, ...],
+    block: ParsedBlock,
+    token_counter: TokenCounter,
+    chunk_index: int,
+    *,
+    intro: _DraftChunk | None = None,
+) -> PreparedChunk:
+    table_body, ranges = _table_body_and_ranges(block)
+    body = (
+        "\n\n".join(["\n\n".join(intro.parts), table_body])
+        if intro is not None
+        else table_body
+    )
+    text = _contextualize(headings, body)
+    table_start = text.index(table_body)
+    token_count = token_counter.count_tokens(text)
+    if token_count > MAX_EMBEDDING_INPUT_TOKENS:
+        raise ChunkTooLargeError(
+            f"Table {block.id} has {token_count} tokens; complete tables are kept "
+            f"atomic and the embedding limit is {MAX_EMBEDDING_INPUT_TOKENS}"
+        )
+    if block.row_count is None or block.column_count is None:
+        raise ValueError(f"Table {block.id} is missing geometry")
+
+    rows: list[list[StoredTableCell]] = [[] for _ in range(block.row_count)]
+    for cell_index, cell in enumerate(block.cells):
+        relative_range = ranges.get(cell_index)
+        rows[cell.row_index].append(
+            StoredTableCell(
+                text=cell.text,
+                column_index=cell.column_index,
+                row_span=cell.row_span,
+                column_span=cell.column_span,
+                column_header=cell.column_header,
+                row_header=cell.row_header,
+                text_start=(
+                    table_start + relative_range[0]
+                    if relative_range is not None
+                    else None
+                ),
+                text_end=(
+                    table_start + relative_range[1]
+                    if relative_range is not None
+                    else None
+                ),
+            )
+        )
+    display_table = StoredDisplayTable(
+        table_ref=block.id,
+        column_count=block.column_count,
+        rows=tuple(
+            StoredTableRow(cells=tuple(sorted(row, key=lambda cell: cell.column_index)))
+            for row in rows
+        ),
+    )
+    _validate_display_offsets(display_table, text)
+    source_starts = (
+        [
+            candidate.markdown_start
+            for candidate in intro.blocks
+            if candidate.markdown_start is not None
+        ]
+        if intro is not None
+        else []
+    )
+    if block.markdown_start is not None:
+        source_starts.append(block.markdown_start)
+    block_ids = (
+        [candidate.id for candidate in intro.blocks] if intro is not None else []
+    )
+    block_ids.append(block.id)
+    return PreparedChunk(
+        chunk_index=chunk_index,
+        text=text,
+        token_count=token_count,
+        page_number=None,
+        section_title=section_title,
+        source_start=min(source_starts) if source_starts else None,
+        source_end=block.markdown_end,
+        metadata=_metadata(
+            section_key=section_key,
+            headings=headings,
+            block_ids=block_ids,
+            contains_table=True,
+        ),
+        display_table=display_table,
+    )
+
+
+def _metadata(
+    *,
+    section_key: str,
+    headings: tuple[str, ...],
+    block_ids: list[str],
+    contains_table: bool,
+) -> dict[str, object]:
+    return {
+        "parser_version": PARSER_VERSION,
+        "chunker_version": CHUNKER_VERSION,
+        "section_key": section_key,
+        "headings": list(headings),
+        "block_ids": block_ids,
+        "contains_table": contains_table,
+        "source_offset_basis": "normalized_markdown",
+    }
+
+
+def _can_attach_to_table(
+    draft: _DraftChunk,
+    block: ParsedBlock,
+    token_counter: TokenCounter,
+) -> bool:
+    if token_counter.count_tokens(draft.text) >= MIN_TARGET_TOKENS:
+        return False
+    table_body, _ = _table_body_and_ranges(block)
+    combined = _contextualize(
+        draft.headings,
+        "\n\n".join(["\n\n".join(draft.parts), table_body]),
+    )
+    return token_counter.count_tokens(combined) <= MAX_EMBEDDING_INPUT_TOKENS
+
+
+def _contextualize(headings: tuple[str, ...], body: str) -> str:
+    return "\n".join(headings) + "\n\n" + body
+
+
+def _split_oversized_text(
+    text: str,
+    headings: tuple[str, ...],
+    token_counter: TokenCounter,
+    max_tokens: int,
+) -> list[str]:
+    if token_counter.count_tokens(_contextualize(headings, text)) <= max_tokens:
+        return [text]
+    sentences = [
+        sentence.strip()
+        for sentence in _SENTENCE_BOUNDARY_RE.split(text)
+        if sentence.strip()
+    ]
+    if len(sentences) == 1:
+        return _split_words(text, headings, token_counter, max_tokens)
+
+    fragments: list[str] = []
+    current = ""
+    for sentence in sentences:
+        if token_counter.count_tokens(_contextualize(headings, sentence)) > max_tokens:
+            if current:
+                fragments.append(current)
+                current = ""
+            fragments.extend(
+                _split_words(sentence, headings, token_counter, max_tokens)
+            )
+            continue
+        candidate = f"{current} {sentence}".strip()
+        if (
+            current
+            and token_counter.count_tokens(_contextualize(headings, candidate))
+            > max_tokens
+        ):
+            fragments.append(current)
+            current = sentence
+        else:
+            current = candidate
+    if current:
+        fragments.append(current)
+    return fragments
+
+
+def _split_words(
+    text: str,
+    headings: tuple[str, ...],
+    token_counter: TokenCounter,
+    max_tokens: int,
+) -> list[str]:
+    words = text.split()
+    fragments: list[str] = []
+    current: list[str] = []
+    for word in words:
+        candidate = " ".join([*current, word])
+        if (
+            current
+            and token_counter.count_tokens(_contextualize(headings, candidate))
+            > max_tokens
+        ):
+            fragments.append(" ".join(current))
+            current = [word]
+        else:
+            current.append(word)
+        if (
+            token_counter.count_tokens(_contextualize(headings, " ".join(current)))
+            > max_tokens
+        ):
+            raise ChunkTooLargeError(
+                "A single whitespace-delimited value exceeds the prose token limit"
+            )
+    if current:
+        fragments.append(" ".join(current))
+    return fragments
+
+
+def _table_body_and_ranges(
+    block: ParsedBlock,
+) -> tuple[str, dict[int, tuple[int, int]]]:
+    indexed_rows: dict[int, list[tuple[int, int]]] = {}
+    for index, cell in enumerate(block.cells):
+        if cell.text:
+            indexed_rows.setdefault(cell.row_index, []).append(
+                (cell.column_index, index)
+            )
+
+    parts = ["[TABLE]\n"]
+    length = len(parts[0])
+    ranges: dict[int, tuple[int, int]] = {}
+    for line_index, (_, row) in enumerate(sorted(indexed_rows.items())):
+        if line_index:
+            parts.append("\n")
+            length += 1
+        for value_index, (_, cell_index) in enumerate(sorted(row)):
+            if value_index:
+                parts.append(" | ")
+                length += 3
+            value = block.cells[cell_index].text
+            start = length
+            parts.append(value)
+            length += len(value)
+            ranges[cell_index] = (start, length)
+    return "".join(parts), ranges
+
+
+def _validate_markdown_offsets(
+    document: ParsedDocument,
+    markdown: str,
+) -> None:
+    for section in document.sections:
+        for block in section.blocks:
+            if block.markdown_start is None or block.markdown_end is None:
+                raise ValueError(f"Parsed block {block.id} is missing Markdown offsets")
+            rendered = markdown[block.markdown_start : block.markdown_end]
+            if block.kind == "paragraph" and rendered != block.text:
+                raise ValueError(f"Markdown offsets do not match paragraph {block.id}")
+            if block.kind == "list_item" and rendered != f"- {block.text}":
+                raise ValueError(f"Markdown offsets do not match list item {block.id}")
+            if block.kind == "subheading" and rendered != f"## {block.text}":
+                raise ValueError(f"Markdown offsets do not match subheading {block.id}")
+            if block.kind == "table" and not rendered.startswith("|"):
+                raise ValueError(f"Markdown offsets do not match table {block.id}")
+
+
+def _validate_display_offsets(table: StoredDisplayTable, text: str) -> None:
+    for row in table.rows:
+        for cell in row.cells:
+            if cell.text:
+                if cell.text_start is None or cell.text_end is None:
+                    raise ValueError("Non-empty table cell has no chunk-text range")
+                if text[cell.text_start : cell.text_end] != cell.text:
+                    raise ValueError("Table cell range does not map to chunk text")
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Validate hierarchical Docling chunks for one SEC filing."
+        description="Validate section-aware chunks for one parsed SEC filing."
     )
     parser.add_argument("--accession-number", required=True)
     return parser.parse_args()
@@ -417,22 +780,21 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     args = parse_args()
     row = source_row_for_accession(args.accession_number)
-    docling_path, markdown_path = document_paths(row)
+    parsed_path, markdown_path = document_paths(row)
     chunks = chunk_document(
-        docling_path,
+        parsed_path,
         markdown_path,
         OpenAITokenCounter(settings.openai_embedding_model),
     )
     table_count = sum(bool(chunk.metadata["contains_table"]) for chunk in chunks)
-    mapped_offset_count = sum(chunk.source_start is not None for chunk in chunks)
+    token_counts = [chunk.token_count for chunk in chunks]
     logger.info(
-        "Validated %d hierarchical chunks for %s (%d table chunks, %d source "
-        "offsets, max %d tokens)",
+        "Validated %d chunks for %s (%d tables, min %d, max %d tokens)",
         len(chunks),
         args.accession_number,
         table_count,
-        mapped_offset_count,
-        max(chunk.token_count for chunk in chunks),
+        min(token_counts),
+        max(token_counts),
     )
 
 

@@ -13,6 +13,8 @@ from typing import TYPE_CHECKING, Literal, TypedDict, cast
 
 from postgrest import ReturnMethod
 
+from ingestion.sec_parser import PARSER_VERSION, ParsedDocument
+
 if TYPE_CHECKING:
     from supabase import AsyncClient
 
@@ -20,6 +22,7 @@ if TYPE_CHECKING:
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 MANIFEST_PATH = REPOSITORY_ROOT / "data" / "downloads" / "manifest.json"
 MARKDOWN_DIR = REPOSITORY_ROOT / "data" / "markdown"
+PARSED_DOCUMENTS_DIR = REPOSITORY_ROOT / "data" / "parsed_documents"
 
 COMPANY_NAMES = {
     "AAPL": "Apple Inc.",
@@ -50,6 +53,7 @@ class SourceDocumentRow(TypedDict):
 def load_source_document_rows(
     manifest_path: Path = MANIFEST_PATH,
     markdown_dir: Path = MARKDOWN_DIR,
+    parsed_documents_dir: Path = PARSED_DOCUMENTS_DIR,
     *,
     ingested_at: datetime | None = None,
 ) -> list[SourceDocumentRow]:
@@ -66,6 +70,7 @@ def load_source_document_rows(
     ingestion_time = (ingested_at or datetime.now(UTC)).isoformat()
     rows = []
     expected_markdown_paths = set()
+    expected_parsed_paths = set()
 
     for index, filing_value in enumerate(filings):
         if not isinstance(filing_value, dict):
@@ -76,9 +81,14 @@ def load_source_document_rows(
             generated_at=generated_at,
             ingestion_time=ingestion_time,
             markdown_dir=markdown_dir,
+            parsed_documents_dir=parsed_documents_dir,
         )
         rows.append(row)
         expected_markdown_paths.add(markdown_path)
+        expected_parsed_paths.add(
+            parsed_documents_dir
+            / Path(str(row["extraction_metadata"]["parsed_local_path"]))
+        )
 
     actual_markdown_paths = set(markdown_dir.rglob("*.md"))
     unexpected_paths = sorted(actual_markdown_paths - expected_markdown_paths)
@@ -87,6 +97,17 @@ def load_source_document_rows(
             str(path.relative_to(markdown_dir)) for path in unexpected_paths
         )
         raise ValueError(f"Markdown files missing from the manifest: {relative_paths}")
+
+    actual_parsed_paths = set(parsed_documents_dir.rglob("*.json"))
+    unexpected_parsed_paths = sorted(actual_parsed_paths - expected_parsed_paths)
+    if unexpected_parsed_paths:
+        relative_paths = ", ".join(
+            str(path.relative_to(parsed_documents_dir))
+            for path in unexpected_parsed_paths
+        )
+        raise ValueError(
+            f"Parsed documents missing from the manifest: {relative_paths}"
+        )
 
     _require_unique(rows, "accession_number")
     _require_unique(rows, "content_checksum")
@@ -99,6 +120,7 @@ def _build_source_document_row(
     generated_at: str,
     ingestion_time: str,
     markdown_dir: Path,
+    parsed_documents_dir: Path,
 ) -> tuple[SourceDocumentRow, Path]:
     ticker = _required_string(filing, "ticker")
     try:
@@ -118,6 +140,20 @@ def _build_source_document_row(
     markdown = markdown_bytes.decode("utf-8")
     if not markdown.strip():
         raise ValueError(f"Markdown file is empty: {markdown_path}")
+
+    parsed_relative_path = local_path.with_suffix(".json")
+    parsed_path = parsed_documents_dir / parsed_relative_path
+    parsed_bytes = parsed_path.read_bytes()
+    parsed = ParsedDocument.from_dict(json.loads(parsed_bytes))
+    if parsed.form != _required_string(filing, "form"):
+        raise ValueError(f"Parsed-document form does not match manifest: {parsed_path}")
+    if parsed.source_path != local_path.as_posix():
+        raise ValueError(
+            f"Parsed-document source path does not match manifest: {parsed_path}"
+        )
+    markdown_checksum = hashlib.sha256(markdown_bytes).hexdigest()
+    if parsed.markdown_sha256 != markdown_checksum:
+        raise ValueError(f"Parsed document does not match Markdown: {parsed_path}")
 
     filing_date = _iso_date(_required_string(filing, "filing_date"), "filing_date")
     report_date_value = filing.get("report_date")
@@ -145,14 +181,18 @@ def _build_source_document_row(
             "source_format": local_path.suffix.removeprefix(".").lower(),
             "source_local_path": local_path.as_posix(),
             "markdown_local_path": markdown_relative_path.as_posix(),
+            "parsed_local_path": parsed_relative_path.as_posix(),
             "markdown_bytes": len(markdown_bytes),
             "markdown_characters": len(markdown),
-            "converter": "docling",
-            "converter_version": "2.119.0",
+            "parsed_bytes": len(parsed_bytes),
+            "parser": "sec_html",
+            "parser_version": PARSER_VERSION,
+            "source_sha256": parsed.source_sha256,
+            "parse_audit": parsed.audit,
             "manifest_generated_at_utc": generated_at,
             "report_date_source": report_date_source,
         },
-        "content_checksum": hashlib.sha256(markdown_bytes).hexdigest(),
+        "content_checksum": markdown_checksum,
         "updated_at": ingestion_time,
     }
     return row, markdown_path
@@ -218,7 +258,7 @@ def _require_unique(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Upsert converted SEC filings into Supabase source_documents."
+        description="Upsert parsed SEC filings into Supabase source_documents."
     )
     parser.add_argument(
         "--dry-run",

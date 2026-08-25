@@ -15,12 +15,13 @@ from app.retrieval.display_tables import (
     StoredTableRow,
 )
 from ingestion.chunk_documents import PreparedChunk
-from ingestion.ingest_chunks import (
+from ingestion.ingest_documents import SourceDocumentRow
+from ingestion.supabase_chunks import (
     build_document_chunk_rows,
     upsert_document_chunks,
+    validate_existing_chunk_version,
     validate_stored_source_documents,
 )
-from ingestion.ingest_documents import SourceDocumentRow
 
 UPDATED_AT = datetime(2026, 8, 19, 14, 0, tzinfo=UTC)
 
@@ -214,6 +215,37 @@ def test_upsert_document_chunks_uses_stable_index_and_removes_stale_tail() -> No
     delete_query.gt.assert_called_once_with("chunk_index", 2)
     assert upsert_execute.await_count == 2
     delete_execute.assert_awaited_once_with()
+
+
+def test_existing_chunks_require_matching_parser_chunker_and_checksum() -> None:
+    query = MagicMock()
+    query.select.return_value = query
+    query.eq.return_value = query
+    query.limit.return_value = query
+    query.execute = AsyncMock(
+        return_value=SimpleNamespace(
+            data=[
+                {
+                    "metadata": {
+                        "parser_version": "docling",
+                        "chunker_version": "old",
+                        "content_checksum": "different",
+                    }
+                }
+            ]
+        )
+    )
+    client = MagicMock()
+    client.table.return_value = query
+
+    with pytest.raises(ValueError, match="reset_ingestion"):
+        asyncio.run(
+            validate_existing_chunk_version(
+                client,
+                _source_row(),
+                str(uuid4()),
+            )
+        )
 
 
 def _source_row() -> SourceDocumentRow:

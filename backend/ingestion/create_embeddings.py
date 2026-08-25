@@ -1,4 +1,4 @@
-"""Create OpenAI embeddings for prepared hierarchical chunks."""
+"""Create OpenAI embeddings for prepared SEC filing chunks."""
 
 from __future__ import annotations
 
@@ -178,9 +178,9 @@ def main() -> None:
         raise ValueError("--limit-chunks must be positive")
 
     source_row = source_row_for_accession(args.accession_number)
-    docling_path, markdown_path = document_paths(source_row)
+    parsed_path, markdown_path = document_paths(source_row)
     chunks = chunk_document(
-        docling_path,
+        parsed_path,
         markdown_path,
         OpenAITokenCounter(settings.openai_embedding_model),
     )[: args.limit_chunks]

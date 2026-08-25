@@ -1,4 +1,4 @@
-"""Versioned, presentation-only table data derived from Docling chunks."""
+"""Versioned, presentation-only table data derived from parsed SEC tables."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class StoredTableCell(BaseModel):
-    """One Docling origin cell and its location in canonical chunk text."""
+    """One source table cell and its location in canonical chunk text."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -39,7 +39,7 @@ class StoredTableCell(BaseModel):
 
 
 class StoredTableRow(BaseModel):
-    """Origin cells that start in one physical Docling row."""
+    """Origin cells that start in one physical source row."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 

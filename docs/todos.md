@@ -77,18 +77,25 @@ Phase complete when an authenticated user can create a chat, receive a streamed 
 ## 6. Build the SEC filing ingestion pipeline
 
 - [ ] Set a valid SEC contact in the downloader and make its sample-company configuration match the MVP corpus.
-- [ ] Read the download manifest and process each filing with its accession number and source URL.
-- [ ] Convert SEC HTML into clean, normalized Markdown while preserving headings, tables, and the citation locators agreed in phase 1.
-- [ ] Strip navigation, scripts, style data, repeated headers, and other text that should not be searchable.
-- [ ] Store the normalized document text and extraction metadata in `source_documents`.
-- [x] Split each document into useful passages that respect sections and tables, with small overlap where needed.
+- [x] Read the download manifest and process each filing with its accession number and source URL.
+- [x] Convert SEC HTML into clean, normalized Markdown while preserving headings, tables, and source offsets for citations.
+- [x] Strip navigation, scripts, style data, repeated headers, punctuation artifacts, and other text that should not be searchable.
+- [x] Store the normalized document text and extraction metadata in `source_documents`.
+- [x] Split each document into section-aware passages without overlap, keeping complete data tables atomic.
 - [x] Record stable chunk order, token count, page or section, source offsets, and filing metadata on every chunk.
 - [x] Generate embeddings in batches with the configured OpenAI model and dimensions.
-- [x] Make ingestion safe to rerun by using accession numbers, checksums, and upserts instead of creating duplicates.
+- [x] Save chunks and embeddings in per-document local checkpoints before upload, with checksums and atomic writes for safe resume.
+- [x] Make database upload safe to rerun by using accession numbers, checksums, version guards, verified skips, and upserts instead of creating duplicates.
 - [x] Add clear progress, retry, failure, and final-summary output without logging secrets or full filing contents.
 - [x] Provide one command for a dry run and one command for ingesting or re-ingesting the sample corpus.
-- [ ] Add fixture-based backend tests for HTML cleanup, Markdown output, chunk boundaries, metadata, and rerun behavior.
-- [ ] Ingest the sample corpus and manually inspect representative financial tables, risk factors, and cross-page sections.
+- [x] Add fixture-based backend tests for HTML cleanup, Markdown offsets, chunk boundaries, table geometry, metadata, checkpoints, and rerun behavior.
+- [x] Ingest the 27-document corpus, inspect readable local chunks and representative tables, and verify the uploaded corpus against local checkpoints.
+
+Implementation status: the active `sec_html_v1` parser and `sec_sections_v2`
+chunker replaced Docling. The completed corpus contains 27 source documents and
+6,373 chunks. Prose chunks are at least 100 tokens and normally at most 500; only
+atomic table exceptions may be smaller. The remaining ingestion setup task is to
+replace the downloader's placeholder SEC contact before downloading again.
 
 Phase complete when the sample filings are stored once, searchable as clean chunks, and traceable back to their SEC sources.
 
@@ -180,7 +187,7 @@ Phase complete when an analyst can ask, verify, revisit, and continue a conversa
 - [ ] Confirm that logs do not contain access tokens, service keys, or unnecessary document and chat contents.
 - [ ] Review RLS policies, privileged writes, CORS origins, request-size limits, timeouts, and model token limits.
 - [ ] Test with two real user accounts to prove that threads, messages, and citations cannot leak between users.
-- [ ] Document how to rerun ingestion, change an embedding model, rebuild embeddings, apply migrations, and investigate a failed chat turn.
+- [x] Document checkpointed ingestion, safe retries, embedding-version guards, verification, reset behavior, and migrations in the backend guides.
 
 Phase complete when the evaluation results meet an agreed trust threshold and the security checks pass.
 

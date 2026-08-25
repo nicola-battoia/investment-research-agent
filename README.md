@@ -55,14 +55,20 @@ To be added during the build. Setup guides:
 - [Backend](docs/guides/backend-setup.md)
 - [Frontend](docs/guides/frontend-setup.md)
 
-## Sample SEC data
+## SEC filing ingestion
 
-Use the standalone downloader to fetch a small local 10-K sample from SEC EDGAR.
-Edit the params at the top of `data/download.py`, especially `USER_AGENT`, then run:
+Use the standalone downloader to fetch SEC filings from EDGAR. Before downloading,
+replace the placeholder contact in `data/download.py`'s `USER_AGENT`, then run:
 
 ```bash
 uv run data/download.py
 ```
 
-By default this downloads the latest 5 10-K filings for AAPL, MSFT, NVDA, AMZN, and GOOGL into year folders under `data/downloads/` and writes a `manifest.json`.
-Downloaded files are gitignored; the `data/` folder itself stays in git for the script and notes.
+The current corpus manifest contains 27 filings: five years of 10-Ks for AAPL,
+MSFT, NVDA, AMZN, and GOOGL, plus BSP's F-1 and 424B4. Downloaded and generated
+payloads are gitignored.
+
+The backend uses a custom SEC HTML parser, section-aware chunking, resumable local
+embedding checkpoints, and a verified Supabase upload. Run and inspect it through
+the scripts documented in
+[`backend/ingestion/README.md`](backend/ingestion/README.md).

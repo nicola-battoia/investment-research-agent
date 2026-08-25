@@ -35,65 +35,47 @@ Preview pending migration SQL without changing the database:
 uv run alembic upgrade head --sql
 ```
 
-## Ingest converted SEC filings
+## Ingest SEC filings
 
-From `backend/`, validate the manifest and Markdown corpus without changing Supabase:
+The active pipeline parses downloaded SEC HTML with a custom `lxml` parser, writes
+normalized Markdown and structured section data, creates section-aware chunks, and
+saves chunks and embeddings locally before uploading anything to Supabase.
 
-```bash
-uv run python -m ingestion.ingest_documents --dry-run
-```
-
-Upsert the documents into `source_documents` using the configured service-role key:
+Run the stages from the repository root:
 
 ```bash
-uv run python -m ingestion.ingest_documents
+backend/ingestion/scripts/01_prepare_local.sh
+backend/ingestion/scripts/02_create_embeddings.sh
+backend/ingestion/scripts/03_upload_supabase.sh
+backend/ingestion/scripts/04_verify_supabase.sh
 ```
 
-Rows are matched by SEC accession number, so the command is safe to rerun.
+The local checkpoint layout is:
 
-## Chunk, embed, and ingest filing passages
-
-The chunking pipeline loads the native Docling JSON files and uses Docling's
-`HierarchicalChunker`. Each table stays in one chunk. Tables use a compact row
-serialization for embedding, while source offsets are located against the
-non-compact normalized Markdown. In parallel, table chunks persist Docling's native
-cell spans and canonical-text offsets in `document_chunks.display_table` for citation
-rendering; this display payload does not change retrieval text or embeddings.
-
-Validate one filing's hierarchy, table integrity, source offsets, and token limits:
-
-```bash
-uv run python -m ingestion.chunk_documents \
-  --accession-number 0000320193-24-000123
+```text
+data/ingestion_runs/sec_sections_v2/<accession>/
+├── checkpoint.json
+├── chunks.jsonl
+├── chunks.md
+└── embeddings/
+    ├── checkpoint.json
+    └── embeddings.jsonl.gz
 ```
 
-Validate the complete local corpus without calling OpenAI or Supabase:
+Stage 1 is local and free. Stage 2 calls OpenAI, stage 3 writes
+`source_documents` and `document_chunks`, and stage 4 independently compares
+Supabase with the local checkpoints. Valid completed documents are reused, so an
+interrupted run can safely be restarted. Embedding and upload scripts also accept
+one optional SEC accession number for a focused retry.
 
-```bash
-uv run python -m ingestion.ingest_chunks --dry-run
-```
+The parser supports `10-K`, `F-1`, and `424B4`. Prose chunks are at least 100 tokens
+and normally at most 500; a minimum-size merge may reach 600. Complete data tables
+remain atomic up to the embedding model's 8,192-token limit, and an otherwise
+unmergeable small table is the only allowed sub-100-token exception.
 
-Run a deliberately bounded paid embedding test without database writes:
-
-```bash
-uv run python -m ingestion.create_embeddings \
-  --accession-number 0000320193-24-000123 \
-  --limit-chunks 3
-```
-
-After `source_documents` has been ingested, embed and upsert the complete corpus:
-
-```bash
-uv run python -m ingestion.ingest_chunks
-```
-
-After applying the migration that adds `display_table`, rerun this same command to
-backfill existing chunks. The `(document_id, chunk_index)` upsert keeps chunk IDs and
-their citation foreign keys stable.
-
-To embed and upsert one complete filing instead, add
-`--accession-number <accession>`. Chunk rows are matched by document ID and chunk
-index, so reruns update stable rows and remove only a stale trailing range.
+For implementation details, checkpoint formats, direct module commands, reset
+safety, and corpus metrics, see
+[`ingestion/README.md`](ingestion/README.md).
 
 ## Hybrid retrieval
 

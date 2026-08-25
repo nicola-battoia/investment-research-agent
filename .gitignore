@@ -30,8 +30,10 @@ pnpm-debug.log*
 !/data/downloads/.gitkeep
 /data/markdown/*
 !/data/markdown/.gitkeep
-/data/docling_documents/*
-!/data/docling_documents/.gitkeep
+/data/parsed_documents/*
+!/data/parsed_documents/.gitkeep
+/data/ingestion_runs/*
+/data/archive/*
 *.parquet
 
 # IDE / OS
