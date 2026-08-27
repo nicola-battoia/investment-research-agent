@@ -188,6 +188,8 @@ class DocumentRetriever:
             hydration_ms=hydration_ms,
             timings=candidates.timings,
             keywords=candidates.keywords,
+            result_count=len(ranked_passages),
+            context_passage_count=len(context_passages),
             ranked_passages=ranked_passages,
             context_passages=context_passages,
         )
@@ -301,6 +303,7 @@ class DocumentRetriever:
             semantic_weight=self._weights["semantic"],
             lexical_weight=self._weights["lexical"],
             rrf_k=self._rrf_k,
+            fused_count=len(fused),
             fused=fused,
         )
         return RetrievalCandidates(
@@ -344,6 +347,7 @@ class DocumentRetriever:
             chunk_id=chunk_id,
             radius=radius,
             duration_ms=(time.perf_counter() - started) * 1000,
+            passage_count=len(result),
             passages=result,
         )
         return result
@@ -376,7 +380,9 @@ class DocumentRetriever:
             "retrieval.embedding.response",
             model=self._embedding_model,
             duration_ms=(time.perf_counter() - started) * 1000,
-            output=embedding_summary(embedding),
+            output=(
+                embedding_summary(embedding) if self._trace.captures_content else None
+            ),
             usage=getattr(response, "usage", None),
         )
         return embedding
@@ -436,6 +442,8 @@ class DocumentRetriever:
             "retrieval.bridge.completed",
             duration_ms=(time.perf_counter() - started) * 1000,
             requested=requested,
+            requested_count=sum(len(indexes) for indexes in requested.values()),
+            passage_count=len(result),
             passages=result,
         )
         return result

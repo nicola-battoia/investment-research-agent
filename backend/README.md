@@ -30,10 +30,12 @@ and results, keyword extraction, embeddings, retrieval rankings, grounding,
 persistence, and final SSE delivery.
 
 ```dotenv
+APP_ENVIRONMENT=development
 LOG_LEVEL=INFO
 LOG_FORMAT=console
 ASSISTANT_TRACE_MODE=full
 ASSISTANT_TRACE_MAX_CONTENT_CHARACTERS=12000
+LOG_MAX_EVENT_BYTES=4096
 ```
 
 The important event sequence is:
@@ -56,20 +58,22 @@ recorded.
 Use safe, structured settings in Railway:
 
 ```dotenv
+APP_ENVIRONMENT=production
 LOG_LEVEL=INFO
 LOG_FORMAT=json
 ASSISTANT_TRACE_MODE=summary
 ASSISTANT_TRACE_MAX_CONTENT_CHARACTERS=12000
+LOG_MAX_EVENT_BYTES=4096
 ```
 
-`summary` keeps metadata, hashes, sizes, and short previews. `full` preserves normal
-questions, instructions, answers, and tool payloads up to the configured bound.
-Anything larger records its original size, omitted size, and SHA-256 fingerprint.
-Authorization values, API keys, secrets, provider-private fields, embedding vectors,
-and hidden reasoning are never written. Because local full traces contain user and
-filing content, do not paste them into tickets without reviewing them first. Set
-`ASSISTANT_TRACE_MODE=off` to disable detailed turn events while retaining the
-existing completion/failure operational logs.
+`summary` is metadata-only: it keeps the trace sequence, stages, durations, model and
+tool names, status values, safe error classifications, counts, and token/cost usage.
+It never records prompts, history, answers, retrieval content, tool payloads, runtime
+identifiers other than `trace_id`, exception messages, or tracebacks. Production JSON
+events are capped at 4 KiB. `full` preserves content-rich diagnostics locally up to
+the configured per-value bound, with secrets and provider-private fields redacted or
+omitted. Production rejects `full` at startup. Set `ASSISTANT_TRACE_MODE=off` to keep
+only completion, failure, timeout, disconnect, and handled-request operational logs.
 
 ## Check changes
 

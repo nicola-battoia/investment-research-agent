@@ -77,6 +77,8 @@ class DocumentAssistant:
                 draft=output,
                 search_calls=ctx.deps.counters.search_calls,
                 surrounding_calls=ctx.deps.counters.surrounding_calls,
+                evidence_count=len(ctx.deps.evidence.passages),
+                read_source_count=len(ctx.deps.evidence.read_source_ids),
                 evidence_source_ids=tuple(ctx.deps.evidence.passages),
                 read_source_ids=tuple(sorted(ctx.deps.evidence.read_source_ids)),
             )
@@ -96,6 +98,7 @@ class DocumentAssistant:
                     level="warning",
                     selected_status=output.status,
                     reason=str(error),
+                    error_class=type(error).__name__,
                     retry=ctx.retry,
                     max_retries=ctx.max_retries,
                     retry_available=retry_available,
@@ -113,8 +116,10 @@ class DocumentAssistant:
                 "assistant.grounding.accepted",
                 selected_status=output.status,
                 reason=grounding_reason(output.status),
+                grounding_reason=grounding_reason(output.status),
                 citation_count=len(ctx.deps.validated_answer.citations),
                 search_calls=ctx.deps.counters.search_calls,
+                read_source_count=len(ctx.deps.evidence.read_source_ids),
                 read_source_ids=tuple(sorted(ctx.deps.evidence.read_source_ids)),
             )
             return output
@@ -143,6 +148,7 @@ class DocumentAssistant:
             "assistant.run.started",
             question=question,
             history=history,
+            model=deps.model_settings.model_name,
             model_settings=deps.model_settings,
         )
         result = await self._agent.run(
@@ -176,6 +182,17 @@ class DocumentAssistant:
             search_calls=deps.counters.search_calls,
             surrounding_calls=deps.counters.surrounding_calls,
             evidence_count=len(deps.evidence.passages),
+            answer_status=normalized.answer.status,
+            requests=normalized.usage.requests,
+            tool_calls=normalized.usage.tool_calls,
+            input_tokens=normalized.usage.input_tokens,
+            output_tokens=normalized.usage.output_tokens,
+            total_tokens=normalized.usage.total_tokens,
+            cost_usd=(
+                str(normalized.usage.cost_usd)
+                if normalized.usage.cost_usd is not None
+                else None
+            ),
             duration_ms=(time.perf_counter() - run_started) * 1000,
         )
         return normalized

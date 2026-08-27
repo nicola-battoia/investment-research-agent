@@ -119,6 +119,10 @@ class OpenAIKeywordExtractor:
             "retrieval.keywords.response",
             model=self._model,
             duration_ms=(time.perf_counter() - started) * 1000,
+            keyword_group_count=len(response.output_parsed.groups),
+            keyword_term_count=sum(
+                len(group.terms) for group in response.output_parsed.groups
+            ),
             provider_response_id=getattr(response, "id", None),
             output=response.output_parsed,
             usage=getattr(response, "usage", None),

@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import asyncio
 import json
-from collections.abc import AsyncIterator
+import re
+from collections.abc import AsyncIterator, Mapping
 from dataclasses import dataclass
 
-import structlog
 from fastapi import Request
 from openai import OpenAIError
 from postgrest import APIError
@@ -27,8 +27,6 @@ from app.chat.orchestrator import ChatTurnOrchestrator, PreparedChatTurn
 from app.config import settings
 from app.database.chats import ChatPositionConflictError, ChatThreadNotFoundError
 from app.grounding import GroundingFailureError
-
-logger = structlog.get_logger()
 
 
 @dataclass(frozen=True)
@@ -93,6 +91,7 @@ UNKNOWN_USAGE_LIMIT_FAILURE = UsageLimitFailure(
     "assistant_usage_limit",
     "The research assistant reached a configured usage limit. Try a narrower question.",
 )
+_SAFE_UPSTREAM_CODE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}")
 
 
 async def chat_turn_events(
@@ -127,6 +126,8 @@ async def chat_turn_events(
                         "chat_stream_disconnected",
                         "stream.disconnected",
                         level="warning",
+                        operational=True,
+                        failed_after_stage=trace.last_stage,
                     )
                     return
                 yield _status_event()
@@ -134,10 +135,15 @@ async def chat_turn_events(
             return
     except TimeoutError:
         await _cancel(task)
+        failed_after_stage = trace.last_stage
         trace.emit(
             "chat_turn_timed_out",
             "stream.timeout",
             level="warning",
+            operational=True,
+            error_code="turn_timeout",
+            retryable=True,
+            failed_after_stage=failed_after_stage,
             timeout_seconds=timeout_seconds,
         )
         async for event in _failure_events(
@@ -155,32 +161,26 @@ async def chat_turn_events(
             "chat_stream_cancelled",
             "stream.cancelled",
             level="warning",
+            operational=True,
+            failed_after_stage=trace.last_stage,
         )
         raise
-    except Exception as error:
+    except Exception as error:  # noqa: BLE001 - HTTP stream boundary maps all failures.
         failure = _mapped_failure(error)
         failed_after_stage = trace.last_stage
-        if trace.enabled:
-            trace.emit(
-                "chat_turn_failed",
-                "stream.failed",
-                level="error",
-                exc_info=True,
-                error_class=type(error).__name__,
-                error_code=failure.code,
-                failed_after_stage=failed_after_stage,
-                **_error_log_context(error),
-            )
-        else:
-            logger.exception(
-                "chat_turn_failed",
-                thread_id=str(turn.thread_id),
-                user_id=str(turn.user_id),
-                failed_after_stage=failed_after_stage,
-                error_class=type(error).__name__,
-                error_code=failure.code,
-                **_error_log_context(error),
-            )
+        trace.emit(
+            "chat_turn_failed",
+            "stream.failed",
+            level="error",
+            operational=True,
+            exc_info=True,
+            error_class=type(error).__name__,
+            error_code=failure.code,
+            error_message=str(error),
+            retryable=failure.retryable,
+            failed_after_stage=failed_after_stage,
+            **_error_log_context(error),
+        )
         async for event in _failure_events(failure):
             yield event
         return
@@ -190,6 +190,8 @@ async def chat_turn_events(
             "chat_stream_disconnected",
             "stream.disconnected",
             level="warning",
+            operational=True,
+            failed_after_stage=trace.last_stage,
             persisted=True,
         )
         return
@@ -330,20 +332,31 @@ def _usage_limit_failure(error: UsageLimitExceeded) -> UsageLimitFailure:
     )
 
 
-def _error_log_context(error: Exception) -> dict[str, str]:
-    if not isinstance(error, UsageLimitExceeded):
-        return {}
-    failure = _usage_limit_failure(error)
-    return {
-        "usage_limit": failure.limit,
-        "error_message": _usage_limit_reason(error),
-    }
+def _error_log_context(error: Exception) -> dict[str, str | int]:
+    context: dict[str, str | int] = {}
+    if isinstance(error, UsageLimitExceeded):
+        context["usage_limit"] = _usage_limit_failure(error).limit
+    status_code = getattr(error, "status_code", None)
+    if isinstance(status_code, int) and 100 <= status_code <= 599:
+        context["upstream_status_code"] = status_code
+    upstream_code = _upstream_error_code(error)
+    if upstream_code is not None:
+        context["upstream_error_code"] = upstream_code
+    return context
 
 
-def _usage_limit_reason(error: UsageLimitExceeded) -> str:
-    message = str(error)
-    reason, separator, _hint = message.partition(". Consider raising the limit")
-    return reason if separator else message
+def _upstream_error_code(error: Exception) -> str | None:
+    candidates: list[object] = [getattr(error, "code", None)]
+    body = getattr(error, "body", None)
+    if isinstance(body, Mapping):
+        candidates.append(body.get("code"))
+        nested = body.get("error")
+        if isinstance(nested, Mapping):
+            candidates.append(nested.get("code"))
+    for candidate in candidates:
+        if isinstance(candidate, str) and _SAFE_UPSTREAM_CODE.fullmatch(candidate):
+            return candidate
+    return None
 
 
 async def _cancel(task: asyncio.Task[object]) -> None:

@@ -1,8 +1,11 @@
 import importlib
+from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
+from structlog.testing import capture_logs
 
 VALID_ENV = {
+    "APP_ENVIRONMENT": "test",
     "SUPABASE_URL": "http://localhost:54321",
     "SUPABASE_ANON_KEY": "test-anon-key",
     "SUPABASE_SERVICE_ROLE_KEY": "test-service-role-key",
@@ -41,3 +44,38 @@ def test_health_confirms_configuration_and_cors(monkeypatch) -> None:
         "http://localhost:5173"
     )
     assert main.app.state.settings.openai_embedding_dimensions == 1536
+
+
+def test_handled_error_log_uses_status_and_route_template(monkeypatch) -> None:
+    for name, value in VALID_ENV.items():
+        monkeypatch.setenv(name, value)
+    main = importlib.import_module("app.main")
+    from app.assistant.tracing import AssistantTrace
+
+    trace = AssistantTrace(
+        trace_id="trace-1",
+        thread_id="PRIVATE_THREAD_ID",
+        user_id="PRIVATE_USER_ID",
+        client_message_id="PRIVATE_CLIENT_ID",
+        mode="summary",
+        max_content_characters=12_000,
+    )
+    request = SimpleNamespace(
+        state=SimpleNamespace(assistant_trace=trace),
+        method="GET",
+        scope={"route": SimpleNamespace(path="/chat/threads/{thread_id}")},
+    )
+
+    with capture_logs() as logs:
+        main._log_handled_chat_error(
+            request,
+            RuntimeError("PRIVATE_ERROR_MESSAGE"),
+            "thread_missing",
+            404,
+        )
+
+    assert logs[0]["event"] == "chat_request_failed"
+    assert logs[0]["http_status_code"] == 404
+    assert logs[0]["route"] == "/chat/threads/{thread_id}"
+    assert logs[0]["error_code"] == "thread_missing"
+    assert "PRIVATE" not in str(logs[0])

@@ -32,12 +32,41 @@ def test_full_trace_redacts_secrets_omits_provider_details_and_bounds_text() -> 
     assert "secretvalue123" not in str(serialized)
 
 
-def test_summary_trace_uses_short_preview_and_embedding_never_contains_vector() -> None:
-    serialized = trace(mode="summary", limit=12_000).serialize("x" * 500)
+def test_summary_trace_keeps_metadata_without_content_or_identifiers() -> None:
+    summary = trace(mode="summary", limit=12_000)
     embedding = embedding_summary([0.1, 0.2, 0.3])
 
-    assert len(serialized["preview"]) == 320
-    assert serialized["characters"] == 500
+    assert summary.serialize("PRIVATE_DIRECT_SERIALIZATION") == "[OMITTED]"
+
+    with capture_logs() as logs:
+        summary.emit(
+            "retrieval_completed",
+            "retrieval.search.completed",
+            duration_ms=12.5,
+            candidate_count=20,
+            model="safe-model-name",
+            question="PRIVATE_QUESTION_SENTINEL",
+            history=[{"content": "PRIVATE_HISTORY_SENTINEL"}],
+            passages=["PRIVATE_PASSAGE_SENTINEL"] * 1_000,
+            error_message="PRIVATE_ERROR_SENTINEL",
+            provider_response_id="provider-private",
+        )
+
+    assert logs[0]["duration_ms"] == 12.5
+    assert logs[0]["candidate_count"] == 20
+    assert logs[0]["model"] == "safe-model-name"
+    rendered = str(logs[0])
+    for forbidden in (
+        "PRIVATE_QUESTION_SENTINEL",
+        "PRIVATE_HISTORY_SENTINEL",
+        "PRIVATE_PASSAGE_SENTINEL",
+        "PRIVATE_ERROR_SENTINEL",
+        "provider-private",
+        "thread-1",
+        "user-1",
+        "client-1",
+    ):
+        assert forbidden not in rendered
     assert embedding["dimensions"] == 3
     assert "sha256" in embedding
     assert "vector" not in embedding
@@ -56,3 +85,26 @@ def test_trace_events_are_ordered_and_off_mode_emits_nothing() -> None:
     assert [log["event"] for log in logs] == ["first", "second"]
     assert [log["sequence"] for log in logs] == [1, 2]
     assert all(log["trace_id"] == "trace-1" for log in logs)
+    assert disabled.last_stage == "turn.hidden"
+
+
+def test_off_mode_emits_only_operational_events() -> None:
+    disabled = trace(mode="off")
+
+    with capture_logs() as logs:
+        disabled.emit("diagnostic", "assistant.model.request", model="safe-model")
+        disabled.emit(
+            "chat_turn_failed",
+            "stream.failed",
+            operational=True,
+            error_class="RuntimeError",
+            error_code="turn_failed",
+            error_message="PRIVATE_ERROR_SENTINEL",
+        )
+
+    assert [log["event"] for log in logs] == ["chat_turn_failed"]
+    assert logs[0]["sequence"] == 2
+    assert logs[0]["error_class"] == "RuntimeError"
+    assert logs[0]["error_code"] == "turn_failed"
+    assert "PRIVATE_ERROR_SENTINEL" not in str(logs[0])
+    assert disabled.last_stage == "stream.failed"

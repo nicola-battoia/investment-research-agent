@@ -13,6 +13,7 @@ from app.database.supabase import (
 def make_settings() -> Settings:
     return Settings(
         _env_file=None,
+        app_environment="test",
         supabase_url="https://project.supabase.co",
         supabase_anon_key="test-anon-key",
         supabase_service_role_key="test-service-role-key",

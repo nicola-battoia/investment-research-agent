@@ -669,11 +669,14 @@ The trace records these boundaries:
 - `assistant.grounding.*`: the model-selected draft status, evidence/read state,
   exact deterministic rejection, retry availability, or stable acceptance reason.
 - `turn.persistence.*` and `stream.*`: atomic database completion, timeout,
-  disconnect, mapped failure, traceback, and final delivery.
+  disconnect, mapped failure, and final delivery.
 
-Local development uses `LOG_FORMAT=console` and `ASSISTANT_TRACE_MODE=full`.
-Railway uses `LOG_FORMAT=json` and `ASSISTANT_TRACE_MODE=summary`; its log search can
-filter one complete turn by `trace_id`. Summary mode limits raw text to short
-previews. Full mode is still bounded, and truncated fields include total/omitted
-character counts and a SHA-256 fingerprint. Secret-bearing keys and token patterns,
-provider-private payloads, hidden reasoning, and embeddings are redacted or omitted.
+Local development uses `APP_ENVIRONMENT=development`, `LOG_FORMAT=console`, and
+`ASSISTANT_TRACE_MODE=full`. Railway uses `APP_ENVIRONMENT=production`,
+`LOG_FORMAT=json`, and `ASSISTANT_TRACE_MODE=summary`; its log search can filter one
+complete turn by `trace_id`. Summary mode emits only approved scalar metadata and
+never serializes raw prompts, history, model output, queries, passages, tool payloads,
+exception messages, tracebacks, or application identifiers. Production JSON events
+are capped at 4 KiB. Full mode remains content-rich and bounded for local diagnostics;
+secret-bearing keys and token patterns, provider-private payloads, hidden reasoning,
+and embeddings are still redacted or omitted.

@@ -5,7 +5,9 @@ from unittest.mock import AsyncMock, patch
 from uuid import UUID
 
 import pytest
-from openai import APIConnectionError
+from httpx import Request as HttpxRequest
+from httpx import Response as HttpxResponse
+from openai import APIConnectionError, RateLimitError
 from pydantic_ai.exceptions import UsageLimitExceeded
 from structlog.testing import capture_logs
 
@@ -144,7 +146,8 @@ def test_usage_limit_failure_identifies_limit_in_stream_and_log(
     failure_log = next(log for log in logs if log["event"] == "chat_turn_failed")
     assert failure_log["error_code"] == expected_code
     assert failure_log["usage_limit"] == expected_limit
-    assert failure_log["error_message"] == reason
+    assert "error_message" not in failure_log
+    assert "exc_info" not in failure_log
 
 
 def test_unknown_usage_limit_has_stable_fallback_and_diagnostic() -> None:
@@ -159,7 +162,53 @@ def test_unknown_usage_limit_has_stable_fallback_and_diagnostic() -> None:
     assert '"code":"assistant_usage_limit"' in payload
     failure_log = next(log for log in logs if log["event"] == "chat_turn_failed")
     assert failure_log["usage_limit"] == "unknown"
-    assert failure_log["error_message"] == reason
+    assert reason not in str(failure_log)
+
+
+def test_upstream_failure_logs_only_structured_status_and_safe_code() -> None:
+    response = HttpxResponse(
+        429,
+        request=HttpxRequest("POST", "https://api.openai.com/v1/responses"),
+    )
+    error = RateLimitError(
+        "PRIVATE_PROVIDER_MESSAGE",
+        response=response,
+        body={"code": "credit_balance_exhausted", "message": "PRIVATE_BODY"},
+    )
+    orchestrator = SimpleNamespace(complete=AsyncMock(side_effect=error))
+
+    with capture_logs() as logs:
+        payload = asyncio.run(collect(orchestrator))
+
+    assert '"code":"assistant_unavailable"' in payload
+    failure_log = next(log for log in logs if log["event"] == "chat_turn_failed")
+    assert failure_log["upstream_status_code"] == 429
+    assert failure_log["upstream_error_code"] == "credit_balance_exhausted"
+    assert failure_log["failed_after_stage"] == "stream.started"
+    assert "PRIVATE_PROVIDER_MESSAGE" not in str(failure_log)
+    assert "PRIVATE_BODY" not in str(failure_log)
+    assert "exc_info" not in failure_log
+
+
+def test_malformed_upstream_code_is_not_logged() -> None:
+    response = HttpxResponse(
+        429,
+        request=HttpxRequest("POST", "https://api.openai.com/v1/responses"),
+    )
+    error = RateLimitError(
+        "PRIVATE_PROVIDER_MESSAGE",
+        response=response,
+        body={"code": "unsafe code with PRIVATE_CONTENT", "message": "PRIVATE_BODY"},
+    )
+    orchestrator = SimpleNamespace(complete=AsyncMock(side_effect=error))
+
+    with capture_logs() as logs:
+        asyncio.run(collect(orchestrator))
+
+    failure_log = next(log for log in logs if log["event"] == "chat_turn_failed")
+    assert failure_log["upstream_status_code"] == 429
+    assert "upstream_error_code" not in failure_log
+    assert "PRIVATE" not in str(failure_log)
 
 
 def test_timeout_cancels_the_turn_without_streaming_completion() -> None:
@@ -174,12 +223,19 @@ def test_timeout_cancels_the_turn_without_streaming_completion() -> None:
     orchestrator = SimpleNamespace(complete=complete)
 
     fast_stream_settings = SimpleNamespace(chat_stream_heartbeat_seconds=0.001)
-    with patch("app.chat.streaming.settings", fast_stream_settings):
+    with (
+        patch("app.chat.streaming.settings", fast_stream_settings),
+        capture_logs() as logs,
+    ):
         payload = asyncio.run(collect(orchestrator, timeout_seconds=0.005))
 
     assert '"code":"turn_timeout"' in payload
     assert '"type":"start"' not in payload
     assert cancelled.is_set()
+    timeout_log = next(log for log in logs if log["event"] == "chat_turn_timed_out")
+    assert timeout_log["error_code"] == "turn_timeout"
+    assert timeout_log["retryable"] is True
+    assert timeout_log["failed_after_stage"] == "stream.started"
 
 
 def test_client_disconnect_cancels_without_an_error_or_completed_message() -> None:
@@ -203,10 +259,17 @@ def test_client_disconnect_cancels_without_an_error_or_completed_message() -> No
         return "".join(events)
 
     fast_stream_settings = SimpleNamespace(chat_stream_heartbeat_seconds=0.001)
-    with patch("app.chat.streaming.settings", fast_stream_settings):
+    with (
+        patch("app.chat.streaming.settings", fast_stream_settings),
+        capture_logs() as logs,
+    ):
         payload = asyncio.run(run())
 
     assert '"type":"data-turn-status"' in payload
     assert '"type":"start"' not in payload
     assert '"type":"error"' not in payload
     assert cancelled.is_set()
+    disconnect_log = next(
+        log for log in logs if log["event"] == "chat_stream_disconnected"
+    )
+    assert disconnect_log["failed_after_stage"] == "stream.started"

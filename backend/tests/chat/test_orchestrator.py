@@ -29,6 +29,7 @@ NOW = datetime(2026, 8, 21, 12, 0, tzinfo=UTC)
 def make_settings() -> Settings:
     return Settings(
         _env_file=None,
+        app_environment="test",
         supabase_url="https://project.supabase.co",
         supabase_anon_key="test-anon-key",
         supabase_service_role_key="test-service-role-key",
@@ -238,6 +239,56 @@ def test_orchestrator_trace_covers_prepare_persistence_and_completion() -> None:
     )
     assert persistence_log["assistant_message_data"]["answerStatus"] == "supported"
     assert persistence_log["citations"][0]["chunk_id"] == str(UUID(int=1))
+
+
+def test_summary_trace_emits_one_safe_completion_record() -> None:
+    assistant = SimpleNamespace(run=AsyncMock(return_value=result()))
+    persist = AsyncMock(return_value=TurnPersistenceResult(assistant_created_at=NOW))
+    trace = AssistantTrace(
+        trace_id="trace-1",
+        thread_id=str(THREAD_ID),
+        user_id=str(USER_ID),
+        client_message_id="client-2",
+        mode="summary",
+        max_content_characters=12_000,
+    )
+    service = orchestrator(assistant, trace=trace)
+
+    async def run() -> None:
+        with (
+            patch(
+                "app.chat.orchestrator.chats.load_thread",
+                AsyncMock(return_value=({"id": str(THREAD_ID)}, history_rows(), [])),
+            ),
+            patch("app.chat.orchestrator.chats.complete_chat_turn", persist),
+        ):
+            prepared = await service.prepare(
+                thread_id=THREAD_ID,
+                user_id=USER_ID,
+                user_message=user_message(content="PRIVATE_QUESTION_SENTINEL"),
+            )
+            await service.complete(prepared)
+
+    with capture_logs() as logs:
+        asyncio.run(run())
+
+    completion_logs = [log for log in logs if log["event"] == "chat_turn_completed"]
+    assert len(completion_logs) == 1
+    assert completion_logs[0]["trace_id"] == "trace-1"
+    assert completion_logs[0]["answer_status"] == "supported"
+    assert completion_logs[0]["total_tokens"] == 130
+    assert completion_logs[0]["cost_usd"] == "0.01"
+    rendered = str(logs)
+    for forbidden in (
+        "PRIVATE_QUESTION_SENTINEL",
+        str(THREAD_ID),
+        str(USER_ID),
+        "client-2",
+        "chunk_id",
+        "assistant_message_data",
+        "citations",
+    ):
+        assert forbidden not in rendered
 
 
 def test_insufficient_evidence_turn_persists_without_citations() -> None:

@@ -5,6 +5,7 @@ from typing import Annotated, Literal, Self
 
 from pydantic import (
     AnyHttpUrl,
+    Field,
     NonNegativeFloat,
     NonNegativeInt,
     PositiveFloat,
@@ -171,8 +172,8 @@ class Settings(BaseSettings):
     # Character ceiling for frontend-generated client message IDs.
     chat_client_message_id_max_characters: PositiveInt = 200
 
-    # Characters retained per content value in summary-mode assistant traces.
-    assistant_trace_summary_characters: PositiveInt = 320
+    # Explicit runtime profile used to enforce safe logging combinations.
+    app_environment: Literal["development", "test", "production"]
     # Application log severity threshold.
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     # Structured production logs or readable local console logs.
@@ -181,6 +182,8 @@ class Settings(BaseSettings):
     assistant_trace_mode: Literal["off", "summary", "full"] = "summary"
     # Maximum characters retained for one content value in full assistant traces.
     assistant_trace_max_content_characters: PositiveInt = 12_000
+    # Hard byte ceiling for one production JSON event.
+    log_max_event_bytes: Annotated[int, Field(ge=1_024, le=65_536)] = 4_096
     # Browser origins permitted to call the API through CORS.
     allowed_origins: Annotated[tuple[AnyHttpUrl, ...], NoDecode]
 
@@ -204,6 +207,13 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_tuning_relationships(self) -> Self:
+        if self.app_environment == "production":
+            if self.log_format != "json":
+                raise ValueError("Production logging requires LOG_FORMAT=json")
+            if self.assistant_trace_mode == "full":
+                raise ValueError(
+                    "Production logging cannot use ASSISTANT_TRACE_MODE=full"
+                )
         if (
             self.openai_assistant_max_output_tokens
             > self.assistant_max_total_output_tokens

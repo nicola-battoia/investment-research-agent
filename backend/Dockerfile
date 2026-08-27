@@ -32,4 +32,4 @@ COPY --chown=app:app app ./app
 USER app
 
 # Railway supplies PORT; the fallback keeps the image convenient to run locally.
-CMD ["/bin/sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port \"${PORT:-8000}\""]
+CMD ["/bin/sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port \"${PORT:-8000}\" --no-access-log"]

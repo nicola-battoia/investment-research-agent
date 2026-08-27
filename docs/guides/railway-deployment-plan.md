@@ -47,7 +47,7 @@ The backend Root Directory is `/backend`, not `/backend/app`. The build needs `p
 The image starts Uvicorn using Railway's injected port:
 
 ```sh
-uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
+uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --no-access-log
 ```
 
 The command belongs in `backend/Dockerfile`. Do not duplicate it as a Railway Start Command.
@@ -120,9 +120,11 @@ OPENAI_ASSISTANT_MODEL
 OPENAI_ASSISTANT_REASONING_EFFORT
 OPENAI_ASSISTANT_MAX_OUTPUT_TOKENS
 ALLOWED_ORIGINS=https://10k-club.up.railway.app
+APP_ENVIRONMENT=production
 LOG_LEVEL=INFO
 LOG_FORMAT=json
 ASSISTANT_TRACE_MODE=summary
+LOG_MAX_EVENT_BYTES=4096
 ```
 
 Frontend build-time settings:
@@ -235,7 +237,7 @@ Both services run one replica in EU West and showed no crash loop. A successful 
 | CORS passed but the frontend still could not reach the API | `VITE_API_BASE_URL` had been compiled with an obsolete backend domain that returned Railway's `Application not found` | Read the active domain with `railway domain list`, set the explicit URL, wait for a new frontend build to finish, inspect the compiled asset, then hard-refresh. A restart alone cannot change Vite build-time values. |
 | UI showed “The research assistant is temporarily unavailable” | The SSE route opened, but the OpenAI call returned `429 credit_balance_exhausted` | Fund the OpenAI API organization/project that owns the existing key, or replace it with a funded key through `--stdin`. Adding credits to the current key does not require a Railway redeploy. |
 | Railway showed some `INFO` startup messages with error severity | Alembic and Uvicorn wrote informational messages to stderr, which Railway classified by stream | Read the message and process state, not severity alone. One Pre-Deploy container stop followed by the runtime start is expected; repeated runtime restarts are not. |
-| One exception log was extremely large and contained prompts and runtime-local data | Structured exception logging rendered `exc_info=True` with a verbose traceback containing frame locals and tool schemas | Harden production exception serialization before promotion. Log a bounded error type/code and correlation ID; do not include full prompts, conversation history, retrieved passages, secrets, or frame-local variables. This did not cause the model failure but is a security, privacy, cost, and observability risk. |
+| One exception log was extremely large and contained prompts and runtime-local data | Structured exception logging rendered `exc_info=True` with a verbose traceback containing frame locals and tool schemas | Production now uses metadata-only summary traces, a strict scalar allowlist, safe structured error codes, and a 4 KiB event ceiling. Local development retains the full trace. |
 | `GET /` and `/favicon.ico` returned backend 404s | The API intentionally defines `/health` and API routes, not a homepage | Verify `/health`; the two 404s are expected. |
 
 ## Current production gates
@@ -253,7 +255,7 @@ Completed:
 Still required before final promotion:
 
 - Restore a usable OpenAI API balance and verify a complete streamed assistant response and retrieval/citation flow.
-- Harden exception logging so production events are bounded and exclude prompts, conversation content, retrieved text, and frame locals.
+- Deploy and verify the logging hardening so production events are bounded and exclude prompts, conversation content, retrieved text, and frame locals.
 - Prove Watch Paths with isolated frontend-only and backend-only commits.
 - Merge the candidate to `main` and change the production branch only after the gates above pass.
 

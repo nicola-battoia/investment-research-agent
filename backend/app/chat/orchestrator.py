@@ -7,7 +7,6 @@ from dataclasses import dataclass, field
 from typing import Protocol
 from uuid import UUID, uuid4
 
-import structlog
 from openai import AsyncOpenAI
 from supabase import AsyncClient
 
@@ -28,8 +27,6 @@ from app.database import chats
 from app.grounding import GroundingValidator
 from app.retrieval.keywords import OpenAIKeywordExtractor
 from app.retrieval.retriever import DocumentRetriever
-
-logger = structlog.get_logger()
 
 
 class AssistantRunner(Protocol):
@@ -125,6 +122,7 @@ class ChatTurnOrchestrator:
             turn.trace.emit(
                 "chat_turn_completed",
                 "turn.completed",
+                operational=True,
                 cached_replay=True,
                 assistant_message_id=turn.cached_assistant.id,
                 answer_status=turn.cached_assistant.metadata.answer_status,
@@ -222,11 +220,11 @@ class ChatTurnOrchestrator:
             assistant_created_at=persistence.assistant_created_at,
             duration_ms=(time.perf_counter() - persistence_started) * 1000,
         )
-        logger.info(
+        turn.trace.emit(
             "chat_turn_completed",
-            trace_id=turn.trace.trace_id,
-            user_id=str(turn.user_id),
-            thread_id=str(turn.thread_id),
+            "turn.completed",
+            operational=True,
+            assistant_message_id=str(assistant_message_id),
             answer_status=result.answer.status,
             citation_count=len(result.answer.citations),
             requests=result.usage.requests,
@@ -234,15 +232,11 @@ class ChatTurnOrchestrator:
             input_tokens=result.usage.input_tokens,
             output_tokens=result.usage.output_tokens,
             total_tokens=result.usage.total_tokens,
-            cost_usd=(str(result.usage.cost_usd) if result.usage.cost_usd else None),
-        )
-        turn.trace.emit(
-            "chat_turn_completed",
-            "turn.completed",
-            assistant_message_id=str(assistant_message_id),
-            answer_status=result.answer.status,
-            citation_count=len(result.answer.citations),
-            usage=result.usage,
+            cost_usd=(
+                str(result.usage.cost_usd)
+                if result.usage.cost_usd is not None
+                else None
+            ),
             total_duration_ms=turn.trace.elapsed_ms,
         )
         return UIMessageResponse(

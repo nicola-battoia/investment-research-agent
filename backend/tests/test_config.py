@@ -6,6 +6,7 @@ from pathlib import Path
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 CONFIG_ENV_NAMES = {
+    "APP_ENVIRONMENT",
     "SUPABASE_URL",
     "SUPABASE_ANON_KEY",
     "SUPABASE_SERVICE_ROLE_KEY",
@@ -21,6 +22,7 @@ CONFIG_ENV_NAMES = {
     "ALLOWED_ORIGINS",
 }
 VALID_ENV = {
+    "APP_ENVIRONMENT": "test",
     "SUPABASE_URL": "http://localhost:54321",
     "SUPABASE_ANON_KEY": "test-anon-key",
     "SUPABASE_SERVICE_ROLE_KEY": "test-service-role-key",
@@ -77,7 +79,8 @@ def test_loads_and_normalizes_valid_settings(tmp_path: Path) -> None:
             "'assistant_effort': settings.openai_assistant_reasoning_effort, "
             "'assistant_max_tokens': "
             "settings.openai_assistant_max_output_tokens, "
-            "'chat_timeout': settings.chat_turn_timeout_seconds}))"
+            "'chat_timeout': settings.chat_turn_timeout_seconds, "
+            "'app_environment': settings.app_environment}))"
         ),
     )
 
@@ -90,6 +93,7 @@ def test_loads_and_normalizes_valid_settings(tmp_path: Path) -> None:
         "assistant_effort": "medium",
         "assistant_max_tokens": 3000,
         "chat_timeout": 180,
+        "app_environment": "test",
     }
 
 
@@ -177,3 +181,38 @@ def test_requires_psycopg_3_database_url(tmp_path: Path) -> None:
 
     assert result.returncode != 0
     assert "must use postgresql+psycopg:// for Psycopg 3" in result.stderr
+
+
+def test_requires_explicit_app_environment(tmp_path: Path) -> None:
+    result = run_config_import(
+        tmp_path,
+        missing={"APP_ENVIRONMENT"},
+        script="from app.config import Settings; Settings(_env_file=None)",
+    )
+
+    assert result.returncode != 0
+    assert "app_environment" in result.stderr
+
+
+def test_rejects_unsafe_production_logging_profiles(tmp_path: Path) -> None:
+    console = run_config_import(
+        tmp_path,
+        overrides={
+            "APP_ENVIRONMENT": "production",
+            "LOG_FORMAT": "console",
+            "ASSISTANT_TRACE_MODE": "summary",
+        },
+    )
+    full = run_config_import(
+        tmp_path,
+        overrides={
+            "APP_ENVIRONMENT": "production",
+            "LOG_FORMAT": "json",
+            "ASSISTANT_TRACE_MODE": "full",
+        },
+    )
+
+    assert console.returncode != 0
+    assert "Production logging requires LOG_FORMAT=json" in console.stderr
+    assert full.returncode != 0
+    assert "cannot use ASSISTANT_TRACE_MODE=full" in full.stderr

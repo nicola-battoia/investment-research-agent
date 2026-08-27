@@ -270,9 +270,11 @@ railway variable set \
   OPENAI_ASSISTANT_REASONING_EFFORT=medium \
   OPENAI_ASSISTANT_MAX_OUTPUT_TOKENS=3000 \
   ALLOWED_ORIGINS=https://10k-club.up.railway.app \
+  APP_ENVIRONMENT=production \
   LOG_LEVEL=INFO \
   LOG_FORMAT=json \
   ASSISTANT_TRACE_MODE=summary \
+  LOG_MAX_EVENT_BYTES=4096 \
   --json
 ```
 
@@ -537,7 +539,7 @@ Always bound `railway logs` with `--lines`, `--since`, or `--until`; otherwise i
 
 Alembic and Uvicorn write some informational startup lines to stderr, so Railway may label messages containing `INFO` as error severity. One Pre-Deploy container stopping before the runtime container starts is expected. Repeated runtime restarts are not.
 
-Before promotion, logs must avoid secret values, full prompts, conversation history, retrieved passages, and serialized frame-local variables. The initial deployment exposed an observability defect where `exc_info=True` plus structured traceback rendering produced excessively large exception events. That code-level hardening is tracked separately and remains a production gate.
+Production logs must contain only bounded metadata: trace/stage identity, durations, counts, status values, and safe error classifications. Prompts, history, answers, queries, passages, tool payloads, application identifiers, exception messages, tracebacks, and frame locals must be absent. The backend enforces this with the production runtime profile, a strict field allowlist, and a 4 KiB event ceiling.
 
 ## 10. Correct common first-deployment failures
 

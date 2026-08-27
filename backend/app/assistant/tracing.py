@@ -23,6 +23,7 @@ from pydantic_ai.models import ModelRequestContext
 from pydantic_ai.tools import RunContext, ToolDefinition
 
 from app.config import settings
+from app.logging_config import production_log_fields
 
 if TYPE_CHECKING:
     from app.assistant.deps import AssistantDeps
@@ -108,12 +109,16 @@ class AssistantTrace:
             user_id="disabled",
             client_message_id="disabled",
             mode="off",
-            max_content_characters=settings.assistant_trace_summary_characters,
+            max_content_characters=settings.assistant_trace_max_content_characters,
         )
 
     @property
     def enabled(self) -> bool:
         return self.mode != "off"
+
+    @property
+    def captures_content(self) -> bool:
+        return self.mode == "full"
 
     @property
     def last_stage(self) -> str:
@@ -129,30 +134,38 @@ class AssistantTrace:
         stage: str,
         *,
         level: Literal["debug", "info", "warning", "error"] = "info",
+        operational: bool = False,
         exc_info: bool = False,
         **fields: object,
     ) -> None:
-        if not self.enabled:
-            return
         self._sequence += 1
         self._last_stage = stage
+        if not self.enabled and not operational:
+            return
         logger = structlog.get_logger("assistant_trace")
         log = getattr(logger, level)
-        log(
-            event,
-            trace_id=self.trace_id,
-            sequence=self._sequence,
-            stage=stage,
-            elapsed_ms=round(self.elapsed_ms, 3),
-            thread_id=self.thread_id,
-            user_id=self.user_id,
-            client_message_id=self.client_message_id,
-            last_stage=self._last_stage,
-            exc_info=exc_info,
-            **self.serialize(fields),
-        )
+        context: dict[str, object] = {
+            "trace_id": self.trace_id,
+            "sequence": self._sequence,
+            "stage": stage,
+            "elapsed_ms": round(self.elapsed_ms, 3),
+        }
+        if self.mode == "full":
+            context.update(
+                thread_id=self.thread_id,
+                user_id=self.user_id,
+                client_message_id=self.client_message_id,
+                **self.serialize(fields),
+            )
+            if exc_info:
+                context["exc_info"] = True
+        else:
+            context.update(production_log_fields(fields))
+        log(event, **context)
 
     def serialize(self, value: object) -> Any:
+        if not self.captures_content:
+            return _OMITTED
         return _serialize(
             value,
             mode=self.mode,
@@ -265,15 +278,18 @@ def create_assistant_trace_hooks() -> Hooks[AssistantDeps]:
         request_context: ModelRequestContext,
     ) -> ModelRequestContext:
         trace = ctx.deps.trace
-        if not trace.enabled:
-            return request_context
         request_index = trace.begin_model_request()
         trace.emit(
             "assistant_model_request",
             "assistant.model.request",
             model_request_index=request_index,
             run_step=ctx.run_step,
-            input=serialize_request_context(request_context),
+            model=request_context.model_id or request_context.model.model_id,
+            input=(
+                serialize_request_context(request_context)
+                if trace.captures_content
+                else None
+            ),
         )
         return request_context
 
@@ -285,8 +301,6 @@ def create_assistant_trace_hooks() -> Hooks[AssistantDeps]:
         response: ModelResponse,
     ) -> ModelResponse:
         trace = ctx.deps.trace
-        if not trace.enabled:
-            return response
         request_index = trace.current_model_request()
         duration_ms = trace.finish_model_request(request_index)
         trace.emit(
@@ -298,7 +312,9 @@ def create_assistant_trace_hooks() -> Hooks[AssistantDeps]:
             model=request_context.model_id or request_context.model.model_id,
             provider_response_id=response.provider_response_id,
             finish_reason=response.finish_reason,
-            output=serialize_model_response(response),
+            output=(
+                serialize_model_response(response) if trace.captures_content else None
+            ),
         )
         return response
 
@@ -310,8 +326,6 @@ def create_assistant_trace_hooks() -> Hooks[AssistantDeps]:
         error: Exception,
     ) -> ModelResponse:
         trace = ctx.deps.trace
-        if not trace.enabled:
-            raise error
         request_index = trace.current_model_request()
         trace.emit(
             "assistant_model_request_failed",
@@ -335,8 +349,6 @@ def create_assistant_trace_hooks() -> Hooks[AssistantDeps]:
         args,
         error,
     ):
-        if not ctx.deps.trace.enabled:
-            raise error
         ctx.deps.trace.emit(
             "assistant_tool_validation_failed",
             "assistant.tool.validation_failed",
@@ -360,8 +372,6 @@ def create_assistant_trace_hooks() -> Hooks[AssistantDeps]:
         handler,
     ):
         trace = ctx.deps.trace
-        if not trace.enabled:
-            return await handler(args)
         tool_index = trace.begin_tool_call(call.tool_call_id)
         trace.emit(
             "assistant_tool_started",
@@ -405,8 +415,6 @@ def create_assistant_trace_hooks() -> Hooks[AssistantDeps]:
         output,
         error,
     ):
-        if not ctx.deps.trace.enabled:
-            raise error
         ctx.deps.trace.emit(
             "assistant_output_validation_failed",
             "assistant.output.validation_failed",
@@ -502,11 +510,7 @@ def _bounded_text(
     mode: TraceMode,
     max_content_characters: int,
 ) -> str | dict[str, object]:
-    limit = (
-        max_content_characters
-        if mode == "full"
-        else min(settings.assistant_trace_summary_characters, max_content_characters)
-    )
+    limit = max_content_characters if mode == "full" else 0
     if len(value) <= limit:
         return value
     return {

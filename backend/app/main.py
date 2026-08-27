@@ -70,7 +70,7 @@ def create_app(
         request: Request,
         error: ChatThreadNotFoundError,
     ) -> JSONResponse:
-        _log_handled_chat_error(request, error, "thread_missing")
+        _log_handled_chat_error(request, error, "thread_missing", 404)
         return JSONResponse(
             status_code=404, content={"detail": "Chat thread not found"}
         )
@@ -80,7 +80,7 @@ def create_app(
         request: Request,
         error: ChatThreadForbiddenError,
     ) -> JSONResponse:
-        _log_handled_chat_error(request, error, "thread_forbidden")
+        _log_handled_chat_error(request, error, "thread_forbidden", 403)
         return JSONResponse(
             status_code=403,
             content={"detail": "You do not have access to this chat thread"},
@@ -91,7 +91,7 @@ def create_app(
         request: Request,
         error: ChatPositionConflictError,
     ) -> JSONResponse:
-        _log_handled_chat_error(request, error, "turn_conflict")
+        _log_handled_chat_error(request, error, "turn_conflict", 409)
         return JSONResponse(
             status_code=409,
             content={"detail": "Another message is already being sent"},
@@ -99,7 +99,7 @@ def create_app(
 
     @application.exception_handler(APIError)
     async def database_error(request: Request, error: APIError) -> JSONResponse:
-        _log_handled_chat_error(request, error, "database_unavailable")
+        _log_handled_chat_error(request, error, "database_unavailable", 502)
         return JSONResponse(
             status_code=502,
             content={"detail": "The chat database request failed"},
@@ -112,15 +112,21 @@ def _log_handled_chat_error(
     request: Request,
     error: Exception,
     error_code: str,
+    http_status_code: int,
 ) -> None:
     trace = getattr(request.state, "assistant_trace", None)
     trace_id = getattr(trace, "trace_id", None)
     failed_after_stage = getattr(trace, "last_stage", "request.dispatch")
-    if trace is not None and trace.enabled:
+    route = getattr(request.scope.get("route"), "path", "unmatched")
+    if trace is not None:
         trace.emit(
             "chat_request_failed",
             "request.failed",
             level="warning",
+            operational=True,
+            method=request.method,
+            route=route,
+            http_status_code=http_status_code,
             error_class=type(error).__name__,
             error_code=error_code,
             failed_after_stage=failed_after_stage,
@@ -130,7 +136,8 @@ def _log_handled_chat_error(
             "chat_request_failed",
             trace_id=trace_id,
             method=request.method,
-            path=request.url.path,
+            route=route,
+            http_status_code=http_status_code,
             error_class=type(error).__name__,
             error_code=error_code,
             failed_after_stage=failed_after_stage,
