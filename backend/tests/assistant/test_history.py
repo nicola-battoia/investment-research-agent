@@ -16,17 +16,17 @@ def turn(index: int, *, size: int = 0) -> list[HistoryMessage]:
     ]
 
 
-def test_keeps_only_three_latest_complete_turns_and_removes_old_markers() -> None:
-    history = [message for index in range(1, 6) for message in turn(index)]
+def test_keeps_only_five_latest_complete_turns_and_removes_old_markers() -> None:
+    history = [message for index in range(1, 7) for message in turn(index)]
 
     messages = build_message_history(history)
 
-    assert len(messages) == 6
+    assert len(messages) == 10
     assert isinstance(messages[0], ModelRequest)
-    assert messages[0].parts[0].content == "question 3"
+    assert messages[0].parts[0].content == "question 2"
     assert isinstance(messages[1], ModelResponse)
-    assert messages[1].parts[0].content == "answer 3"
-    assert messages[-1].parts[0].content == "answer 5"
+    assert messages[1].parts[0].content == "answer 2"
+    assert messages[-1].parts[0].content == "answer 6"
 
 
 def test_drops_older_pairs_to_respect_character_budget() -> None:

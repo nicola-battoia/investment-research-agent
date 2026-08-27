@@ -492,7 +492,6 @@ dependencies = [
     { name = "alembic" },
     { name = "fastapi" },
     { name = "httpx" },
-    { name = "ipykernel" },
     { name = "openai" },
     { name = "pgvector" },
     { name = "psycopg", extra = ["binary"] },
@@ -507,6 +506,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "ipykernel" },
     { name = "lxml" },
     { name = "pytest" },
     { name = "ruff" },
@@ -518,7 +518,6 @@ requires-dist = [
     { name = "alembic", specifier = "==1.19.1" },
     { name = "fastapi", specifier = "==0.141.1" },
     { name = "httpx", specifier = "==0.28.1" },
-    { name = "ipykernel", specifier = "==7.3.0" },
     { name = "openai", specifier = "==2.53.0" },
     { name = "pgvector", specifier = "==0.5.0" },
     { name = "psycopg", extras = ["binary"], specifier = "==3.3.4" },
@@ -533,6 +532,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "ipykernel", specifier = "==7.3.0" },
     { name = "lxml", specifier = "==6.1.1" },
     { name = "pytest", specifier = "==9.1.1" },
     { name = "ruff", specifier = "==0.16.2" },

@@ -1,5 +1,6 @@
-from app.assistant.tracing import AssistantTrace, embedding_summary
 from structlog.testing import capture_logs
+
+from app.assistant.tracing import AssistantTrace, embedding_summary
 
 
 def trace(*, mode: str = "full", limit: int = 12_000) -> AssistantTrace:

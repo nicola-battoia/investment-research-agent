@@ -160,8 +160,7 @@ def test_accepts_ordered_omitted_fragments_at_all_excerpt_positions(
     assert resolved is not None
     assert resolved.kind == "text"
     assert [
-        FIRST_TEXT[highlight.start : highlight.end]
-        for highlight in resolved.highlights
+        FIRST_TEXT[highlight.start : highlight.end] for highlight in resolved.highlights
     ] == ["Services net sales", "cloud services revenue"]
 
 

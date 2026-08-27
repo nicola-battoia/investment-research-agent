@@ -3,13 +3,14 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
+from structlog.testing import capture_logs
+
 from app.assistant.tracing import AssistantTrace
 from app.retrieval.keywords import (
     KEYWORD_EXTRACTION_INSTRUCTIONS,
     OpenAIKeywordExtractor,
 )
 from app.retrieval.models import ExtractedKeywords, KeywordGroup
-from structlog.testing import capture_logs
 
 
 def test_extracted_keywords_normalize_and_deduplicate_search_terms() -> None:

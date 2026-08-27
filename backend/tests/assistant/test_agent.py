@@ -7,6 +7,10 @@ from uuid import UUID
 from zoneinfo import ZoneInfo
 
 import pytest
+from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart
+from pydantic_ai.models.function import FunctionModel
+from structlog.testing import capture_logs
+
 from app.assistant.agent import DocumentAssistant
 from app.assistant.deps import AssistantDeps, AssistantModelSettings
 from app.assistant.policy import INVESTMENT_ADVICE_STATEMENT
@@ -18,9 +22,6 @@ from app.retrieval.models import (
     RetrievalResult,
     SourcePassage,
 )
-from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart
-from pydantic_ai.models.function import FunctionModel
-from structlog.testing import capture_logs
 
 PASSAGE_TEXT = (
     "Services net sales increased because of higher advertising and cloud services "

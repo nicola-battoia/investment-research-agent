@@ -4,6 +4,7 @@ from io import StringIO
 from types import SimpleNamespace
 
 import structlog
+
 from app.logging_config import configure_logging
 
 

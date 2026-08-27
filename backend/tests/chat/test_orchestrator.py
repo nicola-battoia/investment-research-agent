@@ -6,6 +6,8 @@ from unittest.mock import AsyncMock, patch
 from uuid import UUID, uuid4
 
 import pytest
+from structlog.testing import capture_logs
+
 from app.assistant.outputs import (
     AnswerStatus,
     AssistantRunResult,
@@ -18,7 +20,6 @@ from app.chat.messages import InternalUserMessage
 from app.chat.orchestrator import ChatTurnOrchestrator, derive_thread_title
 from app.config import Settings
 from app.database.chats import ChatPositionConflictError, TurnPersistenceResult
-from structlog.testing import capture_logs
 
 USER_ID = UUID("8b50b43c-571d-4fbc-8a3b-32e3bbfa39da")
 THREAD_ID = UUID("1195cdd2-508e-4f18-ac86-8796e983a3e5")

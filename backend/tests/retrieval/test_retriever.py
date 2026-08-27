@@ -5,6 +5,8 @@ from unittest.mock import AsyncMock, patch
 from uuid import UUID
 
 import pytest
+from structlog.testing import capture_logs
+
 from app.assistant.tracing import AssistantTrace
 from app.retrieval.models import (
     ExtractedKeywords,
@@ -14,7 +16,6 @@ from app.retrieval.models import (
 )
 from app.retrieval.queries import RankedCandidate
 from app.retrieval.retriever import DocumentRetriever
-from structlog.testing import capture_logs
 
 IDS = tuple(UUID(int=value) for value in range(1, 8))
 DOCUMENT_ID = UUID(int=100)
