@@ -244,18 +244,21 @@ Both services run one replica in EU West and showed no crash loop. A successful 
 
 Completed:
 
-- 228 backend tests and all Ruff checks passed.
+- 239 backend tests and all Ruff checks passed.
 - Frontend TypeScript, ESLint, and production build passed.
 - Both production Docker images deployed successfully.
 - Alembic reached the current migration head.
 - Backend and frontend healthchecks passed.
 - SPA routing, HTTPS CORS, and the compiled frontend API URL were corrected and verified.
 - Supabase password authentication and chat creation/list/get reached the backend successfully.
+- Production logging hardening deployed in commit `83c3459` (Railway deployment
+  `78895768-eb1a-4286-bdc3-27146092e83e`). The healthcheck passed, and a bounded
+  audit of the new deployment's runtime logs found no event over 4 KiB and no
+  traceback, frame-local, content, or disallowed-correlation-ID patterns.
 
 Still required before final promotion:
 
-- Restore a usable OpenAI API balance and verify a complete streamed assistant response and retrieval/citation flow.
-- Deploy and verify the logging hardening so production events are bounded and exclude prompts, conversation content, retrieved text, and frame locals.
+- Restore a usable OpenAI API balance and verify a complete streamed assistant response and retrieval/citation flow. During that check, run harmless success and failure markers and confirm their assistant-stage logs remain bounded and metadata-only.
 - Prove Watch Paths with isolated frontend-only and backend-only commits.
 - Merge the candidate to `main` and change the production branch only after the gates above pass.
 
