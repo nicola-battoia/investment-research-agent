@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, patch
 from uuid import UUID
 
 import pytest
-
+from app.assistant.tracing import AssistantTrace
 from app.retrieval.models import (
     ExtractedKeywords,
     KeywordGroup,
@@ -14,6 +14,7 @@ from app.retrieval.models import (
 )
 from app.retrieval.queries import RankedCandidate
 from app.retrieval.retriever import DocumentRetriever
+from structlog.testing import capture_logs
 
 IDS = tuple(UUID(int=value) for value in range(1, 8))
 DOCUMENT_ID = UUID(int=100)
@@ -64,13 +65,18 @@ def passage(
     )
 
 
-def retriever(client: SimpleNamespace | None = None) -> DocumentRetriever:
+def retriever(
+    client: SimpleNamespace | None = None,
+    *,
+    trace: AssistantTrace | None = None,
+) -> DocumentRetriever:
     return DocumentRetriever(
         client or SimpleNamespace(),
         embedding_client(),
         keyword_extractor(),
         embedding_model="text-embedding-3-small",
         embedding_dimensions=3,
+        trace=trace,
     )
 
 
@@ -316,6 +322,54 @@ def test_candidate_branches_execute_concurrently() -> None:
         assert started == {"embedding", "keywords"}
 
     asyncio.run(exercise())
+
+
+def test_retrieval_trace_covers_embedding_branches_fusion_and_hydration() -> None:
+    active_trace = AssistantTrace(
+        trace_id="trace-1",
+        thread_id="thread-1",
+        user_id="user-1",
+        client_message_id="client-1",
+        mode="full",
+        max_content_characters=12_000,
+    )
+    service = retriever(trace=active_trace)
+    semantic = [RankedCandidate(IDS[0], 0.9)]
+    hydrated = [passage(IDS[0], 10)]
+
+    with (
+        patch(
+            "app.retrieval.retriever.semantic_search",
+            AsyncMock(return_value=semantic),
+        ),
+        patch(
+            "app.retrieval.retriever.lexical_search",
+            AsyncMock(return_value=[]),
+        ),
+        patch(
+            "app.retrieval.retriever.hydrate_passages",
+            AsyncMock(return_value=hydrated),
+        ),
+        capture_logs() as logs,
+    ):
+        result = asyncio.run(service.search("revenue", limit=1))
+
+    events = {log["event"] for log in logs}
+    assert result.passages[0].chunk_id == IDS[0]
+    assert {
+        "retrieval_search_started",
+        "retrieval_embedding_request",
+        "retrieval_embedding_response",
+        "retrieval_semantic_candidates",
+        "retrieval_lexical_candidates",
+        "retrieval_fusion_completed",
+        "retrieval_search_completed",
+    } <= events
+    embedding_log = next(
+        log for log in logs if log["event"] == "retrieval_embedding_response"
+    )
+    assert embedding_log["output"]["dimensions"] == 3
+    assert [0.1, 0.2, 0.3] not in embedding_log["output"].values()
 
 
 def test_candidate_details_preserve_branch_scores_and_fused_ranks() -> None:

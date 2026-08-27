@@ -10,6 +10,7 @@ from pydantic_ai.models.openai import OpenAIResponsesModelSettings
 
 from app.assistant.evidence import TurnEvidence
 from app.assistant.outputs import GroundedAnswer
+from app.assistant.tracing import AssistantTrace
 from app.retrieval.retriever import DocumentRetriever
 
 if TYPE_CHECKING:
@@ -26,6 +27,9 @@ class AssistantModelSettings:
     model_name: str
     reasoning_effort: ReasoningEffort
     max_output_tokens: int
+    parallel_tool_calls: bool = False
+    store_responses: bool = False
+    text_verbosity: Literal["low", "medium", "high"] = "low"
 
     @classmethod
     def from_app_settings(cls, settings: Settings) -> AssistantModelSettings:
@@ -33,15 +37,18 @@ class AssistantModelSettings:
             model_name=settings.openai_assistant_model,
             reasoning_effort=settings.openai_assistant_reasoning_effort,
             max_output_tokens=settings.openai_assistant_max_output_tokens,
+            parallel_tool_calls=settings.assistant_parallel_tool_calls,
+            store_responses=settings.openai_store_responses,
+            text_verbosity=settings.assistant_text_verbosity,
         )
 
     def to_pydantic_ai(self) -> OpenAIResponsesModelSettings:
         return OpenAIResponsesModelSettings(
             max_tokens=self.max_output_tokens,
-            parallel_tool_calls=False,
+            parallel_tool_calls=self.parallel_tool_calls,
             openai_reasoning_effort=self.reasoning_effort,
-            openai_store=False,
-            openai_text_verbosity="low",
+            openai_store=self.store_responses,
+            openai_text_verbosity=self.text_verbosity,
         )
 
 
@@ -60,6 +67,7 @@ class AssistantDeps:
     retriever: DocumentRetriever
     grounding_validator: GroundingValidator
     model_settings: AssistantModelSettings
+    trace: AssistantTrace = field(default_factory=AssistantTrace.disabled)
     evidence: TurnEvidence = field(default_factory=TurnEvidence)
     counters: ToolCounters = field(default_factory=ToolCounters)
     validated_answer: GroundedAnswer | None = None

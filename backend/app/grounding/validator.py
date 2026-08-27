@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 from collections.abc import Mapping
 from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
@@ -23,12 +24,13 @@ from app.assistant.policy import (
     INSUFFICIENT_EVIDENCE_STATEMENT,
     INVESTMENT_ADVICE_STATEMENT,
 )
+from app.config import settings
 from app.retrieval.display_tables import StoredDisplayTable
 from app.retrieval.models import SourcePassage
 
 SOURCE_MARKER_RE = re.compile(r"\[(S[1-9][0-9]*)\]")
 SOURCE_LIKE_MARKER_RE = re.compile(r"\[S[^\]]*\]")
-MAX_NON_RETRIEVAL_ANSWER_CHARACTERS = 1_000
+EXCERPT_OMISSION_RE = re.compile(r"(?:\.{3}|…)")
 NON_RETRIEVAL_STATUSES = frozenset(("conversational", "out_of_scope"))
 PROHIBITED_ADVICE_PATTERNS = (
     re.compile(r"\b(?:i|we)\s+(?:would\s+)?recommend\b", re.IGNORECASE),
@@ -121,10 +123,10 @@ class GroundingValidator:
             raise GroundingValidationError(
                 f"A {draft.status} answer cannot contain citations"
             )
-        if len(draft.answer) > MAX_NON_RETRIEVAL_ANSWER_CHARACTERS:
+        if len(draft.answer) > settings.assistant_max_non_retrieval_answer_characters:
             raise GroundingValidationError(
                 f"A {draft.status} answer cannot exceed "
-                f"{MAX_NON_RETRIEVAL_ANSWER_CHARACTERS} characters"
+                f"{settings.assistant_max_non_retrieval_answer_characters} characters"
             )
         return GroundedAnswer(
             status=draft.status,
@@ -178,21 +180,27 @@ class GroundingValidator:
             )
 
         resolved = []
+        citation_errors = []
         for index, source_id in enumerate(ordered_marker_ids):
             passage = evidence.get(source_id)
             if passage is None:
-                raise GroundingValidationError(
+                citation_errors.append(
                     f"Citation {source_id} was not retrieved during this turn"
                 )
+                continue
             if source_id not in read_source_ids:
-                raise GroundingValidationError(
+                citation_errors.append(
                     f"Citation {source_id} must be read before it can be cited"
                 )
+                continue
             excerpt = references[source_id].excerpt
-            if _normalized_text(excerpt) not in _normalized_text(passage.text):
-                raise GroundingValidationError(
-                    f"Citation {source_id} excerpt is not present in its passage"
+            excerpt_ranges = _excerpt_raw_ranges(excerpt, passage.text)
+            if not excerpt_ranges:
+                citation_errors.append(
+                    f"Citation {source_id} excerpt fragments are not present in "
+                    "order in its passage"
                 )
+                continue
             resolved.append(
                 Citation(
                     source_id=source_id,
@@ -212,8 +220,12 @@ class GroundingValidator:
                     section_title=passage.section_title,
                     source_start=passage.source_start,
                     source_end=passage.source_end,
-                    passage=_citation_passage(excerpt, passage),
+                    passage=_citation_passage(passage, excerpt_ranges),
                 )
+            )
+        if citation_errors:
+            raise GroundingValidationError(
+                "Citation validation failed: " + "; ".join(citation_errors)
             )
         return tuple(resolved)
 
@@ -260,9 +272,47 @@ def _normalized_text_with_offsets(value: str) -> _NormalizedText:
     )
 
 
-def _exact_raw_ranges(excerpt: str, passage_text: str) -> tuple[tuple[int, int], ...]:
-    normalized_excerpt = _normalized_text(excerpt)
+def _excerpt_raw_ranges(
+    excerpt: str,
+    passage_text: str,
+) -> tuple[tuple[int, int], ...]:
     normalized_passage = _normalized_text_with_offsets(passage_text)
+    fragments = tuple(
+        normalized
+        for part in EXCERPT_OMISSION_RE.split(excerpt)
+        if (normalized := _normalized_text(part))
+        and _without_boundary_punctuation(normalized)
+    )
+    if not fragments:
+        return ()
+
+    if len(fragments) == 1:
+        exact_ranges = _all_raw_ranges(fragments[0], normalized_passage)
+        if exact_ranges:
+            return exact_ranges
+        return _all_raw_ranges(
+            _without_boundary_punctuation(fragments[0]),
+            normalized_passage,
+        )
+
+    ranges = []
+    search_start = 0
+    for fragment in fragments:
+        match = _next_fragment_match(fragment, normalized_passage.text, search_start)
+        if match is None:
+            return ()
+        match_start, match_end = match
+        ranges.append(_raw_range(normalized_passage, match_start, match_end))
+        search_start = match_end
+    return tuple(ranges)
+
+
+def _all_raw_ranges(
+    normalized_excerpt: str,
+    normalized_passage: _NormalizedText,
+) -> tuple[tuple[int, int], ...]:
+    if not normalized_excerpt:
+        return ()
     ranges = []
     search_start = 0
     while True:
@@ -270,24 +320,57 @@ def _exact_raw_ranges(excerpt: str, passage_text: str) -> tuple[tuple[int, int],
         if match_start < 0:
             break
         match_end = match_start + len(normalized_excerpt)
-        ranges.append(
-            (
-                normalized_passage.raw_starts[match_start],
-                normalized_passage.raw_ends[match_end - 1],
-            )
-        )
+        ranges.append(_raw_range(normalized_passage, match_start, match_end))
         search_start = match_start + 1
     return tuple(ranges)
 
 
-def _citation_passage(
-    excerpt: str,
-    passage: SourcePassage,
-) -> TextCitationPassage | TableCitationPassage:
-    ranges = _exact_raw_ranges(excerpt, passage.text)
-    if not ranges:
-        raise AssertionError("Validated citation excerpt has no raw passage range")
+def _next_fragment_match(
+    fragment: str,
+    passage_text: str,
+    search_start: int,
+) -> tuple[int, int] | None:
+    relaxed_fragment = _without_boundary_punctuation(fragment)
+    candidates = []
+    for priority, value in enumerate(dict.fromkeys((fragment, relaxed_fragment))):
+        match_start = passage_text.find(value, search_start)
+        if match_start >= 0:
+            candidates.append((match_start, priority, match_start + len(value)))
+    if not candidates:
+        return None
+    match_start, _priority, match_end = min(candidates)
+    return match_start, match_end
 
+
+def _without_boundary_punctuation(value: str) -> str:
+    start = 0
+    end = len(value)
+    while start < end and _is_boundary_punctuation_or_space(value[start]):
+        start += 1
+    while end > start and _is_boundary_punctuation_or_space(value[end - 1]):
+        end -= 1
+    return value[start:end]
+
+
+def _is_boundary_punctuation_or_space(character: str) -> bool:
+    return character.isspace() or unicodedata.category(character).startswith("P")
+
+
+def _raw_range(
+    normalized_passage: _NormalizedText,
+    match_start: int,
+    match_end: int,
+) -> tuple[int, int]:
+    return (
+        normalized_passage.raw_starts[match_start],
+        normalized_passage.raw_ends[match_end - 1],
+    )
+
+
+def _citation_passage(
+    passage: SourcePassage,
+    ranges: tuple[tuple[int, int], ...],
+) -> TextCitationPassage | TableCitationPassage:
     table_passage = _table_citation_passage(passage.display_table, ranges)
     if table_passage is not None:
         return table_passage

@@ -18,14 +18,12 @@ from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.config import settings
 from app.database.base import Base, TimestampMixin
 
 if TYPE_CHECKING:
     from app.database.message_citations import MessageCitation
     from app.database.source_documents import SourceDocument
-
-
-EMBEDDING_DIMENSIONS = 1536
 
 
 class DocumentChunk(TimestampMixin, Base):
@@ -91,7 +89,7 @@ class DocumentChunk(TimestampMixin, Base):
     )
     display_table: Mapped[dict[str, object] | None] = mapped_column(JSONB)
     embedding: Mapped[list[float]] = mapped_column(
-        Vector(EMBEDDING_DIMENSIONS),
+        Vector(settings.openai_embedding_dimensions),
         nullable=False,
     )
     search_vector: Mapped[str] = mapped_column(

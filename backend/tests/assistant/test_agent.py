@@ -7,12 +7,10 @@ from uuid import UUID
 from zoneinfo import ZoneInfo
 
 import pytest
-from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart
-from pydantic_ai.models.function import FunctionModel
-
 from app.assistant.agent import DocumentAssistant
 from app.assistant.deps import AssistantDeps, AssistantModelSettings
 from app.assistant.policy import INVESTMENT_ADVICE_STATEMENT
+from app.assistant.tracing import AssistantTrace
 from app.grounding.validator import GroundingFailureError, GroundingValidator
 from app.retrieval.models import (
     ExtractedKeywords,
@@ -20,6 +18,9 @@ from app.retrieval.models import (
     RetrievalResult,
     SourcePassage,
 )
+from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart
+from pydantic_ai.models.function import FunctionModel
+from structlog.testing import capture_logs
 
 PASSAGE_TEXT = (
     "Services net sales increased because of higher advertising and cloud services "
@@ -280,17 +281,32 @@ def test_agent_retries_an_unscoped_search_before_retrieval() -> None:
 
     retriever = SimpleNamespace(search=AsyncMock(return_value=retrieval_result()))
 
-    result = asyncio.run(
-        DocumentAssistant(FunctionModel(model_function)).run(
-            "What drove Apple's Services growth?",
-            make_deps(retriever),
-        )
+    deps = make_deps(retriever)
+    deps.trace = AssistantTrace(
+        trace_id="trace-validation",
+        thread_id="thread-1",
+        user_id="user-1",
+        client_message_id="client-1",
+        mode="full",
+        max_content_characters=12_000,
     )
+    with capture_logs() as logs:
+        result = asyncio.run(
+            DocumentAssistant(FunctionModel(model_function)).run(
+                "What drove Apple's Services growth?",
+                deps,
+            )
+        )
 
     assert result.answer.status == "supported"
     assert calls == 4
     assert retriever.search.await_count == 1
     assert retriever.search.await_args.args[1].tickers == ("AAPL",)
+    validation_failure = next(
+        log for log in logs if log["event"] == "assistant_tool_validation_failed"
+    )
+    assert validation_failure["tool_name"] == "search_filings"
+    assert validation_failure["tool_call_id"] == "unscoped-search"
 
 
 def test_agent_retries_one_invalid_grounded_output_then_succeeds() -> None:
@@ -340,6 +356,73 @@ def test_agent_retries_one_invalid_grounded_output_then_succeeds() -> None:
 
     assert result.answer.status == "supported"
     assert result.usage.requests == 4
+
+
+def test_agent_trace_correlates_model_tools_and_grounding_retry() -> None:
+    calls = 0
+
+    def model_function(_messages, _info) -> ModelResponse:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return ModelResponse(
+                parts=[
+                    ToolCallPart(
+                        "search_filings",
+                        {"query": "Services", "filters": {"corpus_wide": True}},
+                        "search-call",
+                    )
+                ]
+            )
+        if calls == 2:
+            return ModelResponse(
+                parts=[ToolCallPart("read_chunk", {"source_id": "S1"}, "read-call")]
+            )
+        if calls == 3:
+            return ModelResponse(
+                parts=[
+                    TextPart(
+                        content=json.dumps(
+                            {
+                                "status": "supported",
+                                "answer": "An uncited answer.",
+                                "citations": [],
+                            }
+                        )
+                    )
+                ]
+            )
+        return ModelResponse(parts=[TextPart(content=json.dumps(grounded_output()))])
+
+    retriever = SimpleNamespace(search=AsyncMock(return_value=retrieval_result()))
+    deps = make_deps(retriever)
+    deps.trace = AssistantTrace(
+        trace_id="trace-1",
+        thread_id="thread-1",
+        user_id="user-1",
+        client_message_id="client-1",
+        mode="full",
+        max_content_characters=12_000,
+    )
+
+    with capture_logs() as logs:
+        result = asyncio.run(
+            DocumentAssistant(FunctionModel(model_function)).run(
+                "What drove Services growth?",
+                deps,
+            )
+        )
+
+    events = [log["event"] for log in logs]
+    assert result.answer.status == "supported"
+    assert events.count("assistant_model_request") == 4
+    assert events.count("assistant_model_response") == 4
+    assert events.count("assistant_tool_started") == 2
+    assert events.count("assistant_tool_completed") == 2
+    assert "assistant_grounding_rejected" in events
+    assert "assistant_grounding_accepted" in events
+    assert all(log["trace_id"] == "trace-1" for log in logs)
+    assert [log["sequence"] for log in logs] == list(range(1, len(logs) + 1))
 
 
 def test_agent_raises_controlled_failure_after_grounding_retry() -> None:

@@ -339,7 +339,7 @@ result = await self._agent.run(
     message_history=build_message_history(history),
     model_settings=deps.model_settings.to_pydantic_ai(),
     usage_limits=UsageLimits(
-        request_limit=8,
+        request_limit=12,
         tool_calls_limit=12,
         output_tokens_limit=6_000,
         per_request_input_tokens_limit=64_000,
@@ -349,11 +349,13 @@ result = await self._agent.run(
 ```
 
 The orchestrator does not pass an `event_stream_handler`, so it is `None` here.
-PydanticAI internally performs the model/tool loop: it sends the instructions,
-history, question, tool schemas, and structured output schema; executes a local
-Python tool when the model requests one; sends that tool result back to the
-model; and repeats until the model returns the final structured answer or a
-limit/error stops the run. The browser does not call these tools and does not
+The agent instead registers passive PydanticAI lifecycle hooks. Those hooks record
+the complete semantic request/response boundary and tool validation/execution events
+without changing them. PydanticAI performs the model/tool loop: it sends the
+instructions, history, question, tool schemas, and structured output schema;
+executes a local Python tool when the model requests one; sends that tool result
+back to the model; and repeats until the model returns the final structured answer
+or a limit/error stops the run. The browser does not call these tools and does not
 see their intermediate events.
 
 The agent identity, output contract, and tool list are defined in
@@ -571,24 +573,28 @@ use zero searches, contain no citations or source-like markers, and stay within
 there is no second classifier. For a supported answer the validator requires at
 least one search and one citation. For every inline `[S<number>]` marker, it
 requires one matching structured citation, verifies that the source was
-retrieved **and read**, and verifies the proposed 20–500 character excerpt occurs
-in that full passage:
+retrieved **and read**, and verifies every source fragment in the proposed 20–500
+character excerpt. Runs of whitespace and case are normalized, punctuation at a
+fragment boundary may differ, and `...` or `…` may separate omitted source text.
+Every substantive fragment must still occur in the full passage in source order:
 
 ```py
 if source_id not in read_source_ids:
-    raise GroundingValidationError(f"Citation {source_id} must be read before it can be cited")
+    citation_errors.append(f"Citation {source_id} must be read before it can be cited")
 excerpt = references[source_id].excerpt
-if _normalized_text(excerpt) not in _normalized_text(passage.text):
-    raise GroundingValidationError(
-        f"Citation {source_id} excerpt is not present in its passage")
+excerpt_ranges = _excerpt_raw_ranges(excerpt, passage.text)
+if not excerpt_ranges:
+    citation_errors.append(
+        f"Citation {source_id} excerpt fragments are not present in order")
 ```
 
 It also enforces exact insufficient-evidence wording with no citations, required
 investment-advice refusal wording, marker/reference agreement, and a set of
-prohibited investment-advice patterns across every status. On the first invalid
-final output, `ModelRetry` asks the agent to correct its answer. If its allowed
-output retry is exhausted, `GroundingFailureError` prevents a response from being
-persisted or shown; streaming maps it to `grounding_failed`.
+prohibited investment-advice patterns across every status. Citation-specific errors
+are collected before validation fails, so one `ModelRetry` asks the agent to correct
+all bad citations together. If its allowed output retry is exhausted,
+`GroundingFailureError` prevents a response from being persisted or shown; streaming
+maps it to `grounding_failed`.
 
 ## 7. Persist first, then stream the completed answer
 
@@ -639,3 +645,35 @@ encounters a database conflict, the stream sends a stable error event rather
 than an unvalidated partial answer. The frontend can reconcile a broken stream
 by reloading the thread, which is safe because successful turns have already
 been atomically committed.
+
+## 8. Correlated backend diagnostics
+
+[`app/assistant/tracing.py`](app/assistant/tracing.py) owns one mutable trace object
+per frontend turn. The API route creates it before thread preparation and passes it
+through the orchestrator, `PreparedChatTurn`, `AssistantDeps`, keyword extractor,
+and retriever. Every record has a unique `trace_id`, ordered `sequence`, current
+`stage`, user/thread/client-message identifiers, and elapsed time. This explicit
+request-local object prevents concurrent turns from mixing correlation state.
+
+The trace records these boundaries:
+
+- `turn.*`: request content, thread/history loading, cache replay, and completion.
+- `assistant.model.*`: instructions, messages, tool and output definitions, model
+  settings, observable response parts, provider response ID, finish reason, usage,
+  duration, and errors for every model request.
+- `assistant.tool.*`: raw validation failures, validated arguments, execution result,
+  retry/error, tool-call ID, tool index, and duration.
+- `retrieval.*`: keyword-model input/output, embedding metadata and fingerprint,
+  semantic/lexical candidates, RRF fusion, hydration, bridge context, and surrounding
+  reads. Raw embedding vectors are never logged.
+- `assistant.grounding.*`: the model-selected draft status, evidence/read state,
+  exact deterministic rejection, retry availability, or stable acceptance reason.
+- `turn.persistence.*` and `stream.*`: atomic database completion, timeout,
+  disconnect, mapped failure, traceback, and final delivery.
+
+Local development uses `LOG_FORMAT=console` and `ASSISTANT_TRACE_MODE=full`.
+Railway uses `LOG_FORMAT=json` and `ASSISTANT_TRACE_MODE=summary`; its log search can
+filter one complete turn by `trace_id`. Summary mode limits raw text to short
+previews. Full mode is still bounded, and truncated fields include total/omitted
+character counts and a SHA-256 fingerprint. Secret-bearing keys and token patterns,
+provider-private payloads, hidden reasoning, and embeddings are redacted or omitted.

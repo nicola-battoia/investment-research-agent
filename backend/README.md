@@ -21,6 +21,56 @@ uv run uvicorn app.main:app --reload
 - Health check: <http://localhost:8000/health>
 - Interactive API docs: <http://localhost:8000/docs>
 
+### Trace assistant turns
+
+Every `POST /chat/stream` receives a unique `trace_id`. With the local values in
+`.env.example`, the backend prints a readable, ordered trace covering the accepted
+question, selected history, every assistant model request and response, tool calls
+and results, keyword extraction, embeddings, retrieval rankings, grounding,
+persistence, and final SSE delivery.
+
+```dotenv
+LOG_LEVEL=INFO
+LOG_FORMAT=console
+ASSISTANT_TRACE_MODE=full
+ASSISTANT_TRACE_MAX_CONTENT_CHARACTERS=12000
+```
+
+The important event sequence is:
+
+```text
+chat_turn_received
+assistant_model_request -> assistant_model_response
+assistant_tool_started -> retrieval_* -> assistant_tool_completed
+assistant_grounding_proposed -> assistant_grounding_accepted|rejected
+chat_turn_persistence_started -> chat_turn_persistence_completed
+chat_turn_completed -> chat_stream_completed
+```
+
+Filter a busy terminal or Railway log search by the emitted `trace_id` to isolate
+one turn. Model requests contain the semantic messages and tool/output definitions
+assembled by PydanticAI. Model responses contain observable response parts, tool
+decisions, usage, and finish metadata; private hidden reasoning is deliberately not
+recorded.
+
+Use safe, structured settings in Railway:
+
+```dotenv
+LOG_LEVEL=INFO
+LOG_FORMAT=json
+ASSISTANT_TRACE_MODE=summary
+ASSISTANT_TRACE_MAX_CONTENT_CHARACTERS=12000
+```
+
+`summary` keeps metadata, hashes, sizes, and short previews. `full` preserves normal
+questions, instructions, answers, and tool payloads up to the configured bound.
+Anything larger records its original size, omitted size, and SHA-256 fingerprint.
+Authorization values, API keys, secrets, provider-private fields, embedding vectors,
+and hidden reasoning are never written. Because local full traces contain user and
+filing content, do not paste them into tickets without reviewing them first. Set
+`ASSISTANT_TRACE_MODE=off` to disable detailed turn events while retaining the
+existing completion/failure operational logs.
+
 ## Check changes
 
 ```bash
@@ -184,11 +234,13 @@ flowchart TD
 Search results expose bounded previews. The agent must explicitly read a passage
 before it can cite it, and citations use current-turn labels such as `[S1]` rather
 than model-supplied database UUIDs. The grounding validator then verifies that
-inline markers, structured citation references, exact excerpts, and retrieved
-passages agree. Greetings and onboarding can return concise `conversational`
-answers without retrieval, while unrelated requests return an `out_of_scope`
-redirect. Both paths prohibit searches, citations, and source markers. Unsupported
-filing questions return a fixed, uncited corpus-insufficiency statement. Investment
+inline markers, structured citation references, ordered source excerpt fragments,
+and retrieved passages agree. Excerpts may use ellipses for omitted source text and
+may vary punctuation only at fragment boundaries. Greetings and onboarding can
+return concise `conversational` answers without retrieval, while unrelated requests
+return an `out_of_scope` redirect. Both paths prohibit searches, citations, and
+source markers. Unsupported filing questions return a fixed, uncited
+corpus-insufficiency statement. Investment
 questions may receive cited factual context, but always end with the fixed
 investment-advice refusal.
 
@@ -209,9 +261,9 @@ cell. There are no arguments and no terminal command.
 This is the real Phase 8 workflow, not a second implementation. It constructs a
 user-scoped Supabase client, runs the PydanticAI assistant, and logs each bounded
 tool call and result. At the end it shows every current-turn `S#` passage, whether
-the assistant read or cited it, the validated answer and exact excerpts, and model
-usage. The last two cells leave the typed answer and evidence records available for
-normal IPython inspection.
+the assistant read or cited it, the validated answer and source-backed excerpts, and
+model usage. The last two cells leave the typed answer and evidence records available
+for normal IPython inspection.
 
 Configure answer generation separately from embeddings and keyword extraction:
 
@@ -223,8 +275,8 @@ CHAT_TURN_TIMEOUT_SECONDS=180
 ```
 
 Successful streams emit AI SDK text parts, SEC `source-url` parts, and typed
-`data-citation` parts containing the exact excerpt and filing locators used by the
-frontend source panel. The user message, validated assistant message, normalized
+`data-citation` parts containing the validated excerpt and filing locators used by
+the frontend source panel. The user message, validated assistant message, normalized
 citations, model usage, thread timestamp, and first-question title are written by
 one RLS-aware Postgres function. A failed grounding check, upstream failure,
 timeout, or cancellation never creates a partial assistant message. Client message

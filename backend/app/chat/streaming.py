@@ -24,11 +24,10 @@ from app.chat.messages import (
     UIMessageResponse,
 )
 from app.chat.orchestrator import ChatTurnOrchestrator, PreparedChatTurn
+from app.config import settings
 from app.database.chats import ChatPositionConflictError, ChatThreadNotFoundError
 from app.grounding import GroundingFailureError
 
-HEARTBEAT_SECONDS = 15
-TEXT_DELTA_CHARACTERS = 160
 logger = structlog.get_logger()
 
 
@@ -103,6 +102,12 @@ async def chat_turn_events(
     turn: PreparedChatTurn,
     timeout_seconds: int,
 ) -> AsyncIterator[str]:
+    trace = turn.trace
+    trace.emit(
+        "chat_stream_started",
+        "stream.started",
+        timeout_seconds=timeout_seconds,
+    )
     yield _status_event()
     task = asyncio.create_task(orchestrator.complete(turn))
     try:
@@ -111,19 +116,30 @@ async def chat_turn_events(
             while completed is None:
                 done, _pending = await asyncio.wait(
                     {task},
-                    timeout=HEARTBEAT_SECONDS,
+                    timeout=settings.chat_stream_heartbeat_seconds,
                 )
                 if task in done:
                     completed = task.result()
                     break
                 if await request.is_disconnected():
                     await _cancel(task)
+                    trace.emit(
+                        "chat_stream_disconnected",
+                        "stream.disconnected",
+                        level="warning",
+                    )
                     return
                 yield _status_event()
         if completed is None:
             return
     except TimeoutError:
         await _cancel(task)
+        trace.emit(
+            "chat_turn_timed_out",
+            "stream.timeout",
+            level="warning",
+            timeout_seconds=timeout_seconds,
+        )
         async for event in _failure_events(
             StreamFailure(
                 code="turn_timeout",
@@ -135,25 +151,57 @@ async def chat_turn_events(
         return
     except asyncio.CancelledError:
         await _cancel(task)
-        raise
-    except Exception as error:  # noqa: BLE001 - stream errors need a stable protocol
-        failure = _mapped_failure(error)
-        logger.warning(
-            "chat_turn_failed",
-            thread_id=str(turn.thread_id),
-            user_id=str(turn.user_id),
-            error_class=type(error).__name__,
-            error_code=failure.code,
-            **_error_log_context(error),
+        trace.emit(
+            "chat_stream_cancelled",
+            "stream.cancelled",
+            level="warning",
         )
+        raise
+    except Exception as error:
+        failure = _mapped_failure(error)
+        failed_after_stage = trace.last_stage
+        if trace.enabled:
+            trace.emit(
+                "chat_turn_failed",
+                "stream.failed",
+                level="error",
+                exc_info=True,
+                error_class=type(error).__name__,
+                error_code=failure.code,
+                failed_after_stage=failed_after_stage,
+                **_error_log_context(error),
+            )
+        else:
+            logger.exception(
+                "chat_turn_failed",
+                thread_id=str(turn.thread_id),
+                user_id=str(turn.user_id),
+                failed_after_stage=failed_after_stage,
+                error_class=type(error).__name__,
+                error_code=failure.code,
+                **_error_log_context(error),
+            )
         async for event in _failure_events(failure):
             yield event
         return
 
     if await request.is_disconnected():
+        trace.emit(
+            "chat_stream_disconnected",
+            "stream.disconnected",
+            level="warning",
+            persisted=True,
+        )
         return
     async for event in _completed_turn_events(completed):
         yield event
+    trace.emit(
+        "chat_stream_completed",
+        "stream.completed",
+        assistant_message_id=completed.id,
+        answer_status=completed.metadata.answer_status,
+        total_duration_ms=trace.elapsed_ms,
+    )
 
 
 async def _completed_turn_events(message: UIMessageResponse) -> AsyncIterator[str]:
@@ -169,12 +217,18 @@ async def _completed_turn_events(message: UIMessageResponse) -> AsyncIterator[st
         if isinstance(part, TextPart):
             text_id = f"{message.id}-text-{index}"
             yield _event({"type": "text-start", "id": text_id})
-            for offset in range(0, len(part.text), TEXT_DELTA_CHARACTERS):
+            for offset in range(
+                0,
+                len(part.text),
+                settings.chat_stream_text_delta_characters,
+            ):
                 yield _event(
                     {
                         "type": "text-delta",
                         "id": text_id,
-                        "delta": part.text[offset : offset + TEXT_DELTA_CHARACTERS],
+                        "delta": part.text[
+                            offset : offset + settings.chat_stream_text_delta_characters
+                        ],
                     }
                 )
                 await asyncio.sleep(0)

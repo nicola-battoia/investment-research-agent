@@ -5,7 +5,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from uuid import UUID
 
-DEFAULT_RRF_K = 60
+from app.config import settings
 
 
 @dataclass(frozen=True)
@@ -18,7 +18,7 @@ class FusedRank:
 def reciprocal_rank_fusion(
     rankings: Mapping[str, Sequence[UUID]],
     *,
-    k: int = DEFAULT_RRF_K,
+    k: int = settings.retrieval_rrf_k,
     weights: Mapping[str, float] | None = None,
 ) -> list[FusedRank]:
     """Fuse named rankings, counting each ID at most once per branch."""
@@ -37,7 +37,10 @@ def reciprocal_rank_fusion(
     scores: dict[UUID, float] = defaultdict(float)
     component_ranks: dict[UUID, dict[str, int]] = defaultdict(dict)
     for branch, ranking in rankings.items():
-        weight = branch_weights.get(branch, 1.0)
+        weight = branch_weights.get(
+            branch,
+            settings.retrieval_unconfigured_branch_weight,
+        )
         seen: set[UUID] = set()
         rank = 0
         for chunk_id in ranking:

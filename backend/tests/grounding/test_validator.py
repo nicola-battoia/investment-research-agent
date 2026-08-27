@@ -122,6 +122,115 @@ def test_text_passage_highlights_every_normalized_occurrence() -> None:
     ] == [phrase, phrase]
 
 
+def test_accepts_changed_punctuation_at_excerpt_boundaries() -> None:
+    full_text = (
+        "As of June 30, 2024, we employed approximately 228,000 people on a "
+        "full-time basis, 126,000 in the U.S. and 102,000 internationally."
+    )
+    excerpt = (
+        "“As of June 30, 2024, we employed approximately 228,000 people on a "
+        "full-time basis.”"
+    )
+
+    answer = _validated_citation(passage(1, full_text), excerpt)
+
+    resolved = answer.citations[0].passage
+    assert resolved is not None
+    assert resolved.kind == "text"
+    assert len(resolved.highlights) == 1
+    highlight = resolved.highlights[0]
+    assert (
+        full_text[highlight.start : highlight.end]
+        == "As of June 30, 2024, we employed approximately 228,000 people on a "
+        "full-time basis"
+    )
+
+
+@pytest.mark.parametrize("ellipsis", ["...", "…"])
+def test_accepts_ordered_omitted_fragments_at_all_excerpt_positions(
+    ellipsis: str,
+) -> None:
+    excerpt = (
+        f"{ellipsis} Services net sales {ellipsis} cloud services revenue {ellipsis}"
+    )
+
+    answer = _validated_citation(passage(1, FIRST_TEXT), excerpt)
+
+    resolved = answer.citations[0].passage
+    assert resolved is not None
+    assert resolved.kind == "text"
+    assert [
+        FIRST_TEXT[highlight.start : highlight.end]
+        for highlight in resolved.highlights
+    ] == ["Services net sales", "cloud services revenue"]
+
+
+def test_rejects_omitted_fragments_that_are_not_in_source_order() -> None:
+    excerpt = "cloud services revenue ... Services net sales"
+
+    with pytest.raises(GroundingValidationError, match="not present in order"):
+        _validated_citation(passage(1, FIRST_TEXT), excerpt)
+
+
+@pytest.mark.parametrize(
+    "excerpt",
+    [
+        "Services net sales increased, because of higher advertising",
+        "........................",
+    ],
+)
+def test_relaxed_matching_still_requires_substantive_exact_fragments(
+    excerpt: str,
+) -> None:
+    with pytest.raises(GroundingValidationError, match="not present in order"):
+        _validated_citation(passage(1, FIRST_TEXT), excerpt)
+
+
+def test_accepts_relaxed_excerpts_from_logged_failure() -> None:
+    apple_text = (
+        "2025 | 2024 | 2023\nNet sales:\n"
+        "U.S. | $ | 151,790 | $ | 142,196 | $ | 138,573\n"
+        "China (1) | 64,377 | 66,952 | 72,559\n"
+        "Other countries | 199,994 | 181,887 | 172,153\n"
+        "Total net sales | $ | 416,161 | $ | 391,035 | $ | 383,285"
+    )
+    microsoft_text = (
+        "As of June 30, 2024, we employed approximately 228,000 people on a "
+        "full-time basis, 126,000 in the U.S. and 102,000 internationally."
+    )
+    draft = DraftGroundedAnswer(
+        status="supported",
+        answer="Apple revenue [S1]. Microsoft headcount [S2].",
+        citations=(
+            CitationReference(
+                source_id="S1",
+                excerpt=(
+                    "2025 | 2024 | 2023 Net sales: ... Total net sales | $ | "
+                    "416,161 | $ | 391,035 | $ | 383,285"
+                ),
+            ),
+            CitationReference(
+                source_id="S2",
+                excerpt=(
+                    "As of June 30, 2024, we employed approximately 228,000 people "
+                    "on a full-time basis."
+                ),
+            ),
+        ),
+    )
+
+    answer = GroundingValidator().validate(
+        draft,
+        evidence={"S1": passage(1, apple_text), "S2": passage(2, microsoft_text)},
+        read_source_ids={"S1", "S2"},
+        search_calls=1,
+    )
+
+    assert [citation.source_id for citation in answer.citations] == ["S1", "S2"]
+    assert len(answer.citations[0].passage.highlights) == 2
+    assert len(answer.citations[1].passage.highlights) == 1
+
+
 @pytest.mark.parametrize(
     ("excerpt", "highlighted_rows"),
     [
@@ -133,6 +242,10 @@ def test_text_passage_highlights_every_normalized_occurrence() -> None:
         (
             "Revenue | $100 million | $80 million Margin | 45 percent | 40 percent",
             {1, 2},
+        ),
+        (
+            "... Metric | 2024 | 2023 ... Margin | 45 percent | 40 percent ...",
+            {0, 2},
         ),
     ],
 )
@@ -269,6 +382,31 @@ def test_rejects_invalid_supported_answers(
             read_source_ids=read_ids,
             search_calls=1,
         )
+
+
+def test_reports_all_invalid_citation_excerpts_together(
+    evidence: dict[str, SourcePassage],
+) -> None:
+    draft = DraftGroundedAnswer(
+        status="supported",
+        answer="One unsupported claim [S1]. Another unsupported claim [S2].",
+        citations=(
+            CitationReference(source_id="S1", excerpt="first invented excerpt value"),
+            CitationReference(source_id="S2", excerpt="second invented excerpt value"),
+        ),
+    )
+
+    with pytest.raises(GroundingValidationError) as error:
+        GroundingValidator().validate(
+            draft,
+            evidence=evidence,
+            read_source_ids={"S1", "S2"},
+            search_calls=1,
+        )
+
+    message = str(error.value)
+    assert "Citation S1 excerpt fragments are not present in order" in message
+    assert "Citation S2 excerpt fragments are not present in order" in message
 
 
 def test_accepts_clear_uncited_insufficient_evidence_refusal() -> None:

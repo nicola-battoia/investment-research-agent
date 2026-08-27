@@ -10,6 +10,8 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic_ai.usage import RunUsage
 
+from app.config import settings
+
 SOURCE_ID_PATTERN = r"^S[1-9][0-9]*$"
 
 AnswerStatus = Literal[
@@ -29,7 +31,10 @@ class CitationReference(FrozenModel):
     """A model-proposed reference to evidence retrieved during this turn."""
 
     source_id: str = Field(pattern=SOURCE_ID_PATTERN)
-    excerpt: str = Field(min_length=20, max_length=500)
+    excerpt: str = Field(
+        min_length=settings.citation_excerpt_min_characters,
+        max_length=settings.citation_excerpt_max_characters,
+    )
 
     @field_validator("excerpt")
     @classmethod
@@ -41,8 +46,14 @@ class DraftGroundedAnswer(FrozenModel):
     """Strict structured output produced by the model for every response path."""
 
     status: AnswerStatus
-    answer: str = Field(min_length=1, max_length=10_000)
-    citations: tuple[CitationReference, ...] = Field(default=(), max_length=20)
+    answer: str = Field(
+        min_length=1,
+        max_length=settings.assistant_max_message_characters,
+    )
+    citations: tuple[CitationReference, ...] = Field(
+        default=(),
+        max_length=settings.assistant_max_citations,
+    )
 
     @field_validator("answer")
     @classmethod
@@ -64,7 +75,7 @@ class CitationTextHighlight(FrozenModel):
 
 
 class TextCitationPassage(FrozenModel):
-    """A complete retrieved text chunk and all exact excerpt occurrences."""
+    """A complete retrieved text chunk and all matched citation fragments."""
 
     version: Literal[1] = 1
     kind: Literal["text"] = "text"
@@ -117,7 +128,10 @@ class Citation(FrozenModel):
     chunk_id: UUID
     document_id: UUID
     chunk_index: int = Field(ge=0)
-    excerpt: str = Field(min_length=20, max_length=500)
+    excerpt: str = Field(
+        min_length=settings.citation_excerpt_min_characters,
+        max_length=settings.citation_excerpt_max_characters,
+    )
     company: str
     ticker: str
     filing_type: str
@@ -177,7 +191,10 @@ class HistoryMessage(FrozenModel):
     """One prior persisted message supplied to the assistant runner."""
 
     role: Literal["user", "assistant"]
-    content: str = Field(min_length=1, max_length=10_000)
+    content: str = Field(
+        min_length=1,
+        max_length=settings.assistant_max_message_characters,
+    )
 
     @field_validator("content")
     @classmethod

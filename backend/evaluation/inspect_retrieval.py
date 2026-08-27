@@ -9,16 +9,13 @@ from uuid import UUID
 
 from openai import AsyncOpenAI
 
+from app.config import settings
 from app.database.supabase import create_admin_supabase_client
 from app.retrieval.fusion import FusedRank
 from app.retrieval.keywords import OpenAIKeywordExtractor
 from app.retrieval.models import RetrievalFilters, SourcePassage
 from app.retrieval.queries import RankedCandidate, RpcClient, hydrate_passages
-from app.retrieval.retriever import (
-    DEFAULT_CANDIDATE_LIMIT,
-    DocumentRetriever,
-    RetrievalCandidates,
-)
+from app.retrieval.retriever import DocumentRetriever, RetrievalCandidates
 
 logger = logging.getLogger("retrieval-inspector")
 
@@ -45,12 +42,10 @@ def configure_logging() -> None:
 
 async def build_live_retriever() -> tuple[DocumentRetriever, RpcClient]:
     """Construct the same live retriever used by the application."""
-    from app.config import settings
-
     supabase = await create_admin_supabase_client(settings)
     openai_client = AsyncOpenAI(
         api_key=settings.openai_api_key.get_secret_value(),
-        max_retries=3,
+        max_retries=settings.openai_http_max_retries,
     )
     retriever = DocumentRetriever(
         supabase,
@@ -76,7 +71,7 @@ async def inspect_retrieval(
     filters: RetrievalFilters | None = None,
     *,
     show: int = 5,
-    candidate_limit: int = DEFAULT_CANDIDATE_LIMIT,
+    candidate_limit: int = settings.retrieval_default_candidate_limit,
     snippet_chars: int = 320,
     retriever: DocumentRetriever | None = None,
     client: RpcClient | None = None,

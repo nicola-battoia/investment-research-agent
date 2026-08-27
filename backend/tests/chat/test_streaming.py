@@ -173,7 +173,8 @@ def test_timeout_cancels_the_turn_without_streaming_completion() -> None:
 
     orchestrator = SimpleNamespace(complete=complete)
 
-    with patch("app.chat.streaming.HEARTBEAT_SECONDS", 0.001):
+    fast_stream_settings = SimpleNamespace(chat_stream_heartbeat_seconds=0.001)
+    with patch("app.chat.streaming.settings", fast_stream_settings):
         payload = asyncio.run(collect(orchestrator, timeout_seconds=0.005))
 
     assert '"code":"turn_timeout"' in payload
@@ -201,7 +202,8 @@ def test_client_disconnect_cancels_without_an_error_or_completed_message() -> No
             events.append(event)
         return "".join(events)
 
-    with patch("app.chat.streaming.HEARTBEAT_SECONDS", 0.001):
+    fast_stream_settings = SimpleNamespace(chat_stream_heartbeat_seconds=0.001)
+    with patch("app.chat.streaming.settings", fast_stream_settings):
         payload = asyncio.run(run())
 
     assert '"type":"data-turn-status"' in payload

@@ -11,13 +11,8 @@ from pydantic_ai import ModelRetry, RunContext
 from app.assistant.deps import AssistantDeps
 from app.assistant.evidence import EvidenceLimitError, UnknownSourceError
 from app.assistant.outputs import ReadablePassage, SearchToolResult
+from app.config import settings
 from app.retrieval.models import RetrievalFilters
-
-MAX_SEARCH_CALLS = 3
-MAX_SURROUNDING_CALLS = 3
-SEARCH_RESULT_LIMIT = 10
-SEARCH_CANDIDATE_LIMIT = 50
-MAX_SEARCH_QUERY_CHARACTERS = 500
 
 
 class FilingSearchFilters(BaseModel):
@@ -25,10 +20,22 @@ class FilingSearchFilters(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    companies: tuple[str, ...] = Field(default=(), max_length=5)
-    tickers: tuple[str, ...] = Field(default=(), max_length=5)
-    filing_types: tuple[str, ...] = Field(default=(), max_length=3)
-    filing_years: tuple[int, ...] = Field(default=(), max_length=5)
+    companies: tuple[str, ...] = Field(
+        default=(),
+        max_length=settings.assistant_max_filter_companies,
+    )
+    tickers: tuple[str, ...] = Field(
+        default=(),
+        max_length=settings.assistant_max_filter_tickers,
+    )
+    filing_types: tuple[str, ...] = Field(
+        default=(),
+        max_length=settings.assistant_max_filter_filing_types,
+    )
+    filing_years: tuple[int, ...] = Field(
+        default=(),
+        max_length=settings.assistant_max_filter_filing_years,
+    )
     filed_on_or_after: date | None = None
     filed_on_or_before: date | None = None
     corpus_wide: bool = False
@@ -48,9 +55,7 @@ class FilingSearchFilters(BaseModel):
                 "A filing search requires at least one filter or corpus_wide=true"
             )
         if has_filing_filter and self.corpus_wide:
-            raise ValueError(
-                "corpus_wide=true cannot be combined with filing filters"
-            )
+            raise ValueError("corpus_wide=true cannot be combined with filing filters")
         return self
 
     def to_retrieval_filters(self) -> RetrievalFilters:
@@ -80,22 +85,23 @@ async def search_filings(
     query = query.strip()
     if not query:
         raise ModelRetry("The filing search query cannot be empty")
-    if len(query) > MAX_SEARCH_QUERY_CHARACTERS:
+    if len(query) > settings.assistant_max_search_query_characters:
         raise ModelRetry(
-            f"The filing search query cannot exceed {MAX_SEARCH_QUERY_CHARACTERS} characters"
+            "The filing search query cannot exceed "
+            f"{settings.assistant_max_search_query_characters} characters"
         )
-    if ctx.deps.counters.search_calls >= MAX_SEARCH_CALLS:
+    if ctx.deps.counters.search_calls >= settings.assistant_max_search_calls:
         raise ModelRetry(
-            "The maximum of three filing searches is exhausted; answer from current "
-            "evidence or return insufficient_evidence"
+            f"The maximum of {settings.assistant_max_search_calls} filing searches "
+            "is exhausted; answer from current evidence or return insufficient_evidence"
         )
     ctx.deps.counters.search_calls += 1
 
     result = await ctx.deps.retriever.search(
         query,
         filters.to_retrieval_filters(),
-        limit=SEARCH_RESULT_LIMIT,
-        candidate_limit=SEARCH_CANDIDATE_LIMIT,
+        limit=settings.assistant_search_result_limit,
+        candidate_limit=settings.assistant_search_candidate_limit,
     )
     try:
         ranked = tuple(ctx.deps.evidence.preview(item) for item in result.passages)
@@ -137,8 +143,11 @@ async def read_surrounding_chunks(
     Args:
         source_id: Current-turn source label whose adjacent chunks are needed.
     """
-    if ctx.deps.counters.surrounding_calls >= MAX_SURROUNDING_CALLS:
-        raise ModelRetry("The maximum of three surrounding-chunk reads is exhausted")
+    if ctx.deps.counters.surrounding_calls >= settings.assistant_max_surrounding_calls:
+        raise ModelRetry(
+            f"The maximum of {settings.assistant_max_surrounding_calls} "
+            "surrounding-chunk reads is exhausted"
+        )
     try:
         anchor = ctx.deps.evidence.require(source_id)
     except UnknownSourceError as error:
@@ -146,9 +155,12 @@ async def read_surrounding_chunks(
     ctx.deps.counters.surrounding_calls += 1
     passages = await ctx.deps.retriever.surrounding_chunks(
         anchor.chunk_id,
-        radius=1,
+        radius=settings.assistant_surrounding_chunk_radius,
     )
     try:
-        return tuple(ctx.deps.evidence.readable(item) for item in passages[:2])
+        return tuple(
+            ctx.deps.evidence.readable(item)
+            for item in passages[: settings.assistant_max_surrounding_chunks]
+        )
     except EvidenceLimitError as error:
         raise ModelRetry(str(error)) from error

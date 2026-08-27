@@ -7,6 +7,7 @@ from sqlalchemy import ForeignKey, Index, String, text
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.config import settings
 from app.database.base import Base, TimestampMixin
 
 if TYPE_CHECKING:
@@ -30,7 +31,10 @@ class ChatThread(TimestampMixin, Base):
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
     )
-    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    title: Mapped[str] = mapped_column(
+        String(settings.chat_thread_title_max_characters),
+        nullable=False,
+    )
 
     owner: Mapped["User"] = relationship(back_populates="threads")
     messages: Mapped[list["ChatMessage"]] = relationship(

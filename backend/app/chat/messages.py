@@ -10,6 +10,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, field_validator
 
 from app.assistant.outputs import AnswerStatus, Citation, GroundedAnswer, HistoryMessage
+from app.config import settings
 
 
 def to_camel(value: str) -> str:
@@ -34,7 +35,7 @@ class StrictApiModel(ApiModel):
 
 class TextPart(StrictApiModel):
     type: Literal["text"]
-    text: str = Field(max_length=10_000)
+    text: str = Field(max_length=settings.assistant_max_message_characters)
 
     @field_validator("text")
     @classmethod
@@ -124,7 +125,10 @@ PART_ADAPTER = TypeAdapter(UIMessagePart)
 
 
 class UserUIMessage(StrictApiModel):
-    id: str = Field(min_length=1, max_length=200)
+    id: str = Field(
+        min_length=1,
+        max_length=settings.chat_client_message_id_max_characters,
+    )
     role: Literal["user"]
     parts: list[TextPart] = Field(min_length=1, max_length=1)
     metadata: dict[str, object] | None = None

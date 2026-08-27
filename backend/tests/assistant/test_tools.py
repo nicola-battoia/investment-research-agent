@@ -16,6 +16,7 @@ from app.assistant.tools import (
     read_surrounding_chunks,
     search_filings,
 )
+from app.config import settings
 from app.grounding.validator import GroundingValidator
 from app.retrieval.models import (
     ExtractedKeywords,
@@ -99,26 +100,35 @@ def test_search_uses_fixed_bounds_filters_and_stable_source_ids() -> None:
     assert first.ranked_passages[0].source_id == "S1"
     assert first.context_passages[0].source_id == "S2"
     assert second.ranked_passages[0].source_id == "S1"
-    assert len(first.ranked_passages[0].preview) <= 601
+    assert (
+        len(first.ranked_passages[0].preview)
+        <= settings.assistant_evidence_preview_characters + 1
+    )
     call = retriever.search.await_args_list[0]
-    assert call.kwargs == {"limit": 10, "candidate_limit": 50}
+    assert call.kwargs == {
+        "limit": settings.assistant_search_result_limit,
+        "candidate_limit": settings.assistant_search_candidate_limit,
+    }
     retrieval_filters = call.args[1]
     assert retrieval_filters.companies == ("apple inc.",)
     assert retrieval_filters.tickers == ("AAPL",)
     assert retrieval_filters.filing_types == ("10-K",)
 
 
-def test_search_rejects_a_fourth_attempt() -> None:
+def test_search_rejects_after_configured_attempts() -> None:
     retriever = SimpleNamespace(search=AsyncMock(return_value=retrieval_result()))
     context = SimpleNamespace(deps=deps(retriever))
     filters = FilingSearchFilters(corpus_wide=True)
 
-    for _ in range(3):
+    for _ in range(settings.assistant_max_search_calls):
         asyncio.run(search_filings(context, "Services", filters))
 
-    with pytest.raises(ModelRetry, match="maximum of three"):
+    with pytest.raises(
+        ModelRetry,
+        match=f"maximum of {settings.assistant_max_search_calls}",
+    ):
         asyncio.run(search_filings(context, "One more search", filters))
-    assert retriever.search.await_count == 3
+    assert retriever.search.await_count == settings.assistant_max_search_calls
 
 
 def test_search_scope_requires_filters_or_explicit_corpus_wide() -> None:
@@ -163,9 +173,13 @@ def test_surrounding_read_is_fixed_to_radius_one_and_two_results() -> None:
 
     results = asyncio.run(read_surrounding_chunks(context, "S1"))
 
+    assert len(results) == settings.assistant_max_surrounding_chunks
     assert [item.source_id for item in results] == ["S2", "S3"]
     assert active_deps.evidence.read_source_ids == {"S2", "S3"}
-    retriever.surrounding_chunks.assert_awaited_once_with(UUID(int=1), radius=1)
+    retriever.surrounding_chunks.assert_awaited_once_with(
+        UUID(int=1),
+        radius=settings.assistant_surrounding_chunk_radius,
+    )
 
 
 def test_evidence_registry_enforces_limit_and_dependencies_are_single_use() -> None:

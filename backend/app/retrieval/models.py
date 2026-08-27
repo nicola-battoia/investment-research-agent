@@ -6,6 +6,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.config import settings
+
 
 def _normalized_values(values: tuple[str, ...], *, uppercase: bool) -> tuple[str, ...]:
     normalized = []
@@ -46,8 +48,16 @@ class RetrievalFilters(BaseModel):
     @field_validator("filing_years")
     @classmethod
     def validate_years(cls, years: tuple[int, ...]) -> tuple[int, ...]:
-        if any(year < 1900 or year > 2100 for year in years):
-            raise ValueError("Filing years must be between 1900 and 2100")
+        if any(
+            year < settings.retrieval_min_filing_year
+            or year > settings.retrieval_max_filing_year
+            for year in years
+        ):
+            raise ValueError(
+                "Filing years must be between "
+                f"{settings.retrieval_min_filing_year} and "
+                f"{settings.retrieval_max_filing_year}"
+            )
         return tuple(dict.fromkeys(years))
 
     @model_validator(mode="after")
@@ -68,7 +78,7 @@ class KeywordGroup(BaseModel):
 
     terms: tuple[str, ...] = Field(
         min_length=1,
-        max_length=3,
+        max_length=settings.retrieval_keyword_max_terms_per_group,
         description="Explicit query term plus at most two close lexical forms.",
     )
 
@@ -81,8 +91,11 @@ class KeywordGroup(BaseModel):
             term = " ".join(value.split()).strip(".,;:!?\"'()[]{}")
             if not term:
                 raise ValueError("Extracted keyword terms cannot be empty")
-            if len(term) > 80:
-                raise ValueError("Extracted keyword terms cannot exceed 80 characters")
+            if len(term) > settings.retrieval_keyword_max_term_characters:
+                raise ValueError(
+                    "Extracted keyword terms cannot exceed "
+                    f"{settings.retrieval_keyword_max_term_characters} characters"
+                )
             key = term.casefold()
             if key not in seen:
                 normalized.append(term)
@@ -97,7 +110,7 @@ class ExtractedKeywords(BaseModel):
 
     groups: tuple[KeywordGroup, ...] = Field(
         min_length=1,
-        max_length=6,
+        max_length=settings.retrieval_keyword_max_groups,
         description="Distinct evidence-bearing concepts explicitly present in the query.",
     )
 

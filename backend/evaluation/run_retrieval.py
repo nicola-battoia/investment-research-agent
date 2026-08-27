@@ -13,17 +13,12 @@ from uuid import UUID
 
 from openai import AsyncOpenAI
 
+from app.config import settings
 from app.database.supabase import create_admin_supabase_client
 from app.retrieval.keywords import OpenAIKeywordExtractor
 from app.retrieval.models import SourcePassage
 from app.retrieval.queries import RpcClient, hydrate_passages
-from app.retrieval.retriever import (
-    DEFAULT_CANDIDATE_LIMIT,
-    DEFAULT_LEXICAL_WEIGHT,
-    DEFAULT_RRF_K,
-    DEFAULT_SEMANTIC_WEIGHT,
-    DocumentRetriever,
-)
+from app.retrieval.retriever import DocumentRetriever
 from evaluation.metrics import (
     evidence_group_recall_at_k,
     hit_rate_at_k,
@@ -114,12 +109,10 @@ async def run_evaluation(
     lexical_weight: float,
     rrf_k: int,
 ) -> dict[str, object]:
-    from app.config import settings
-
     supabase = await create_admin_supabase_client(settings)
     embedding_client = AsyncOpenAI(
         api_key=settings.openai_api_key.get_secret_value(),
-        max_retries=3,
+        max_retries=settings.openai_http_max_retries,
     )
     keyword_extractor = OpenAIKeywordExtractor(
         embedding_client,
@@ -192,19 +185,19 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--candidate-limit",
         type=int,
-        default=DEFAULT_CANDIDATE_LIMIT,
+        default=settings.retrieval_default_candidate_limit,
     )
     parser.add_argument(
         "--semantic-weight",
         type=float,
-        default=DEFAULT_SEMANTIC_WEIGHT,
+        default=settings.retrieval_semantic_weight,
     )
     parser.add_argument(
         "--lexical-weight",
         type=float,
-        default=DEFAULT_LEXICAL_WEIGHT,
+        default=settings.retrieval_lexical_weight,
     )
-    parser.add_argument("--rrf-k", type=int, default=DEFAULT_RRF_K)
+    parser.add_argument("--rrf-k", type=int, default=settings.retrieval_rrf_k)
     return parser.parse_args()
 
 

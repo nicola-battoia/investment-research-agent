@@ -9,7 +9,7 @@ from uuid import UUID
 
 from postgrest import ReturnMethod
 
-from app.database.document_chunks import EMBEDDING_DIMENSIONS
+from app.config import settings
 from ingestion.chunk_documents import CHUNKER_VERSION, PreparedChunk
 from ingestion.ingest_documents import SourceDocumentRow
 from ingestion.sec_parser import PARSER_VERSION
@@ -117,10 +117,11 @@ def build_document_chunk_rows(
 ) -> list[DocumentChunkRow]:
     if len(chunks) != len(embeddings):
         raise ValueError("Every chunk must have exactly one embedding")
-    if embedding_dimensions != EMBEDDING_DIMENSIONS:
+    if embedding_dimensions != settings.openai_embedding_dimensions:
         raise ValueError(
             f"Configured embedding dimensions are {embedding_dimensions}, but "
-            f"document_chunks.embedding requires {EMBEDDING_DIMENSIONS}"
+            "document_chunks.embedding requires "
+            f"{settings.openai_embedding_dimensions}"
         )
     UUID(document_id)
 

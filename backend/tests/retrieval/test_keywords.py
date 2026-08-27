@@ -3,12 +3,13 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
-
+from app.assistant.tracing import AssistantTrace
 from app.retrieval.keywords import (
     KEYWORD_EXTRACTION_INSTRUCTIONS,
     OpenAIKeywordExtractor,
 )
 from app.retrieval.models import ExtractedKeywords, KeywordGroup
+from structlog.testing import capture_logs
 
 
 def test_extracted_keywords_normalize_and_deduplicate_search_terms() -> None:
@@ -56,3 +57,38 @@ def test_openai_extractor_rejects_missing_structured_output() -> None:
 
     with pytest.raises(ValueError, match="structured retrieval keywords"):
         asyncio.run(extractor.extract("revenue growth"))
+
+
+def test_openai_extractor_traces_model_input_and_parsed_output() -> None:
+    keywords = ExtractedKeywords(groups=(KeywordGroup(terms=("revenue",)),))
+    parse = AsyncMock(
+        return_value=SimpleNamespace(
+            id="response-1",
+            output_parsed=keywords,
+            usage={"input_tokens": 10, "output_tokens": 2},
+        )
+    )
+    trace = AssistantTrace(
+        trace_id="trace-1",
+        thread_id="thread-1",
+        user_id="user-1",
+        client_message_id="client-1",
+        mode="full",
+        max_content_characters=12_000,
+    )
+    extractor = OpenAIKeywordExtractor(
+        SimpleNamespace(responses=SimpleNamespace(parse=parse)),
+        model="gpt-5.4-nano",
+        trace=trace,
+    )
+
+    with capture_logs() as logs:
+        result = asyncio.run(extractor.extract("revenue growth"))
+
+    assert result == keywords
+    assert [log["event"] for log in logs] == [
+        "retrieval_keyword_model_request",
+        "retrieval_keyword_model_response",
+    ]
+    assert logs[0]["input"] == "revenue growth"
+    assert logs[1]["output"]["groups"][0]["terms"] == ["revenue"]

@@ -6,7 +6,6 @@ from unittest.mock import AsyncMock, patch
 from uuid import UUID, uuid4
 
 import pytest
-
 from app.assistant.outputs import (
     AnswerStatus,
     AssistantRunResult,
@@ -14,10 +13,12 @@ from app.assistant.outputs import (
     Citation,
     GroundedAnswer,
 )
+from app.assistant.tracing import AssistantTrace
 from app.chat.messages import InternalUserMessage
 from app.chat.orchestrator import ChatTurnOrchestrator, derive_thread_title
 from app.config import Settings
 from app.database.chats import ChatPositionConflictError, TurnPersistenceResult
+from structlog.testing import capture_logs
 
 USER_ID = UUID("8b50b43c-571d-4fbc-8a3b-32e3bbfa39da")
 THREAD_ID = UUID("1195cdd2-508e-4f18-ac86-8796e983a3e5")
@@ -136,12 +137,17 @@ def history_rows() -> list[dict[str, object]]:
     ]
 
 
-def orchestrator(assistant: object) -> ChatTurnOrchestrator:
+def orchestrator(
+    assistant: object,
+    *,
+    trace: AssistantTrace | None = None,
+) -> ChatTurnOrchestrator:
     return ChatTurnOrchestrator(
         settings=make_settings(),
         supabase=object(),
         openai_client=SimpleNamespace(responses=object(), embeddings=object()),
         assistant=assistant,
+        trace=trace,
     )
 
 
@@ -183,6 +189,54 @@ def test_runs_with_saved_history_and_atomically_persists_validated_turn() -> Non
     assert persist.await_args.args[2] == 2
     assert persist.await_args.args[8]["total_tokens"] == 130
     assert persist.await_args.args[9][0]["chunk_id"] == str(UUID(int=1))
+
+
+def test_orchestrator_trace_covers_prepare_persistence_and_completion() -> None:
+    assistant = SimpleNamespace(run=AsyncMock(return_value=result()))
+    persist = AsyncMock(return_value=TurnPersistenceResult(assistant_created_at=NOW))
+    trace = AssistantTrace(
+        trace_id="trace-1",
+        thread_id=str(THREAD_ID),
+        user_id=str(USER_ID),
+        client_message_id="client-2",
+        mode="full",
+        max_content_characters=12_000,
+    )
+    service = orchestrator(assistant, trace=trace)
+
+    async def run():
+        with (
+            patch(
+                "app.chat.orchestrator.chats.load_thread",
+                AsyncMock(return_value=({"id": str(THREAD_ID)}, history_rows(), [])),
+            ),
+            patch("app.chat.orchestrator.chats.complete_chat_turn", persist),
+        ):
+            prepared = await service.prepare(
+                thread_id=THREAD_ID,
+                user_id=USER_ID,
+                user_message=user_message(),
+            )
+            return await service.complete(prepared)
+
+    with capture_logs() as logs:
+        completed = asyncio.run(run())
+
+    trace_events = [log["event"] for log in logs if "sequence" in log]
+    assert completed.metadata.answer_status == "supported"
+    assert trace_events == [
+        "chat_thread_load_started",
+        "chat_turn_prepared",
+        "chat_history_selected",
+        "chat_turn_persistence_started",
+        "chat_turn_persistence_completed",
+        "chat_turn_completed",
+    ]
+    persistence_log = next(
+        log for log in logs if log["event"] == "chat_turn_persistence_started"
+    )
+    assert persistence_log["assistant_message_data"]["answerStatus"] == "supported"
+    assert persistence_log["citations"][0]["chunk_id"] == str(UUID(int=1))
 
 
 def test_insufficient_evidence_turn_persists_without_citations() -> None:

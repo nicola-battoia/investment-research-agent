@@ -9,7 +9,9 @@ from dataclasses import dataclass
 from typing import Protocol
 from uuid import UUID
 
-from app.retrieval.fusion import DEFAULT_RRF_K, FusedRank, reciprocal_rank_fusion
+from app.assistant.tracing import AssistantTrace, embedding_summary
+from app.config import settings
+from app.retrieval.fusion import FusedRank, reciprocal_rank_fusion
 from app.retrieval.keywords import KeywordExtractor
 from app.retrieval.models import (
     ExtractedKeywords,
@@ -26,12 +28,6 @@ from app.retrieval.queries import (
     passage_and_surroundings,
     semantic_search,
 )
-
-DEFAULT_RESULT_LIMIT = 10
-DEFAULT_CANDIDATE_LIMIT = 50
-DEFAULT_SEMANTIC_WEIGHT = 20.0
-DEFAULT_LEXICAL_WEIGHT = 1.0
-MAX_RESULT_LIMIT = 20
 
 
 @dataclass(frozen=True)
@@ -93,9 +89,10 @@ class DocumentRetriever:
         *,
         embedding_model: str,
         embedding_dimensions: int,
-        semantic_weight: float = DEFAULT_SEMANTIC_WEIGHT,
-        lexical_weight: float = DEFAULT_LEXICAL_WEIGHT,
-        rrf_k: int = DEFAULT_RRF_K,
+        semantic_weight: float = settings.retrieval_semantic_weight,
+        lexical_weight: float = settings.retrieval_lexical_weight,
+        rrf_k: int = settings.retrieval_rrf_k,
+        trace: AssistantTrace | None = None,
     ) -> None:
         if not embedding_model:
             raise ValueError("Embedding model is required")
@@ -118,36 +115,55 @@ class DocumentRetriever:
             "lexical": lexical_weight,
         }
         self._rrf_k = rrf_k
+        self._trace = trace or AssistantTrace.disabled()
 
     async def search(
         self,
         query: str,
         filters: RetrievalFilters | None = None,
         *,
-        limit: int = DEFAULT_RESULT_LIMIT,
-        candidate_limit: int = DEFAULT_CANDIDATE_LIMIT,
+        limit: int = settings.retrieval_default_result_limit,
+        candidate_limit: int = settings.retrieval_default_candidate_limit,
     ) -> RetrievalResult:
         query = query.strip()
         if not query:
             raise ValueError("Retrieval query cannot be empty")
-        if limit <= 0 or limit > MAX_RESULT_LIMIT:
-            raise ValueError(f"Result limit must be between 1 and {MAX_RESULT_LIMIT}")
-        if candidate_limit < limit or candidate_limit > 100:
+        if limit <= 0 or limit > settings.retrieval_max_result_limit:
             raise ValueError(
-                "Candidate limit must be at least the result limit and at most 100"
+                "Result limit must be between 1 and "
+                f"{settings.retrieval_max_result_limit}"
+            )
+        if (
+            candidate_limit < limit
+            or candidate_limit > settings.retrieval_max_candidate_limit
+        ):
+            raise ValueError(
+                "Candidate limit must be at least the result limit and at most "
+                f"{settings.retrieval_max_candidate_limit}"
             )
 
         active_filters = filters or RetrievalFilters()
+        search_started = time.perf_counter()
+        self._trace.emit(
+            "retrieval_search_started",
+            "retrieval.search.started",
+            query=query,
+            filters=active_filters,
+            result_limit=limit,
+            candidate_limit=candidate_limit,
+        )
         candidates = await self.candidate_details(
             query,
             active_filters,
             candidate_limit=candidate_limit,
         )
         fused = candidates.hybrid[:limit]
+        hydration_started = time.perf_counter()
         passages = await hydrate_passages(
             self._supabase,
             [result.chunk_id for result in fused],
         )
+        hydration_ms = (time.perf_counter() - hydration_started) * 1000
         ranked_passages = tuple(
             passage.model_copy(
                 update={
@@ -160,18 +176,29 @@ class DocumentRetriever:
             for result, passage in zip(fused, passages, strict=True)
         )
         context_passages = await self._bridge_context(ranked_passages)
-        return RetrievalResult(
+        result = RetrievalResult(
             passages=ranked_passages,
             context_passages=context_passages,
             keywords=candidates.keywords,
         )
+        self._trace.emit(
+            "retrieval_search_completed",
+            "retrieval.search.completed",
+            duration_ms=(time.perf_counter() - search_started) * 1000,
+            hydration_ms=hydration_ms,
+            timings=candidates.timings,
+            keywords=candidates.keywords,
+            ranked_passages=ranked_passages,
+            context_passages=context_passages,
+        )
+        return result
 
     async def candidate_rankings(
         self,
         query: str,
         filters: RetrievalFilters | None = None,
         *,
-        candidate_limit: int = DEFAULT_CANDIDATE_LIMIT,
+        candidate_limit: int = settings.retrieval_default_candidate_limit,
     ) -> RetrievalRankings:
         """Return the three candidate rankings for retrieval evaluation."""
         candidates = await self.candidate_details(
@@ -191,14 +218,20 @@ class DocumentRetriever:
         query: str,
         filters: RetrievalFilters | None = None,
         *,
-        candidate_limit: int = DEFAULT_CANDIDATE_LIMIT,
+        candidate_limit: int = settings.retrieval_default_candidate_limit,
     ) -> RetrievalCandidates:
         """Return scored branch candidates, fused ranks, and diagnostic timings."""
         query = query.strip()
         if not query:
             raise ValueError("Retrieval query cannot be empty")
-        if candidate_limit <= 0 or candidate_limit > 100:
-            raise ValueError("Candidate limit must be between 1 and 100")
+        if (
+            candidate_limit <= 0
+            or candidate_limit > settings.retrieval_max_candidate_limit
+        ):
+            raise ValueError(
+                "Candidate limit must be between 1 and "
+                f"{settings.retrieval_max_candidate_limit}"
+            )
         active_filters = filters or RetrievalFilters()
         started = time.perf_counter()
 
@@ -211,7 +244,16 @@ class DocumentRetriever:
                 active_filters,
                 candidate_limit,
             )
-            return candidates, (time.perf_counter() - branch_started) * 1000
+            duration_ms = (time.perf_counter() - branch_started) * 1000
+            self._trace.emit(
+                "retrieval_semantic_candidates",
+                "retrieval.semantic.completed",
+                duration_ms=duration_ms,
+                filters=active_filters,
+                candidate_count=len(candidates),
+                candidates=candidates,
+            )
+            return candidates, duration_ms
 
         async def lexical_branch() -> tuple[
             ExtractedKeywords,
@@ -226,7 +268,17 @@ class DocumentRetriever:
                 active_filters,
                 candidate_limit,
             )
-            return keywords, candidates, (time.perf_counter() - branch_started) * 1000
+            duration_ms = (time.perf_counter() - branch_started) * 1000
+            self._trace.emit(
+                "retrieval_lexical_candidates",
+                "retrieval.lexical.completed",
+                duration_ms=duration_ms,
+                filters=active_filters,
+                lexical_query=keywords.search_text,
+                candidate_count=len(candidates),
+                candidates=candidates,
+            )
+            return keywords, candidates, duration_ms
 
         (semantic, semantic_ms), (keywords, lexical, lexical_ms) = await asyncio.gather(
             semantic_branch(),
@@ -242,6 +294,15 @@ class DocumentRetriever:
             weights=self._weights,
         )
         fusion_ms = (time.perf_counter() - fusion_started) * 1000
+        self._trace.emit(
+            "retrieval_fusion_completed",
+            "retrieval.fusion.completed",
+            duration_ms=fusion_ms,
+            semantic_weight=self._weights["semantic"],
+            lexical_weight=self._weights["lexical"],
+            rrf_k=self._rrf_k,
+            fused=fused,
+        )
         return RetrievalCandidates(
             semantic=tuple(semantic),
             lexical=tuple(lexical),
@@ -259,19 +320,43 @@ class DocumentRetriever:
         self,
         chunk_id: UUID,
         *,
-        radius: int = 1,
+        radius: int = settings.assistant_surrounding_chunk_radius,
     ) -> list[SourcePassage]:
+        started = time.perf_counter()
+        self._trace.emit(
+            "retrieval_surrounding_started",
+            "retrieval.surrounding.started",
+            chunk_id=chunk_id,
+            radius=radius,
+        )
         _anchor, neighbors = await passage_and_surroundings(
             self._supabase,
             chunk_id,
             radius,
         )
-        return [
+        result = [
             passage.model_copy(update={"passage_kind": "neighbor"})
             for passage in neighbors
         ]
+        self._trace.emit(
+            "retrieval_surrounding_completed",
+            "retrieval.surrounding.completed",
+            chunk_id=chunk_id,
+            radius=radius,
+            duration_ms=(time.perf_counter() - started) * 1000,
+            passages=result,
+        )
+        return result
 
     async def _embed_query(self, query: str) -> list[float]:
+        started = time.perf_counter()
+        self._trace.emit(
+            "retrieval_embedding_request",
+            "retrieval.embedding.request",
+            model=self._embedding_model,
+            dimensions=self._embedding_dimensions,
+            input=query,
+        )
         response = await self._embedding_client.embeddings.create(
             input=[query],
             model=self._embedding_model,
@@ -286,6 +371,14 @@ class DocumentRetriever:
                 "OpenAI returned an embedding with unexpected dimensions: "
                 f"expected {self._embedding_dimensions}, received {len(embedding)}"
             )
+        self._trace.emit(
+            "retrieval_embedding_response",
+            "retrieval.embedding.response",
+            model=self._embedding_model,
+            duration_ms=(time.perf_counter() - started) * 1000,
+            output=embedding_summary(embedding),
+            usage=getattr(response, "usage", None),
+        )
         return embedding
 
     async def _bridge_context(
@@ -310,7 +403,13 @@ class DocumentRetriever:
                     )
 
         if not requested:
+            self._trace.emit(
+                "retrieval_bridge_context_skipped",
+                "retrieval.bridge.skipped",
+                reason="no_same_section_gap",
+            )
             return ()
+        started = time.perf_counter()
         bridges = await hydrate_passage_keys(self._supabase, requested)
         expected = {
             (document_id, chunk_index)
@@ -320,7 +419,7 @@ class DocumentRetriever:
         returned = {(passage.document_id, passage.chunk_index) for passage in bridges}
         if returned != expected:
             raise ValueError("Supabase did not return every requested bridge chunk")
-        return tuple(
+        result = tuple(
             passage.model_copy(update={"passage_kind": "neighbor"})
             for passage in sorted(
                 (
@@ -332,3 +431,11 @@ class DocumentRetriever:
                 key=lambda passage: (str(passage.document_id), passage.chunk_index),
             )
         )
+        self._trace.emit(
+            "retrieval_bridge_context_completed",
+            "retrieval.bridge.completed",
+            duration_ms=(time.perf_counter() - started) * 1000,
+            requested=requested,
+            passages=result,
+        )
+        return result

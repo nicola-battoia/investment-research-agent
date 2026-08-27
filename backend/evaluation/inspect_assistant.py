@@ -26,6 +26,7 @@ from app.assistant import (
     create_document_assistant,
 )
 from app.assistant.outputs import ReadablePassage, SearchToolResult
+from app.config import settings
 from app.database.supabase import create_user_supabase_client
 from app.grounding import GroundingValidator
 from app.retrieval.keywords import OpenAIKeywordExtractor
@@ -73,13 +74,11 @@ async def build_live_assistant(
     if not access_token:
         raise ValueError("A Supabase access token is required")
 
-    from app.config import settings
-
     supabase = await create_user_supabase_client(settings, access_token)
     auth_response = await supabase.auth.get_user(access_token)
     openai_client = AsyncOpenAI(
         api_key=settings.openai_api_key.get_secret_value(),
-        max_retries=3,
+        max_retries=settings.openai_http_max_retries,
     )
     retriever = DocumentRetriever(
         supabase,
@@ -248,7 +247,9 @@ def _log_evidence(
 
 
 def _log_answer(result: AssistantRunResult) -> None:
-    logger.info("\nVALIDATED ANSWER (%s)\n%s", result.answer.status, result.answer.answer)
+    logger.info(
+        "\nVALIDATED ANSWER (%s)\n%s", result.answer.status, result.answer.answer
+    )
     if result.answer.citations:
         logger.info("\nCITATIONS")
         for citation in result.answer.citations:

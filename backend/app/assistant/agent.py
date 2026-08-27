@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+import time
 from collections.abc import Sequence
-from typing import TYPE_CHECKING
 
 from openai import AsyncOpenAI
 from pydantic_ai import Agent, ModelRetry, NativeOutput, RunContext, UsageLimits
@@ -29,25 +29,19 @@ from app.assistant.tools import (
     read_surrounding_chunks,
     search_filings,
 )
+from app.assistant.tracing import create_assistant_trace_hooks, grounding_reason
+from app.config import Settings, settings
 from app.grounding.validator import (
     GroundingFailureError,
     GroundingValidationError,
 )
 
-if TYPE_CHECKING:
-    from app.config import Settings
-
-MAX_MODEL_REQUESTS = 12
-MAX_TOOL_CALLS = 12
-MAX_TOTAL_OUTPUT_TOKENS = 6_000
-MAX_REQUEST_INPUT_TOKENS = 64_000
-MAX_QUESTION_CHARACTERS = 10_000
-
 
 class DocumentAssistant:
     """Run a stateless agent with fresh dependencies for every user turn."""
 
-    def __init__(self, model: Model) -> None:
+    def __init__(self, model: Model, app_settings: Settings = settings) -> None:
+        self._settings = app_settings
         self._agent = Agent(
             model,
             name="document_copilot",
@@ -63,8 +57,12 @@ class DocumentAssistant:
             ),
             instructions=[ASSISTANT_INSTRUCTIONS, current_spain_time_instruction],
             tools=[search_filings, read_chunk, read_surrounding_chunks],
-            retries={"tools": 1, "output": 1},
-            tool_timeout=60,
+            capabilities=[create_assistant_trace_hooks()],
+            retries={
+                "tools": app_settings.assistant_tool_retries,
+                "output": app_settings.assistant_output_retries,
+            },
+            tool_timeout=app_settings.assistant_tool_timeout_seconds,
         )
 
         @self._agent.output_validator
@@ -72,6 +70,16 @@ class DocumentAssistant:
             ctx: RunContext[AssistantDeps],
             output: DraftGroundedAnswer,
         ) -> DraftGroundedAnswer:
+            ctx.deps.trace.emit(
+                "assistant_grounding_proposed",
+                "assistant.grounding.proposed",
+                selected_status=output.status,
+                draft=output,
+                search_calls=ctx.deps.counters.search_calls,
+                surrounding_calls=ctx.deps.counters.surrounding_calls,
+                evidence_source_ids=tuple(ctx.deps.evidence.passages),
+                read_source_ids=tuple(sorted(ctx.deps.evidence.read_source_ids)),
+            )
             try:
                 ctx.deps.validated_answer = ctx.deps.grounding_validator.validate(
                     output,
@@ -81,14 +89,34 @@ class DocumentAssistant:
                 )
             except GroundingValidationError as error:
                 ctx.deps.last_grounding_error = str(error)
-                if ctx.retry < ctx.max_retries:
+                retry_available = ctx.retry < ctx.max_retries
+                ctx.deps.trace.emit(
+                    "assistant_grounding_rejected",
+                    "assistant.grounding.rejected",
+                    level="warning",
+                    selected_status=output.status,
+                    reason=str(error),
+                    retry=ctx.retry,
+                    max_retries=ctx.max_retries,
+                    retry_available=retry_available,
+                )
+                if retry_available:
                     raise ModelRetry(
-                        "The answer failed grounding validation. Correct it without "
-                        f"inventing evidence: {error}"
+                        "The answer failed grounding validation. Correct every listed "
+                        f"problem in one response without inventing evidence: {error}"
                     ) from error
                 raise GroundingFailureError(
                     f"Grounding validation failed after correction: {error}"
                 ) from error
+            ctx.deps.trace.emit(
+                "assistant_grounding_accepted",
+                "assistant.grounding.accepted",
+                selected_status=output.status,
+                reason=grounding_reason(output.status),
+                citation_count=len(ctx.deps.validated_answer.citations),
+                search_calls=ctx.deps.counters.search_calls,
+                read_source_ids=tuple(sorted(ctx.deps.evidence.read_source_ids)),
+            )
             return output
 
     async def run(
@@ -103,21 +131,32 @@ class DocumentAssistant:
         question = question.strip()
         if not question:
             raise ValueError("Assistant question cannot be empty")
-        if len(question) > MAX_QUESTION_CHARACTERS:
+        if len(question) > self._settings.assistant_max_message_characters:
             raise ValueError(
-                f"Assistant question cannot exceed {MAX_QUESTION_CHARACTERS} characters"
+                "Assistant question cannot exceed "
+                f"{self._settings.assistant_max_message_characters} characters"
             )
         deps.require_fresh_run()
+        run_started = time.perf_counter()
+        deps.trace.emit(
+            "assistant_run_started",
+            "assistant.run.started",
+            question=question,
+            history=history,
+            model_settings=deps.model_settings,
+        )
         result = await self._agent.run(
             question,
             deps=deps,
             message_history=build_message_history(history),
             model_settings=deps.model_settings.to_pydantic_ai(),
             usage_limits=UsageLimits(
-                request_limit=MAX_MODEL_REQUESTS,
-                tool_calls_limit=MAX_TOOL_CALLS,
-                output_tokens_limit=MAX_TOTAL_OUTPUT_TOKENS,
-                per_request_input_tokens_limit=MAX_REQUEST_INPUT_TOKENS,
+                request_limit=self._settings.assistant_max_model_requests,
+                tool_calls_limit=self._settings.assistant_max_tool_calls,
+                output_tokens_limit=self._settings.assistant_max_total_output_tokens,
+                per_request_input_tokens_limit=(
+                    self._settings.assistant_max_request_input_tokens
+                ),
             ),
             event_stream_handler=event_stream_handler,
         )
@@ -125,24 +164,35 @@ class DocumentAssistant:
             raise GroundingFailureError(
                 "The assistant completed without a validated grounded answer"
             )
-        return AssistantRunResult(
+        normalized = AssistantRunResult(
             answer=deps.validated_answer,
             usage=AssistantUsage.from_run_usage(result.usage),
         )
+        deps.trace.emit(
+            "assistant_run_completed",
+            "assistant.run.completed",
+            answer=normalized.answer,
+            usage=normalized.usage,
+            search_calls=deps.counters.search_calls,
+            surrounding_calls=deps.counters.surrounding_calls,
+            evidence_count=len(deps.evidence.passages),
+            duration_ms=(time.perf_counter() - run_started) * 1000,
+        )
+        return normalized
 
 
 def create_document_assistant(
-    settings: Settings,
+    app_settings: Settings,
     openai_client: AsyncOpenAI | None = None,
 ) -> DocumentAssistant:
     """Create the reusable model boundary without request-scoped retrieval state."""
     if openai_client is None:
         openai_client = AsyncOpenAI(
-            api_key=settings.openai_api_key.get_secret_value(),
-            max_retries=3,
+            api_key=app_settings.openai_api_key.get_secret_value(),
+            max_retries=app_settings.openai_http_max_retries,
         )
     model = OpenAIResponsesModel(
-        settings.openai_assistant_model,
+        app_settings.openai_assistant_model,
         provider=OpenAIProvider(openai_client=openai_client),
     )
-    return DocumentAssistant(model)
+    return DocumentAssistant(model, app_settings)

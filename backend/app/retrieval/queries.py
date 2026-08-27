@@ -8,11 +8,11 @@ from dataclasses import dataclass
 from typing import Protocol, cast
 from uuid import UUID
 
+from app.config import settings
 from app.retrieval.models import RetrievalFilters, SourcePassage
 
 SEMANTIC_RPC = "match_document_chunks_semantic"
 LEXICAL_RPC = "match_document_chunks_lexical"
-MAX_CANDIDATES = 100
 SOURCE_PASSAGE_COLUMNS = (
     "id,document_id,chunk_index,text,token_count,page_number,section_title,"
     "source_start,source_end,metadata,display_table,"
@@ -38,8 +38,11 @@ class RankedCandidate:
 
 
 def _validated_limit(limit: int) -> int:
-    if limit <= 0 or limit > MAX_CANDIDATES:
-        raise ValueError(f"Candidate limit must be between 1 and {MAX_CANDIDATES}")
+    if limit <= 0 or limit > settings.retrieval_max_candidate_limit:
+        raise ValueError(
+            "Candidate limit must be between 1 and "
+            f"{settings.retrieval_max_candidate_limit}"
+        )
     return limit
 
 
@@ -177,8 +180,11 @@ async def passage_and_surroundings(
     chunk_id: UUID,
     radius: int,
 ) -> tuple[SourcePassage, list[SourcePassage]]:
-    if radius != 1:
-        raise ValueError("Surrounding chunk radius must be exactly 1")
+    if radius != settings.assistant_surrounding_chunk_radius:
+        raise ValueError(
+            "Surrounding chunk radius must be exactly "
+            f"{settings.assistant_surrounding_chunk_radius}"
+        )
     anchor = (await hydrate_passages(client, [chunk_id]))[0]
     builder = cast(object, client.table("document_chunks"))
     response = await (

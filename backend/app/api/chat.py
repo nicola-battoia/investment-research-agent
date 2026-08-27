@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.responses import StreamingResponse
 from pydantic import field_validator
 
+from app.assistant.tracing import AssistantTrace
 from app.auth.dependencies import AuthenticatedContext, get_authenticated_context
 from app.chat.messages import (
     ApiModel,
@@ -18,6 +19,7 @@ from app.chat.messages import (
 )
 from app.chat.orchestrator import ChatTurnOrchestrator
 from app.chat.streaming import chat_turn_events
+from app.config import settings
 from app.database import chats
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -38,7 +40,7 @@ class ThreadDetail(ApiModel):
 
 
 class CreateThreadRequest(ApiModel):
-    title: str = "New chat"
+    title: str = settings.chat_default_thread_title
 
     @field_validator("title")
     @classmethod
@@ -135,16 +137,30 @@ async def stream_chat(
     context: ChatContext,
 ) -> StreamingResponse:
     user_id = UUID(context.user.id)
+    user_message = to_internal_user_message(payload.message)
+    trace = AssistantTrace.create(
+        request.app.state.settings,
+        thread_id=payload.id,
+        user_id=user_id,
+        client_message_id=user_message.client_id,
+    )
+    request.state.assistant_trace = trace
+    trace.emit(
+        "chat_turn_received",
+        "turn.received",
+        question=user_message.content,
+    )
     orchestrator = ChatTurnOrchestrator(
         settings=request.app.state.settings,
         supabase=context.supabase,
         openai_client=request.app.state.openai_client,
         assistant=request.app.state.document_assistant,
+        trace=trace,
     )
     prepared = await orchestrator.prepare(
         thread_id=payload.id,
         user_id=user_id,
-        user_message=to_internal_user_message(payload.message),
+        user_message=user_message,
     )
     return StreamingResponse(
         chat_turn_events(
@@ -170,6 +186,9 @@ def _validated_title(value: str) -> str:
     value = value.strip()
     if not value:
         raise ValueError("Thread title cannot be empty")
-    if len(value) > 200:
-        raise ValueError("Thread title cannot exceed 200 characters")
+    if len(value) > settings.chat_thread_title_max_characters:
+        raise ValueError(
+            "Thread title cannot exceed "
+            f"{settings.chat_thread_title_max_characters} characters"
+        )
     return value

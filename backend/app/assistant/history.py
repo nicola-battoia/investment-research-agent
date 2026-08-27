@@ -14,9 +14,8 @@ from pydantic_ai.messages import (
 )
 
 from app.assistant.outputs import HistoryMessage
+from app.config import settings
 
-MAX_HISTORY_TURNS = 3
-MAX_HISTORY_CHARACTERS = 20_000
 OLD_SOURCE_MARKER_RE = re.compile(r"\[S[1-9][0-9]*\]")
 
 
@@ -39,11 +38,15 @@ def build_message_history(history: Sequence[HistoryMessage]) -> list[ModelMessag
 
     selected: list[tuple[str, str]] = []
     character_count = 0
-    for pair in reversed(pairs[-MAX_HISTORY_TURNS:]):
+    for pair in reversed(pairs[-settings.assistant_max_history_turns :]):
         pair_characters = len(pair[0]) + len(pair[1])
-        if selected and character_count + pair_characters > MAX_HISTORY_CHARACTERS:
+        if (
+            selected
+            and character_count + pair_characters
+            > settings.assistant_max_history_characters
+        ):
             break
-        if pair_characters > MAX_HISTORY_CHARACTERS:
+        if pair_characters > settings.assistant_max_history_characters:
             continue
         selected.append(pair)
         character_count += pair_characters

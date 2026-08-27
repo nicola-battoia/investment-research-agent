@@ -6,10 +6,8 @@ from dataclasses import dataclass, field
 from uuid import UUID
 
 from app.assistant.outputs import PassagePreview, ReadablePassage
+from app.config import settings
 from app.retrieval.models import SourcePassage
-
-MAX_TURN_EVIDENCE = 64
-PREVIEW_CHARACTERS = 600
 
 
 class EvidenceLimitError(Exception):
@@ -24,7 +22,7 @@ class UnknownSourceError(Exception):
 class TurnEvidence:
     """Mutable evidence belongs to exactly one request-scoped assistant run."""
 
-    max_passages: int = MAX_TURN_EVIDENCE
+    max_passages: int = settings.assistant_max_turn_evidence
     _by_source_id: dict[str, SourcePassage] = field(default_factory=dict)
     _source_id_by_chunk: dict[UUID, str] = field(default_factory=dict)
     _read_source_ids: set[str] = field(default_factory=set)
@@ -67,8 +65,8 @@ class TurnEvidence:
 
     def preview(self, passage: SourcePassage) -> PassagePreview:
         text = " ".join(passage.text.split())
-        if len(text) > PREVIEW_CHARACTERS:
-            text = text[:PREVIEW_CHARACTERS].rstrip() + "…"
+        if len(text) > settings.assistant_evidence_preview_characters:
+            text = text[: settings.assistant_evidence_preview_characters].rstrip() + "…"
         return PassagePreview(
             source_id=self.source_id_for(passage),
             passage_kind=passage.passage_kind,
