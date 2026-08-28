@@ -83,12 +83,11 @@ async def post_thread(
 @router.get("/threads/{thread_id}", response_model=ThreadDetail)
 async def get_thread(
     thread_id: UUID,
-    request: Request,
     context: ChatContext,
 ) -> ThreadDetail:
     thread, messages, citations = await chats.load_thread(
         context.supabase,
-        request.app.state.settings,
+        context.admin_supabase,
         thread_id,
         UUID(context.user.id),
     )
@@ -102,12 +101,11 @@ async def get_thread(
 async def patch_thread(
     thread_id: UUID,
     payload: RenameThreadRequest,
-    request: Request,
     context: ChatContext,
 ) -> ThreadSummary:
     row = await chats.rename_thread(
         context.supabase,
-        request.app.state.settings,
+        context.admin_supabase,
         thread_id,
         UUID(context.user.id),
         payload.title,
@@ -118,12 +116,11 @@ async def patch_thread(
 @router.delete("/threads/{thread_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def remove_thread(
     thread_id: UUID,
-    request: Request,
     context: ChatContext,
 ) -> Response:
     await chats.delete_thread(
         context.supabase,
-        request.app.state.settings,
+        context.admin_supabase,
         thread_id,
         UUID(context.user.id),
     )
@@ -153,6 +150,7 @@ async def stream_chat(
     orchestrator = ChatTurnOrchestrator(
         settings=request.app.state.settings,
         supabase=context.supabase,
+        admin_supabase=context.admin_supabase,
         azure_openai=request.app.state.azure_openai,
         assistant=request.app.state.document_assistant,
         trace=trace,

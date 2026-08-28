@@ -68,6 +68,9 @@ LOG_MAX_EVENT_BYTES=4096
 
 `summary` is metadata-only: it keeps the trace sequence, stages, durations, model and
 tool names, status values, safe error classifications, counts, and token/cost usage.
+Assistant model-response records include cumulative request, tool, input, cached
+input, output, and total-token counts. A throttled request may additionally include
+only the safe numeric Azure limit, remaining, reset, and retry-delay fields.
 It never records prompts, history, answers, retrieval content, tool payloads, runtime
 identifiers other than `trace_id`, exception messages, or tracebacks. Production JSON
 events are capped at 4 KiB. `full` preserves content-rich diagnostics locally up to
@@ -251,10 +254,14 @@ investment-advice refusal.
 
 Each run receives a fresh `AssistantDeps` containing the authenticated user and
 thread IDs, the Phase 7 retriever, model settings, validator, and evidence registry.
-Only the latest three complete chat turns are included, and old source labels or
-tool transcripts are never reused. The assistant is bounded to three searches,
-three surrounding reads, 12 total tool calls, eight model requests, and 64 unique
-passages per turn.
+Only the latest five complete chat turns are included, and old source labels or
+tool transcripts are never reused. The assistant is bounded to five searches,
+two surrounding reads, eight total tool calls, ten model requests, and 150 unique
+passages per turn. Cumulative assistant input is capped at 60,000 tokens, with a
+32,000-token cap on any one request. Azure does not currently support the Responses
+input-token counting route for this deployment, so the model adapter conservatively
+estimates the serialized request locally before PydanticAI applies those limits;
+completed calls contribute Azure's actual usage to the cumulative counter.
 
 ### Inspect the assistant interactively
 
@@ -280,6 +287,16 @@ AZURE_OPENAI_EMBEDDING_DEPLOYMENT=embeddings-text-embedding-3-small
 OPENAI_ASSISTANT_MODEL=gpt-5.6-terra
 OPENAI_ASSISTANT_REASONING_EFFORT=medium
 OPENAI_ASSISTANT_MAX_OUTPUT_TOKENS=3000
+OPENAI_KEYWORD_MAX_OUTPUT_TOKENS=800
+ASSISTANT_MAX_MODEL_REQUESTS=10
+ASSISTANT_MAX_TOOL_CALLS=8
+ASSISTANT_MAX_TOTAL_INPUT_TOKENS=60000
+ASSISTANT_MAX_TOTAL_OUTPUT_TOKENS=6000
+ASSISTANT_MAX_REQUEST_INPUT_TOKENS=32000
+ASSISTANT_MAX_SEARCH_CALLS=5
+ASSISTANT_MAX_SURROUNDING_CALLS=2
+ASSISTANT_SEARCH_RESULT_LIMIT=10
+ASSISTANT_EVIDENCE_PREVIEW_CHARACTERS=400
 CHAT_TURN_TIMEOUT_SECONDS=180
 ```
 
@@ -290,6 +307,12 @@ citations, model usage, thread timestamp, and first-question title are written b
 one RLS-aware Postgres function. A failed grounding check, upstream failure,
 timeout, or cancellation never creates a partial assistant message. Client message
 IDs make a retry idempotent when a completed response was lost in transit.
+
+Because `/chat/stream` is SSE, its HTTP status can remain 200 after the connection
+opens even if the stream later emits `assistant_rate_limited` or
+`database_unavailable`. Use the typed stream error and correlated `trace_id`, not
+the outer HTTP status alone, when diagnosing a failed turn. Authentication or
+database timeouts before streaming return HTTP 503.
 
 The fast test suite never calls Supabase or Azure AI Foundry:
 

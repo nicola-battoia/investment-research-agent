@@ -46,7 +46,7 @@ def test_openai_extractor_uses_typed_project_prompt() -> None:
         instructions=KEYWORD_EXTRACTION_INSTRUCTIONS,
         input="What drove the increase in Services net sales?",
         text_format=ExtractedKeywords,
-        max_output_tokens=2000,
+        max_output_tokens=800,
         store=False,
     )
 

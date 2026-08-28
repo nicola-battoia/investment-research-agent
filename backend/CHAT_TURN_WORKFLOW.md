@@ -339,10 +339,12 @@ result = await self._agent.run(
     message_history=build_message_history(history),
     model_settings=deps.model_settings.to_pydantic_ai(),
     usage_limits=UsageLimits(
-        request_limit=12,
-        tool_calls_limit=12,
+        request_limit=10,
+        tool_calls_limit=8,
+        input_tokens_limit=60_000,
         output_tokens_limit=6_000,
-        per_request_input_tokens_limit=64_000,
+        per_request_input_tokens_limit=32_000,
+        count_tokens_before_request=True,
     ),
     event_stream_handler=event_stream_handler,
 )
@@ -389,13 +391,14 @@ structured output. Hard bounds prevent unbounded iteration:
 ```py
 # app/assistant/agent.py
 usage_limits=UsageLimits(
-    request_limit=8, tool_calls_limit=12, output_tokens_limit=6_000,
-    per_request_input_tokens_limit=64_000,
+    request_limit=10, tool_calls_limit=8, input_tokens_limit=60_000,
+    output_tokens_limit=6_000, per_request_input_tokens_limit=32_000,
+    count_tokens_before_request=True,
 )
 
 # app/assistant/tools.py
-MAX_SEARCH_CALLS = 3
-MAX_SURROUNDING_CALLS = 3
+# ASSISTANT_MAX_SEARCH_CALLS=5
+# ASSISTANT_MAX_SURROUNDING_CALLS=2
 ```
 
 Tool calls are deliberately sequential (`parallel_tool_calls=False`). Invalid
@@ -408,7 +411,7 @@ The model may call `search_filings(query, filters)`. It accepts a focused query
 plus an explicit search scope. Every call must include at least one company,
 ticker, filing type, report/fiscal year, or filing-date filter, unless the model
 deliberately sets `corpus_wide=true`. Corpus-wide scope cannot be combined with
-filing filters. At most three searches are allowed, and one search requests 50
+filing filters. At most five searches are allowed, and one search requests 50
 candidates and returns at most 10 fused ranked passages:
 
 ```py
@@ -424,7 +427,7 @@ return SearchToolResult(query=query, lexical_query=result.keywords.search_text,
                         ranked_passages=ranked, context_passages=context)
 ```
 
-`preview` is metadata plus no more than 600 characters of normalized text, not a
+`preview` is metadata plus no more than 400 characters of normalized text, not a
 full chunk. It registers a per-turn source ID (`S1`, `S2`, ...) so later calls
 cannot use a UUID or evidence from a different turn:
 

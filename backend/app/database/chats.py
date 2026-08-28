@@ -8,8 +8,6 @@ from postgrest import APIError
 from supabase import AsyncClient
 
 from app.chat.messages import InternalUserMessage
-from app.config import Settings
-from app.database.supabase import create_admin_supabase_client
 
 THREAD_COLUMNS = "id,title,created_at,updated_at"
 MESSAGE_COLUMNS = "id,thread_id,position,role,content,message_data,created_at"
@@ -62,7 +60,7 @@ async def create_thread(
 
 async def require_owned_thread(
     client: AsyncClient,
-    app_settings: Settings,
+    admin: AsyncClient,
     thread_id: UUID,
     user_id: UUID,
 ) -> dict[str, object]:
@@ -77,7 +75,6 @@ async def require_owned_thread(
     if response.data:
         return response.data[0]
 
-    admin = await create_admin_supabase_client(app_settings)
     existence = await (
         admin.table("chat_threads")
         .select("owner_id")
@@ -92,7 +89,7 @@ async def require_owned_thread(
 
 async def load_thread(
     client: AsyncClient,
-    app_settings: Settings,
+    admin: AsyncClient,
     thread_id: UUID,
     user_id: UUID,
 ) -> tuple[
@@ -100,7 +97,7 @@ async def load_thread(
     list[dict[str, object]],
     list[dict[str, object]],
 ]:
-    thread = await require_owned_thread(client, app_settings, thread_id, user_id)
+    thread = await require_owned_thread(client, admin, thread_id, user_id)
     message_response = await (
         client.table("chat_messages")
         .select(MESSAGE_COLUMNS)
@@ -124,12 +121,12 @@ async def load_thread(
 
 async def rename_thread(
     client: AsyncClient,
-    app_settings: Settings,
+    admin: AsyncClient,
     thread_id: UUID,
     user_id: UUID,
     title: str,
 ) -> dict[str, object]:
-    await require_owned_thread(client, app_settings, thread_id, user_id)
+    await require_owned_thread(client, admin, thread_id, user_id)
     response = await (
         client.table("chat_threads")
         .update({"title": title, "updated_at": _now()})
@@ -142,11 +139,11 @@ async def rename_thread(
 
 async def delete_thread(
     client: AsyncClient,
-    app_settings: Settings,
+    admin: AsyncClient,
     thread_id: UUID,
     user_id: UUID,
 ) -> None:
-    await require_owned_thread(client, app_settings, thread_id, user_id)
+    await require_owned_thread(client, admin, thread_id, user_id)
     await (
         client.table("chat_threads")
         .delete()

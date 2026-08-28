@@ -9,6 +9,7 @@ import math
 import re
 import time
 from collections.abc import Mapping, Sequence
+from copy import deepcopy
 from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
@@ -54,6 +55,17 @@ _SECRET_PATTERNS = (
     re.compile(r"\bsk-[A-Za-z0-9_-]{8,}\b"),
     re.compile(r"\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b"),
 )
+_DURATION_PART = re.compile(r"(\d+(?:\.\d+)?)(ms|s|m|h)", re.IGNORECASE)
+_RATE_COUNT_HEADERS = {
+    "x-ratelimit-limit-requests": "rate_limit_requests",
+    "x-ratelimit-limit-tokens": "rate_limit_tokens",
+    "x-ratelimit-remaining-requests": "rate_remaining_requests",
+    "x-ratelimit-remaining-tokens": "rate_remaining_tokens",
+}
+_RATE_DURATION_HEADERS = {
+    "x-ratelimit-reset-requests": "rate_reset_requests_ms",
+    "x-ratelimit-reset-tokens": "rate_reset_tokens_ms",
+}
 
 
 @dataclasses.dataclass
@@ -258,6 +270,159 @@ def embedding_summary(vector: Sequence[float]) -> dict[str, object]:
     }
 
 
+def run_usage_log_context(usage: object) -> dict[str, int]:
+    """Return the safe cumulative counters exposed by PydanticAI run usage."""
+    fields = (
+        "requests",
+        "tool_calls",
+        "input_tokens",
+        "cache_read_tokens",
+        "cache_write_tokens",
+        "output_tokens",
+        "total_tokens",
+    )
+    return {
+        field: value
+        for field in fields
+        if isinstance((value := getattr(usage, field, None)), int) and value >= 0
+    }
+
+
+def response_usage_log_context(
+    cumulative_usage: object,
+    response: ModelResponse,
+) -> dict[str, int]:
+    """Include the current response before PydanticAI commits it to run usage."""
+    usage = deepcopy(cumulative_usage)
+    increment = getattr(usage, "incr", None)
+    if callable(increment):
+        increment(response.usage)
+    return run_usage_log_context(usage)
+
+
+def failed_request_usage_log_context(
+    cumulative_usage: object,
+    request_index: int | None,
+) -> dict[str, int]:
+    """Count the attempted request that failed before PydanticAI committed it."""
+    context = run_usage_log_context(cumulative_usage)
+    if request_index is not None:
+        context["requests"] = max(context.get("requests", 0), request_index)
+    return context
+
+
+def upstream_error_log_context(error: Exception) -> dict[str, int]:
+    """Extract only safe status and numeric rate-limit metadata from an error."""
+    context: dict[str, int] = {}
+    for item in _exception_chain(error):
+        status_code = getattr(item, "status_code", None)
+        if (
+            "upstream_status_code" not in context
+            and isinstance(status_code, int)
+            and 100 <= status_code <= 599
+        ):
+            context["upstream_status_code"] = status_code
+
+        headers = _response_headers(item)
+        if headers is None:
+            continue
+        for header, field in _RATE_COUNT_HEADERS.items():
+            if field in context:
+                continue
+            if (value := _non_negative_int(_header(headers, header))) is not None:
+                context[field] = value
+        for header, field in _RATE_DURATION_HEADERS.items():
+            if field in context:
+                continue
+            if (value := _duration_ms(_header(headers, header))) is not None:
+                context[field] = value
+        if "retry_after_ms" not in context:
+            retry_after_ms = _non_negative_int(_header(headers, "retry-after-ms"))
+            if retry_after_ms is None:
+                retry_after_ms = _seconds_ms(_header(headers, "retry-after"))
+            if retry_after_ms is not None:
+                context["retry_after_ms"] = retry_after_ms
+    return context
+
+
+def upstream_status_code(error: Exception) -> int | None:
+    return upstream_error_log_context(error).get("upstream_status_code")
+
+
+def _exception_chain(error: Exception) -> tuple[BaseException, ...]:
+    chain: list[BaseException] = []
+    seen: set[int] = set()
+    current: BaseException | None = error
+    while current is not None and len(chain) < 6 and id(current) not in seen:
+        seen.add(id(current))
+        chain.append(current)
+        cause = current.__cause__
+        current = cause if cause is not None else current.__context__
+    return tuple(chain)
+
+
+def _response_headers(error: BaseException) -> Mapping[str, str] | None:
+    response = getattr(error, "response", None)
+    headers = getattr(response, "headers", None)
+    if isinstance(headers, Mapping):
+        return headers
+    headers = getattr(error, "headers", None)
+    if isinstance(headers, Mapping):
+        return headers
+    return None
+
+
+def _header(headers: Mapping[str, str], name: str) -> object:
+    return headers.get(name)
+
+
+def _non_negative_int(value: object) -> int | None:
+    if not isinstance(value, str | int | float):
+        return None
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(parsed) or parsed < 0:
+        return None
+    return round(parsed)
+
+
+def _seconds_ms(value: object) -> int | None:
+    parsed = _non_negative_float(value)
+    return round(parsed * 1_000) if parsed is not None else None
+
+
+def _duration_ms(value: object) -> int | None:
+    parsed = _non_negative_float(value)
+    if parsed is not None:
+        return round(parsed * 1_000)
+    if not isinstance(value, str):
+        return None
+    matches = tuple(_DURATION_PART.finditer(value.strip()))
+    if not matches or "".join(match.group(0) for match in matches) != value.strip():
+        return None
+    multipliers = {"ms": 1, "s": 1_000, "m": 60_000, "h": 3_600_000}
+    return round(
+        sum(
+            float(match.group(1)) * multipliers[match.group(2).casefold()]
+            for match in matches
+        )
+    )
+
+
+def _non_negative_float(value: object) -> float | None:
+    if not isinstance(value, str | int | float):
+        return None
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(parsed) or parsed < 0:
+        return None
+    return parsed
+
+
 def grounding_reason(status: str) -> str:
     return {
         "conversational": "non_retrieval_without_search",
@@ -312,6 +477,7 @@ def create_assistant_trace_hooks() -> Hooks[AssistantDeps]:
             model=request_context.model_id or request_context.model.model_id,
             provider_response_id=response.provider_response_id,
             finish_reason=response.finish_reason,
+            **response_usage_log_context(ctx.usage, response),
             output=(
                 serialize_model_response(response) if trace.captures_content else None
             ),
@@ -337,6 +503,8 @@ def create_assistant_trace_hooks() -> Hooks[AssistantDeps]:
             model=request_context.model_id or request_context.model.model_id,
             error_class=type(error).__name__,
             error_message=str(error),
+            **failed_request_usage_log_context(ctx.usage, request_index),
+            **upstream_error_log_context(error),
         )
         raise error
 

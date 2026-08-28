@@ -6,11 +6,15 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
+from httpx import ReadTimeout, Request
 from supabase_auth import User
 from supabase_auth.errors import AuthApiError, AuthInvalidJwtError
 from supabase_auth.types import UserResponse
 
-from app.auth.dependencies import get_current_user
+from app.auth.dependencies import (
+    AuthenticationServiceUnavailableError,
+    get_current_user,
+)
 from app.config import Settings
 
 
@@ -40,6 +44,7 @@ def make_settings() -> Settings:
 def make_app() -> FastAPI:
     application = FastAPI()
     application.state.settings = make_settings()
+    application.state.supabase_http_client = object()
 
     @application.get("/protected")
     async def protected_route(
@@ -111,11 +116,19 @@ def test_valid_bearer_token_returns_the_supabase_user() -> None:
     get_user = AsyncMock(return_value=UserResponse(user=user))
     supabase_client = SimpleNamespace(auth=SimpleNamespace(get_user=get_user))
     client_factory = AsyncMock(return_value=supabase_client)
+    admin_client = object()
+    admin_factory = AsyncMock(return_value=admin_client)
     application = make_app()
 
-    with patch(
-        "app.auth.dependencies.create_user_supabase_client",
-        client_factory,
+    with (
+        patch(
+            "app.auth.dependencies.create_user_supabase_client",
+            client_factory,
+        ),
+        patch(
+            "app.auth.dependencies.create_admin_supabase_client",
+            admin_factory,
+        ),
     ):
         response = TestClient(application).get(
             "/protected",
@@ -130,5 +143,31 @@ def test_valid_bearer_token_returns_the_supabase_user() -> None:
     client_factory.assert_awaited_once_with(
         application.state.settings,
         "valid-token",
+        http_client=application.state.supabase_http_client,
+    )
+    admin_factory.assert_awaited_once_with(
+        application.state.settings,
+        http_client=application.state.supabase_http_client,
     )
     get_user.assert_awaited_once_with("valid-token")
+
+
+def test_auth_read_timeout_becomes_controlled_unavailable_error() -> None:
+    timeout = ReadTimeout(
+        "timed out",
+        request=Request("GET", "https://project.supabase.co/auth/v1/user"),
+    )
+    get_user = AsyncMock(side_effect=timeout)
+    supabase_client = SimpleNamespace(auth=SimpleNamespace(get_user=get_user))
+
+    with (
+        patch(
+            "app.auth.dependencies.create_user_supabase_client",
+            AsyncMock(return_value=supabase_client),
+        ),
+        pytest.raises(AuthenticationServiceUnavailableError),
+    ):
+        TestClient(make_app()).get(
+            "/protected",
+            headers={"Authorization": "Bearer valid-token"},
+        )

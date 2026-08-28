@@ -9,6 +9,7 @@ from collections.abc import AsyncIterator, Mapping
 from dataclasses import dataclass
 
 from fastapi import Request
+from httpx import TimeoutException
 from openai import OpenAIError
 from postgrest import APIError
 from pydantic_ai.exceptions import (
@@ -17,6 +18,7 @@ from pydantic_ai.exceptions import (
     UsageLimitExceeded,
 )
 
+from app.assistant.tracing import upstream_error_log_context, upstream_status_code
 from app.chat.messages import (
     CitationPart,
     SourceUrlPart,
@@ -301,11 +303,23 @@ def _mapped_failure(error: Exception) -> StreamFailure:
             "The chat database is temporarily unavailable.",
             True,
         )
+    if isinstance(error, TimeoutException):
+        return StreamFailure(
+            "database_unavailable",
+            "The chat database is temporarily unavailable.",
+            True,
+        )
     if isinstance(error, UsageLimitExceeded):
         usage_failure = _usage_limit_failure(error)
         return StreamFailure(
             usage_failure.code,
             usage_failure.message,
+            True,
+        )
+    if upstream_status_code(error) == 429:
+        return StreamFailure(
+            "assistant_rate_limited",
+            "The research assistant is busy. Please wait briefly and retry.",
             True,
         )
     if isinstance(
@@ -333,12 +347,9 @@ def _usage_limit_failure(error: UsageLimitExceeded) -> UsageLimitFailure:
 
 
 def _error_log_context(error: Exception) -> dict[str, str | int]:
-    context: dict[str, str | int] = {}
+    context: dict[str, str | int] = dict(upstream_error_log_context(error))
     if isinstance(error, UsageLimitExceeded):
         context["usage_limit"] = _usage_limit_failure(error).limit
-    status_code = getattr(error, "status_code", None)
-    if isinstance(status_code, int) and 100 <= status_code <= 599:
-        context["upstream_status_code"] = status_code
     upstream_code = _upstream_error_code(error)
     if upstream_code is not None:
         context["upstream_error_code"] = upstream_code

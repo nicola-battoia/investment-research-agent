@@ -263,6 +263,10 @@ railway variable set \
   --service 974a863b-2ee3-455e-a903-fec1c92343ca \
   'SUPABASE_URL=https://<project-ref>.supabase.co' \
   'SUPABASE_ANON_KEY=<publishable-anon-key>' \
+  SUPABASE_HTTP_CONNECT_TIMEOUT_SECONDS=5 \
+  SUPABASE_HTTP_READ_TIMEOUT_SECONDS=15 \
+  SUPABASE_HTTP_WRITE_TIMEOUT_SECONDS=15 \
+  SUPABASE_HTTP_POOL_TIMEOUT_SECONDS=5 \
   AZURE_OPENAI_ENDPOINT=https://foundry-10k-club.openai.azure.com/openai/v1/ \
   AZURE_OPENAI_ASSISTANT_DEPLOYMENT=assistant-gpt-5-6-terra \
   AZURE_OPENAI_KEYWORD_DEPLOYMENT=keywords-gpt-5-4-nano \
@@ -271,9 +275,20 @@ railway variable set \
   OPENAI_EMBEDDING_MODEL=text-embedding-3-small \
   OPENAI_EMBEDDING_DIMENSIONS=1536 \
   OPENAI_KEYWORD_MODEL=gpt-5.4-nano \
+  OPENAI_KEYWORD_MAX_OUTPUT_TOKENS=800 \
   OPENAI_ASSISTANT_MODEL=gpt-5.6-terra \
   OPENAI_ASSISTANT_REASONING_EFFORT=medium \
   OPENAI_ASSISTANT_MAX_OUTPUT_TOKENS=3000 \
+  ASSISTANT_MAX_MODEL_REQUESTS=10 \
+  ASSISTANT_MAX_TOOL_CALLS=8 \
+  ASSISTANT_MAX_TOTAL_INPUT_TOKENS=60000 \
+  ASSISTANT_MAX_TOTAL_OUTPUT_TOKENS=6000 \
+  ASSISTANT_MAX_REQUEST_INPUT_TOKENS=32000 \
+  ASSISTANT_MAX_SEARCH_CALLS=5 \
+  ASSISTANT_MAX_SURROUNDING_CALLS=2 \
+  ASSISTANT_SEARCH_RESULT_LIMIT=10 \
+  ASSISTANT_EVIDENCE_PREVIEW_CHARACTERS=400 \
+  CHAT_TURN_TIMEOUT_SECONDS=180 \
   ALLOWED_ORIGINS=https://10k-club.up.railway.app \
   APP_ENVIRONMENT=production \
   LOG_LEVEL=INFO \
@@ -547,7 +562,15 @@ Always bound `railway logs` with `--lines`, `--since`, or `--until`; otherwise i
 
 Alembic and Uvicorn write some informational startup lines to stderr, so Railway may label messages containing `INFO` as error severity. One Pre-Deploy container stopping before the runtime container starts is expected. Repeated runtime restarts are not.
 
-Production logs must contain only bounded metadata: trace/stage identity, durations, counts, status values, and safe error classifications. Prompts, history, answers, queries, passages, tool payloads, application identifiers, exception messages, tracebacks, and frame locals must be absent. The backend enforces this with the production runtime profile, a strict field allowlist, and a 4 KiB event ceiling.
+Production logs must contain only bounded metadata: trace/stage identity, durations,
+counts, status values, and safe error classifications. Assistant-response records
+also contain cumulative request, tool, input, cached-input, output, and total-token
+counts. Rate-limit failures may contain only numeric `retry_after_ms`,
+`rate_limit_*`, `rate_remaining_*`, and `rate_reset_*_ms` values. Prompts, history,
+answers, queries, passages, tool payloads, arbitrary response headers, response
+bodies, application identifiers, exception messages, tracebacks, credentials, and
+frame locals must be absent. The backend enforces this with the production runtime
+profile, a strict field allowlist, and a 4 KiB event ceiling.
 
 ## 10. Correct common first-deployment failures
 
@@ -581,9 +604,10 @@ railway variable set \
 
 This triggers the required frontend rebuild. Wait for `SUCCESS`, then hard-refresh or use a private browser window.
 
-### Assistant says it is temporarily unavailable
+### Assistant says the model is busy
 
-Search for the safe error code:
+The stream code `assistant_rate_limited` means Azure returned HTTP 429 after its
+bounded SDK retries. Search the correlated trace and safe numeric quota fields:
 
 ```sh
 railway logs \
@@ -591,15 +615,46 @@ railway logs \
   --environment 7b864536-d01b-47f2-bf19-c44582daf6cf \
   --service 974a863b-2ee3-455e-a903-fec1c92343ca \
   --since 30m \
-  --lines 50 \
-  --filter credit_balance_exhausted \
+  --lines 100 \
+  --filter assistant_rate_limited \
   --json
 ```
 
-An Azure HTTP 429 means the selected deployment has exhausted its allocated request
-or token quota. Inspect the deployment quota in Azure, then increase capacity or
-retry after the documented interval. Replacing `AZURE_OPENAI_API_KEY` through
-`--stdin` triggers a backend redeploy when credential rotation is required.
+Check `retry_after_ms`, the token/request limit and remaining values, and their reset
+intervals. The expected assistant deployment is `GlobalStandard`, capacity 100
+(100 RPM and 100,000 TPM); the keyword deployment is capacity 25. Azure estimates
+TPM from input plus configured maximum output, so a 429 can occur while billed-token
+metrics still look low. Honor the retry interval. If sustained 429s report an
+effective limit below 100,000 TPM, escalate to Azure support or evaluate Provisioned
+Throughput. Do not retry a complete turn server-side because that can repeat tool
+calls that already finished.
+
+The outer `/chat/stream` request can still show HTTP 200: the status was committed
+when the SSE connection opened, and the typed failure arrived later inside the
+stream. Use `stream.completed` as the success signal.
+
+### Supabase authentication or database timeout
+
+A Supabase Auth timeout before the SSE response starts returns HTTP 503 with
+`authentication_unavailable`. A database timeout before streaming returns HTTP 503;
+one after streaming starts emits retryable `database_unavailable` inside the SSE
+stream (whose outer HTTP status may remain 200).
+
+```sh
+railway logs \
+  --project 42cace43-5886-4706-b9f2-f8312e798507 \
+  --environment 7b864536-d01b-47f2-bf19-c44582daf6cf \
+  --service 974a863b-2ee3-455e-a903-fec1c92343ca \
+  --since 30m \
+  --lines 100 \
+  --filter unavailable \
+  --json
+```
+
+The shared transport uses 5-second connect/pool and 15-second read/write deadlines.
+Check Supabase status and network reachability before changing them. These failures
+must not appear as `Unhandled ASGI application exception` or as a generic browser
+connectivity error.
 
 ## 11. Supabase ingestion and branch promotion
 

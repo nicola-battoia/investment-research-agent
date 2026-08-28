@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, patch
 from uuid import UUID
 
 import pytest
+from httpx import ReadTimeout
 from httpx import Request as HttpxRequest
 from httpx import Response as HttpxResponse
 from openai import APIConnectionError, RateLimitError
@@ -120,6 +121,14 @@ def test_openai_failure_uses_retryable_upstream_protocol() -> None:
         ),
         (
             (
+                "The next request would exceed the input_tokens_limit of 60000 "
+                "(input_tokens=61000)"
+            ),
+            "input_tokens_limit",
+            "assistant_input_tokens_limit",
+        ),
+        (
+            (
                 "Exceeded the per_request_input_tokens_limit of 64000 "
                 "(request_input_tokens=65000)"
             ),
@@ -169,6 +178,16 @@ def test_upstream_failure_logs_only_structured_status_and_safe_code() -> None:
     response = HttpxResponse(
         429,
         request=HttpxRequest("POST", "https://api.openai.com/v1/responses"),
+        headers={
+            "retry-after-ms": "2500",
+            "x-ratelimit-limit-requests": "100",
+            "x-ratelimit-limit-tokens": "100000",
+            "x-ratelimit-remaining-requests": "7",
+            "x-ratelimit-remaining-tokens": "12345",
+            "x-ratelimit-reset-requests": "1.5s",
+            "x-ratelimit-reset-tokens": "2m3s",
+            "x-private-provider-header": "PRIVATE_HEADER_VALUE",
+        },
     )
     error = RateLimitError(
         "PRIVATE_PROVIDER_MESSAGE",
@@ -180,14 +199,36 @@ def test_upstream_failure_logs_only_structured_status_and_safe_code() -> None:
     with capture_logs() as logs:
         payload = asyncio.run(collect(orchestrator))
 
-    assert '"code":"assistant_unavailable"' in payload
+    assert '"code":"assistant_rate_limited"' in payload
+    assert "busy" in payload
     failure_log = next(log for log in logs if log["event"] == "chat_turn_failed")
     assert failure_log["upstream_status_code"] == 429
     assert failure_log["upstream_error_code"] == "credit_balance_exhausted"
+    assert failure_log["retry_after_ms"] == 2500
+    assert failure_log["rate_limit_requests"] == 100
+    assert failure_log["rate_limit_tokens"] == 100_000
+    assert failure_log["rate_remaining_requests"] == 7
+    assert failure_log["rate_remaining_tokens"] == 12_345
+    assert failure_log["rate_reset_requests_ms"] == 1_500
+    assert failure_log["rate_reset_tokens_ms"] == 123_000
     assert failure_log["failed_after_stage"] == "stream.started"
     assert "PRIVATE_PROVIDER_MESSAGE" not in str(failure_log)
     assert "PRIVATE_BODY" not in str(failure_log)
+    assert "PRIVATE_HEADER_VALUE" not in str(failure_log)
     assert "exc_info" not in failure_log
+
+
+def test_supabase_timeout_during_stream_is_retryable_database_failure() -> None:
+    request = HttpxRequest("GET", "https://project.supabase.co/rest/v1/chat_threads")
+    orchestrator = SimpleNamespace(
+        complete=AsyncMock(side_effect=ReadTimeout("timed out", request=request))
+    )
+
+    payload = asyncio.run(collect(orchestrator))
+
+    assert '"code":"database_unavailable"' in payload
+    assert '"retryable":true' in payload
+    assert '"type":"start"' not in payload
 
 
 def test_malformed_upstream_code_is_not_logged() -> None:

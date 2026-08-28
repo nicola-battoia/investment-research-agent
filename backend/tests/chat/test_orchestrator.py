@@ -151,6 +151,7 @@ def orchestrator(
     return ChatTurnOrchestrator(
         settings=make_settings(),
         supabase=object(),
+        admin_supabase=object(),
         azure_openai=SimpleNamespace(
             client=SimpleNamespace(responses=object(), embeddings=object())
         ),

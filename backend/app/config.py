@@ -36,6 +36,11 @@ class Settings(BaseSettings):
     supabase_service_role_key: SecretStr
     # Direct Psycopg connection used by Alembic migrations.
     database_url: SecretStr
+    # Shared Supabase transport deadlines for connection acquisition and I/O.
+    supabase_http_connect_timeout_seconds: PositiveFloat = 5
+    supabase_http_read_timeout_seconds: PositiveFloat = 15
+    supabase_http_write_timeout_seconds: PositiveFloat = 15
+    supabase_http_pool_timeout_seconds: PositiveFloat = 5
 
     # Azure OpenAI-compatible v1 endpoint shared by every model workload.
     azure_openai_endpoint: AnyHttpUrl
@@ -56,7 +61,7 @@ class Settings(BaseSettings):
     # Model that turns questions into bounded lexical search concepts.
     openai_keyword_model: str
     # Maximum tokens returned by one keyword-extraction request.
-    openai_keyword_max_output_tokens: PositiveInt = 2_000
+    openai_keyword_max_output_tokens: PositiveInt = 800
     # Main model used to plan research and produce the grounded answer.
     openai_assistant_model: str
     # Reasoning effort sent with each main assistant model request.
@@ -72,13 +77,15 @@ class Settings(BaseSettings):
     openai_assistant_max_output_tokens: PositiveInt
 
     # Maximum model requests allowed across one assistant run, including retries.
-    assistant_max_model_requests: PositiveInt = 40
+    assistant_max_model_requests: PositiveInt = 10
     # Maximum total tool invocations allowed across one assistant run.
-    assistant_max_tool_calls: PositiveInt = 20
+    assistant_max_tool_calls: PositiveInt = 8
     # Cumulative output-token ceiling across all model requests in one run.
     assistant_max_total_output_tokens: PositiveInt = 6_000
+    # Cumulative input-token ceiling across all model requests in one run.
+    assistant_max_total_input_tokens: PositiveInt = 60_000
     # Input-token ceiling applied separately to every model request.
-    assistant_max_request_input_tokens: PositiveInt = 64_000
+    assistant_max_request_input_tokens: PositiveInt = 32_000
     # Shared character ceiling for user questions, answers, and stored history messages.
     assistant_max_message_characters: PositiveInt = 10_000
     # Number of automatic retries allowed after tool validation or execution errors.
@@ -101,14 +108,14 @@ class Settings(BaseSettings):
     # Maximum unique passages that may be registered as evidence in one turn.
     assistant_max_turn_evidence: PositiveInt = 150
     # Characters from each retrieved passage exposed in search-result previews.
-    assistant_evidence_preview_characters: PositiveInt = 600
+    assistant_evidence_preview_characters: PositiveInt = 400
 
     # Maximum filing-search tool calls the model may make in one turn.
-    assistant_max_search_calls: PositiveInt = 15
+    assistant_max_search_calls: PositiveInt = 5
     # Maximum surrounding-chunk tool calls the model may make in one turn.
-    assistant_max_surrounding_calls: PositiveInt = 5
+    assistant_max_surrounding_calls: PositiveInt = 2
     # Ranked passages returned to the model by each filing search.
-    assistant_search_result_limit: PositiveInt = 15
+    assistant_search_result_limit: PositiveInt = 10
     # Candidates fetched per retrieval branch for each model-controlled search.
     assistant_search_candidate_limit: PositiveInt = 50
     # Character ceiling for a model-generated filing-search query.
@@ -247,6 +254,14 @@ class Settings(BaseSettings):
             raise ValueError(
                 "OPENAI_ASSISTANT_MAX_OUTPUT_TOKENS cannot exceed "
                 "ASSISTANT_MAX_TOTAL_OUTPUT_TOKENS"
+            )
+        if (
+            self.assistant_max_request_input_tokens
+            > self.assistant_max_total_input_tokens
+        ):
+            raise ValueError(
+                "ASSISTANT_MAX_REQUEST_INPUT_TOKENS cannot exceed "
+                "ASSISTANT_MAX_TOTAL_INPUT_TOKENS"
             )
         if (
             self.assistant_max_non_retrieval_answer_characters

@@ -1,13 +1,19 @@
 from datetime import UTC, date, datetime
-from unittest.mock import AsyncMock, patch
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, Mock, patch
 from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
+from httpx import ReadTimeout, Request
 from postgrest import APIError
 from supabase_auth import User
 
-from app.auth.dependencies import AuthenticatedContext, get_authenticated_context
+from app.auth.dependencies import (
+    AuthenticatedContext,
+    AuthenticationServiceUnavailableError,
+    get_authenticated_context,
+)
 from app.chat.messages import (
     CitationData,
     CitationPart,
@@ -76,7 +82,11 @@ def make_client() -> TestClient:
         created_at=datetime.now(UTC),
     )
     application.dependency_overrides[get_authenticated_context] = lambda: (
-        AuthenticatedContext(user=user, supabase=object())
+        AuthenticatedContext(
+            user=user,
+            supabase=object(),
+            admin_supabase=object(),
+        )
     )
     return TestClient(application)
 
@@ -472,6 +482,58 @@ def test_chat_errors_have_stable_http_statuses(
 
     assert response.status_code == expected_status
     assert isinstance(response.json()["detail"], str)
+
+
+def test_auth_timeout_before_stream_returns_specific_503() -> None:
+    async def unavailable() -> None:
+        raise AuthenticationServiceUnavailableError
+
+    client = make_client()
+    client.app.dependency_overrides[get_authenticated_context] = unavailable
+
+    with client:
+        response = client.get("/chat/threads")
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "detail": "Authentication service is temporarily unavailable"
+    }
+
+
+def test_database_timeout_before_stream_returns_503() -> None:
+    timeout = ReadTimeout(
+        "timed out",
+        request=Request("GET", "https://project.supabase.co/rest/v1/chat_threads"),
+    )
+    with (
+        patch("app.api.chat.chats.list_threads", AsyncMock(side_effect=timeout)),
+        make_client() as client,
+    ):
+        response = client.get("/chat/threads")
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": "The chat database is temporarily unavailable"}
+
+
+def test_app_owned_supabase_transport_has_explicit_timeouts_and_closes() -> None:
+    transport = SimpleNamespace(aclose=AsyncMock())
+    factory = Mock(return_value=transport)
+
+    with patch("app.main.AsyncHTTPClient", factory):
+        application = create_app(
+            make_settings(),
+            azure_openai=object(),
+            document_assistant=object(),
+        )
+        with TestClient(application) as client:
+            assert client.get("/health").status_code == 200
+
+    timeout = factory.call_args.kwargs["timeout"]
+    assert timeout.connect == 5
+    assert timeout.read == 15
+    assert timeout.write == 15
+    assert timeout.pool == 5
+    transport.aclose.assert_awaited_once()
 
 
 def test_chat_stream_cors_preflight_allows_auth_and_json_headers() -> None:

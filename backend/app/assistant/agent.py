@@ -38,8 +38,15 @@ from app.services import AzureOpenAIService
 class DocumentAssistant:
     """Run a stateless agent with fresh dependencies for every user turn."""
 
-    def __init__(self, model: Model, app_settings: Settings = settings) -> None:
+    def __init__(
+        self,
+        model: Model,
+        app_settings: Settings = settings,
+        *,
+        count_tokens_before_request: bool = True,
+    ) -> None:
         self._settings = app_settings
+        self._count_tokens_before_request = count_tokens_before_request
         self._agent = Agent(
             model,
             name="document_copilot",
@@ -157,10 +164,12 @@ class DocumentAssistant:
             usage_limits=UsageLimits(
                 request_limit=self._settings.assistant_max_model_requests,
                 tool_calls_limit=self._settings.assistant_max_tool_calls,
+                input_tokens_limit=self._settings.assistant_max_total_input_tokens,
                 output_tokens_limit=self._settings.assistant_max_total_output_tokens,
                 per_request_input_tokens_limit=(
                     self._settings.assistant_max_request_input_tokens
                 ),
+                count_tokens_before_request=self._count_tokens_before_request,
             ),
             event_stream_handler=event_stream_handler,
         )

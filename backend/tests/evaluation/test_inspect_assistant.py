@@ -111,7 +111,10 @@ def test_inspection_runs_real_agent_loop_and_returns_evidence_trace() -> None:
     inspection = asyncio.run(
         run_assistant_inspection(
             "What drove Services growth?",
-            DocumentAssistant(FunctionModel(stream_function=stream_function)),
+            DocumentAssistant(
+                FunctionModel(stream_function=stream_function),
+                count_tokens_before_request=False,
+            ),
             deps,
         )
     )

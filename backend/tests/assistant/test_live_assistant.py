@@ -5,6 +5,7 @@ import os
 from uuid import UUID, uuid4
 
 import pytest
+from supabase_auth.errors import AuthError
 
 from app.assistant.agent import create_document_assistant
 from app.assistant.deps import AssistantDeps, AssistantModelSettings
@@ -29,7 +30,10 @@ async def live_services() -> tuple[object, AssistantDeps, AzureOpenAIService]:
     from app.config import settings
 
     supabase = await create_user_supabase_client(settings, access_token)
-    auth_response = await supabase.auth.get_user(access_token)
+    try:
+        auth_response = await supabase.auth.get_user(access_token)
+    except AuthError:
+        pytest.skip("SUPABASE_TEST_ACCESS_TOKEN is expired or invalid")
     azure_openai = AzureOpenAIService(settings)
     openai_client = azure_openai.client
     retriever = DocumentRetriever(
@@ -66,6 +70,28 @@ def test_live_answerable_question_returns_current_turn_citations() -> None:
         assert result.answer.status == "supported"
         assert result.answer.citations
         assert all(citation.ticker == "AAPL" for citation in result.answer.citations)
+
+    asyncio.run(run())
+
+
+def test_live_multi_filing_question_uses_multiple_bounded_searches() -> None:
+    async def run() -> None:
+        assistant, deps, azure_openai = await live_services()
+        try:
+            result = await assistant.run(
+                "According to the Microsoft and NVIDIA 2024 10-Ks, compare the "
+                "capacity or supply constraints each company said could prevent it "
+                "from meeting cloud or AI demand. Use a separate filing search for "
+                "each company before answering.",
+                deps,
+            )
+        finally:
+            await azure_openai.close()
+
+        assert result.answer.status == "supported"
+        assert 2 <= deps.counters.search_calls <= 5
+        cited_tickers = {citation.ticker for citation in result.answer.citations}
+        assert {"MSFT", "NVDA"} <= cited_tickers
 
     asyncio.run(run())
 

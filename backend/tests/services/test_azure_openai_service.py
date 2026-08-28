@@ -6,7 +6,10 @@ from typing import cast
 from unittest.mock import AsyncMock
 
 from openai import AsyncOpenAI
+from pydantic_ai.messages import ModelRequest, UserPromptPart
+from pydantic_ai.models import ModelRequestParameters
 from pydantic_ai.providers.azure import AzureProvider
+from pydantic_ai.tools import ToolDefinition
 
 from app.config import Settings
 from app.services import AzureOpenAIService
@@ -68,6 +71,55 @@ def test_does_not_close_an_injected_client() -> None:
     asyncio.run(service.close())
 
     close.assert_not_awaited()
+
+
+def test_azure_model_counts_complete_request_locally() -> None:
+    service = AzureOpenAIService(make_settings())
+    model = service.create_responses_model(
+        "assistant-gpt-5-6-terra",
+        "gpt-5.6-terra",
+    )
+    message = ModelRequest(parts=[UserPromptPart(content="Hello")])
+
+    plain = asyncio.run(model.count_tokens([message], None, ModelRequestParameters()))
+    with_tool = asyncio.run(
+        model.count_tokens(
+            [message],
+            None,
+            ModelRequestParameters(
+                function_tools=[
+                    ToolDefinition(
+                        name="search_filings",
+                        description="Search SEC filing passages.",
+                        parameters_json_schema={
+                            "type": "object",
+                            "properties": {"query": {"type": "string"}},
+                            "required": ["query"],
+                        },
+                    )
+                ]
+            ),
+        )
+    )
+    ascii_text = asyncio.run(
+        model.count_tokens(
+            [ModelRequest(parts=[UserPromptPart(content="a" * 100)])],
+            None,
+            ModelRequestParameters(),
+        )
+    )
+    non_ascii_text = asyncio.run(
+        model.count_tokens(
+            [ModelRequest(parts=[UserPromptPart(content="é" * 100)])],
+            None,
+            ModelRequestParameters(),
+        )
+    )
+
+    assert plain.input_tokens >= 256
+    assert with_tool.input_tokens > plain.input_tokens
+    assert non_ascii_text.input_tokens > ascii_text.input_tokens
+    asyncio.run(service.close())
 
 
 def test_production_openai_clients_are_constructed_only_in_service() -> None:

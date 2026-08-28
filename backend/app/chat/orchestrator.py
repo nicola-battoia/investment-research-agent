@@ -57,12 +57,14 @@ class ChatTurnOrchestrator:
         *,
         settings: Settings,
         supabase: AsyncClient,
+        admin_supabase: AsyncClient,
         azure_openai: AzureOpenAIService,
         assistant: DocumentAssistant,
         trace: AssistantTrace | None = None,
     ) -> None:
         self._settings = settings
         self._supabase = supabase
+        self._admin_supabase = admin_supabase
         self._azure_openai = azure_openai
         self._assistant: AssistantRunner = assistant
         self._trace = trace or AssistantTrace.disabled()
@@ -81,7 +83,7 @@ class ChatTurnOrchestrator:
         )
         _thread, messages, citations = await chats.load_thread(
             self._supabase,
-            self._settings,
+            self._admin_supabase,
             thread_id,
             user_id,
         )

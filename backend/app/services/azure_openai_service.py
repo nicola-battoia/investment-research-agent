@@ -3,11 +3,11 @@
 from typing import Self
 
 from openai import AsyncOpenAI
-from pydantic_ai.models.openai import OpenAIResponsesModel
 from pydantic_ai.providers.azure import AzureProvider
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from app.config import Settings
+from app.services.azure_responses_model import AzureResponsesModel
 
 
 class AzureOpenAIService:
@@ -35,9 +35,9 @@ class AzureOpenAIService:
         self,
         deployment: str,
         underlying_model: str,
-    ) -> OpenAIResponsesModel:
+    ) -> AzureResponsesModel:
         """Create a PydanticAI Responses model routed to an Azure deployment."""
-        return OpenAIResponsesModel(
+        return AzureResponsesModel(
             deployment,
             provider=OpenAIProvider(openai_client=self._client),
             profile=AzureProvider.model_profile(underlying_model),

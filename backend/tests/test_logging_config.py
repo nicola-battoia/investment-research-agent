@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 import structlog
 
-from app.logging_config import configure_logging
+from app.logging_config import configure_logging, production_log_fields
 
 
 def logging_settings(
@@ -120,6 +120,33 @@ def test_production_event_has_a_hard_size_fallback() -> None:
     assert payload["trace_id"] == "trace-1"
     assert payload["log_truncated"] is True
     assert len(rendered.encode()) <= 1_024
+
+
+def test_production_rate_limit_fields_allow_only_safe_numbers() -> None:
+    fields = production_log_fields(
+        {
+            "retry_after_ms": 2_500,
+            "rate_limit_requests": 100,
+            "rate_limit_tokens": 100_000,
+            "rate_remaining_requests": 7,
+            "rate_remaining_tokens": 12_345,
+            "rate_reset_requests_ms": 1_500,
+            "rate_reset_tokens_ms": 123_000,
+            "authorization": "PRIVATE_AUTHORIZATION",
+            "response_body": "PRIVATE_RESPONSE_BODY",
+            "arbitrary_header": "PRIVATE_HEADER",
+        }
+    )
+
+    assert fields == {
+        "retry_after_ms": 2_500,
+        "rate_limit_requests": 100,
+        "rate_limit_tokens": 100_000,
+        "rate_remaining_requests": 7,
+        "rate_remaining_tokens": 12_345,
+        "rate_reset_requests_ms": 1_500,
+        "rate_reset_tokens_ms": 123_000,
+    }
 
 
 def test_development_exception_logging_keeps_local_diagnostics() -> None:

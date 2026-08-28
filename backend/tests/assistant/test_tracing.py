@@ -1,6 +1,12 @@
+from httpx import Request, Response
+from openai import RateLimitError
 from structlog.testing import capture_logs
 
-from app.assistant.tracing import AssistantTrace, embedding_summary
+from app.assistant.tracing import (
+    AssistantTrace,
+    embedding_summary,
+    upstream_error_log_context,
+)
 
 
 def trace(*, mode: str = "full", limit: int = 12_000) -> AssistantTrace:
@@ -108,3 +114,34 @@ def test_off_mode_emits_only_operational_events() -> None:
     assert logs[0]["error_code"] == "turn_failed"
     assert "PRIVATE_ERROR_SENTINEL" not in str(logs[0])
     assert disabled.last_stage == "stream.failed"
+
+
+def test_rate_headers_are_extracted_from_a_bounded_exception_chain() -> None:
+    response = Response(
+        429,
+        request=Request("POST", "https://foundry.example/openai/v1/responses"),
+        headers={
+            "retry-after": "2.5",
+            "x-ratelimit-limit-requests": "100",
+            "x-ratelimit-reset-tokens": "1m250ms",
+            "x-ratelimit-remaining-tokens": "not-a-number",
+            "authorization": "PRIVATE_AUTHORIZATION",
+        },
+    )
+    provider_error = RateLimitError(
+        "PRIVATE_PROVIDER_MESSAGE",
+        response=response,
+        body={"message": "PRIVATE_BODY"},
+    )
+    wrapped = RuntimeError("PRIVATE_WRAPPER")
+    wrapped.__cause__ = provider_error
+
+    context = upstream_error_log_context(wrapped)
+
+    assert context == {
+        "upstream_status_code": 429,
+        "rate_limit_requests": 100,
+        "rate_reset_tokens_ms": 60_250,
+        "retry_after_ms": 2_500,
+    }
+    assert "PRIVATE" not in str(context)

@@ -2,17 +2,22 @@ import asyncio
 import json
 from datetime import date, datetime, timedelta
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
 import pytest
-from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart
+from httpx import Request as HttpxRequest
+from httpx import Response as HttpxResponse
+from openai import RateLimitError
+from pydantic_ai.messages import ModelResponse, RequestUsage, TextPart, ToolCallPart
 from pydantic_ai.models.function import FunctionModel
+from pydantic_ai.usage import RunUsage
 from structlog.testing import capture_logs
 
 from app.assistant.agent import DocumentAssistant
 from app.assistant.deps import AssistantDeps, AssistantModelSettings
+from app.assistant.outputs import GroundedAnswer
 from app.assistant.policy import INVESTMENT_ADVICE_STATEMENT
 from app.assistant.tracing import AssistantTrace
 from app.grounding.validator import GroundingFailureError, GroundingValidator
@@ -27,6 +32,10 @@ PASSAGE_TEXT = (
     "Services net sales increased because of higher advertising and cloud services "
     "revenue during the fiscal year."
 )
+
+
+def function_assistant(model: FunctionModel) -> DocumentAssistant:
+    return DocumentAssistant(model, count_tokens_before_request=False)
 
 
 def passage() -> SourcePassage:
@@ -120,7 +129,7 @@ def test_agent_includes_current_spain_time_in_instructions() -> None:
 
     retriever = SimpleNamespace(search=AsyncMock(), surrounding_chunks=AsyncMock())
     asyncio.run(
-        DocumentAssistant(FunctionModel(model_function)).run(
+        function_assistant(FunctionModel(model_function)).run(
             "Hello",
             make_deps(retriever),
         )
@@ -176,7 +185,7 @@ def test_agent_returns_validated_non_retrieval_answers_without_searching(
 
     retriever = SimpleNamespace(search=AsyncMock(), surrounding_chunks=AsyncMock())
     result = asyncio.run(
-        DocumentAssistant(FunctionModel(model_function)).run(
+        function_assistant(FunctionModel(model_function)).run(
             question,
             make_deps(retriever),
         )
@@ -232,7 +241,7 @@ def test_agent_searches_reads_and_returns_only_validated_answer() -> None:
     )
 
     result = asyncio.run(
-        DocumentAssistant(FunctionModel(model_function)).run(
+        function_assistant(FunctionModel(model_function)).run(
             "What drove Services growth?",
             make_deps(retriever),
         )
@@ -293,7 +302,7 @@ def test_agent_retries_an_unscoped_search_before_retrieval() -> None:
     )
     with capture_logs() as logs:
         result = asyncio.run(
-            DocumentAssistant(FunctionModel(model_function)).run(
+            function_assistant(FunctionModel(model_function)).run(
                 "What drove Apple's Services growth?",
                 deps,
             )
@@ -349,7 +358,7 @@ def test_agent_retries_one_invalid_grounded_output_then_succeeds() -> None:
     retriever = SimpleNamespace(search=AsyncMock(return_value=retrieval_result()))
 
     result = asyncio.run(
-        DocumentAssistant(FunctionModel(model_function)).run(
+        function_assistant(FunctionModel(model_function)).run(
             "What drove Services growth?",
             make_deps(retriever),
         )
@@ -373,11 +382,23 @@ def test_agent_trace_correlates_model_tools_and_grounding_retry() -> None:
                         {"query": "Services", "filters": {"corpus_wide": True}},
                         "search-call",
                     )
-                ]
+                ],
+                usage=RequestUsage(
+                    input_tokens=10,
+                    cache_read_tokens=2,
+                    cache_write_tokens=1,
+                    output_tokens=3,
+                ),
             )
         if calls == 2:
             return ModelResponse(
-                parts=[ToolCallPart("read_chunk", {"source_id": "S1"}, "read-call")]
+                parts=[ToolCallPart("read_chunk", {"source_id": "S1"}, "read-call")],
+                usage=RequestUsage(
+                    input_tokens=10,
+                    cache_read_tokens=2,
+                    cache_write_tokens=1,
+                    output_tokens=3,
+                ),
             )
         if calls == 3:
             return ModelResponse(
@@ -391,9 +412,23 @@ def test_agent_trace_correlates_model_tools_and_grounding_retry() -> None:
                             }
                         )
                     )
-                ]
+                ],
+                usage=RequestUsage(
+                    input_tokens=10,
+                    cache_read_tokens=2,
+                    cache_write_tokens=1,
+                    output_tokens=3,
+                ),
             )
-        return ModelResponse(parts=[TextPart(content=json.dumps(grounded_output()))])
+        return ModelResponse(
+            parts=[TextPart(content=json.dumps(grounded_output()))],
+            usage=RequestUsage(
+                input_tokens=10,
+                cache_read_tokens=2,
+                cache_write_tokens=1,
+                output_tokens=3,
+            ),
+        )
 
     retriever = SimpleNamespace(search=AsyncMock(return_value=retrieval_result()))
     deps = make_deps(retriever)
@@ -408,7 +443,7 @@ def test_agent_trace_correlates_model_tools_and_grounding_retry() -> None:
 
     with capture_logs() as logs:
         result = asyncio.run(
-            DocumentAssistant(FunctionModel(model_function)).run(
+            function_assistant(FunctionModel(model_function)).run(
                 "What drove Services growth?",
                 deps,
             )
@@ -424,6 +459,127 @@ def test_agent_trace_correlates_model_tools_and_grounding_retry() -> None:
     assert "assistant_grounding_accepted" in events
     assert all(log["trace_id"] == "trace-1" for log in logs)
     assert [log["sequence"] for log in logs] == list(range(1, len(logs) + 1))
+    response_logs = [log for log in logs if log["event"] == "assistant_model_response"]
+    assert [log["requests"] for log in response_logs] == [1, 2, 3, 4]
+    assert [log["input_tokens"] for log in response_logs] == [10, 20, 30, 40]
+    assert [log["cache_read_tokens"] for log in response_logs] == [2, 4, 6, 8]
+    assert [log["cache_write_tokens"] for log in response_logs] == [1, 2, 3, 4]
+    assert [log["output_tokens"] for log in response_logs] == [3, 6, 9, 12]
+    assert [log["total_tokens"] for log in response_logs] == [13, 26, 39, 52]
+
+
+def test_agent_applies_bounded_cumulative_usage_limits() -> None:
+    assistant = DocumentAssistant(
+        FunctionModel(lambda _messages, _info: ModelResponse(parts=[]))
+    )
+    retriever = SimpleNamespace(search=AsyncMock(), surrounding_chunks=AsyncMock())
+    deps = make_deps(retriever)
+    captured = None
+
+    async def run(_question: str, **kwargs: object) -> SimpleNamespace:
+        nonlocal captured
+        captured = kwargs["usage_limits"]
+        deps.validated_answer = GroundedAnswer(
+            status="conversational",
+            answer="Hello!",
+        )
+        return SimpleNamespace(usage=RunUsage())
+
+    with patch.object(assistant._agent, "run", side_effect=run):
+        asyncio.run(assistant.run("Hello", deps))
+
+    assert captured.request_limit == 10
+    assert captured.tool_calls_limit == 8
+    assert captured.input_tokens_limit == 60_000
+    assert captured.output_tokens_limit == 6_000
+    assert captured.per_request_input_tokens_limit == 32_000
+    assert captured.count_tokens_before_request is True
+
+
+def test_fourth_model_call_429_logs_cumulative_usage_and_rate_headers() -> None:
+    calls = 0
+
+    def model_function(_messages, _info) -> ModelResponse:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            parts = [
+                ToolCallPart(
+                    "search_filings",
+                    {"query": "Services", "filters": {"corpus_wide": True}},
+                    "search-1",
+                )
+            ]
+        elif calls == 2:
+            parts = [ToolCallPart("read_chunk", {"source_id": "S1"}, "read-1")]
+        elif calls == 3:
+            parts = [
+                ToolCallPart(
+                    "search_filings",
+                    {
+                        "query": "Services net sales",
+                        "filters": {"corpus_wide": True},
+                    },
+                    "search-2",
+                )
+            ]
+        else:
+            response = HttpxResponse(
+                429,
+                request=HttpxRequest(
+                    "POST",
+                    "https://foundry.example/openai/v1/responses",
+                ),
+                headers={
+                    "retry-after-ms": "1200",
+                    "x-ratelimit-limit-tokens": "100000",
+                    "x-ratelimit-remaining-tokens": "0",
+                },
+            )
+            raise RateLimitError(
+                "PRIVATE_PROVIDER_MESSAGE",
+                response=response,
+                body={"code": "rate_limit_exceeded"},
+            )
+        return ModelResponse(
+            parts=parts,
+            usage=RequestUsage(input_tokens=10, output_tokens=1),
+        )
+
+    retriever = SimpleNamespace(search=AsyncMock(return_value=retrieval_result()))
+    deps = make_deps(retriever)
+    deps.trace = AssistantTrace(
+        trace_id="trace-rate-limit",
+        thread_id="thread-1",
+        user_id="user-1",
+        client_message_id="client-1",
+        mode="summary",
+        max_content_characters=12_000,
+    )
+
+    with capture_logs() as logs, pytest.raises(RateLimitError):
+        asyncio.run(
+            function_assistant(FunctionModel(model_function)).run(
+                "What drove Services growth?",
+                deps,
+            )
+        )
+
+    assert calls == 4
+    failure = next(
+        log for log in logs if log["event"] == "assistant_model_request_failed"
+    )
+    assert failure["model_request_index"] == 4
+    assert failure["requests"] == 4
+    assert failure["tool_calls"] == 3
+    assert failure["input_tokens"] == 30
+    assert failure["output_tokens"] == 3
+    assert failure["total_tokens"] == 33
+    assert failure["upstream_status_code"] == 429
+    assert failure["retry_after_ms"] == 1_200
+    assert failure["rate_limit_tokens"] == 100_000
+    assert failure["rate_remaining_tokens"] == 0
+    assert "PRIVATE_PROVIDER_MESSAGE" not in str(failure)
 
 
 def test_agent_raises_controlled_failure_after_grounding_retry() -> None:
@@ -460,7 +616,7 @@ def test_agent_raises_controlled_failure_after_grounding_retry() -> None:
 
     with pytest.raises(GroundingFailureError, match="after correction"):
         asyncio.run(
-            DocumentAssistant(FunctionModel(model_function)).run(
+            function_assistant(FunctionModel(model_function)).run(
                 "What drove Services growth?",
                 make_deps(retriever),
             )
@@ -480,7 +636,7 @@ def test_agent_can_refuse_pure_investment_advice_without_searching() -> None:
 
     retriever = SimpleNamespace(search=AsyncMock())
     result = asyncio.run(
-        DocumentAssistant(FunctionModel(model_function)).run(
+        function_assistant(FunctionModel(model_function)).run(
             "Should I buy this stock?",
             make_deps(retriever),
         )

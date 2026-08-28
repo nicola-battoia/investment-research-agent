@@ -1,13 +1,11 @@
 import asyncio
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
 from postgrest import APIError
 
 from app.chat.messages import InternalUserMessage
-from app.config import Settings
 from app.database.chats import (
     ChatPositionConflictError,
     ChatThreadForbiddenError,
@@ -17,29 +15,6 @@ from app.database.chats import (
     rename_thread,
     require_owned_thread,
 )
-
-
-def make_settings() -> Settings:
-    return Settings(
-        _env_file=None,
-        app_environment="test",
-        supabase_url="https://project.supabase.co",
-        supabase_anon_key="test-anon-key",
-        supabase_service_role_key="test-service-role-key",
-        database_url=("postgresql+psycopg://postgres:password@localhost:5432/postgres"),
-        azure_openai_endpoint="https://test-resource.openai.azure.com/openai/v1/",
-        azure_openai_api_key="test-azure-key",
-        azure_openai_assistant_deployment="assistant-gpt-5-6-terra",
-        azure_openai_keyword_deployment="keywords-gpt-5-4-nano",
-        azure_openai_embedding_deployment="embeddings-text-embedding-3-small",
-        openai_embedding_model="text-embedding-3-small",
-        openai_embedding_dimensions=1536,
-        openai_keyword_model="gpt-5.4-nano",
-        openai_assistant_model="gpt-5.6-terra",
-        openai_assistant_reasoning_effort="medium",
-        openai_assistant_max_output_tokens=3000,
-        allowed_origins="http://localhost:5173",
-    )
 
 
 class FakeBuilder:
@@ -116,18 +91,14 @@ def test_owned_thread_does_not_use_admin_client() -> None:
     user_id = uuid4()
     owned = {"id": str(thread_id), "title": "Mine"}
     user_client = FakeClient({"chat_threads": [FakeBuilder([owned])]})
-    admin_factory = AsyncMock()
+    admin_client = FakeClient({"chat_threads": []})
 
-    with patch(
-        "app.database.chats.create_admin_supabase_client",
-        admin_factory,
-    ):
-        result = asyncio.run(
-            require_owned_thread(user_client, make_settings(), thread_id, user_id)
-        )
+    result = asyncio.run(
+        require_owned_thread(user_client, admin_client, thread_id, user_id)
+    )
 
     assert result is owned
-    admin_factory.assert_not_awaited()
+    assert admin_client.used == []
 
 
 @pytest.mark.parametrize(
@@ -144,17 +115,11 @@ def test_missing_user_scoped_thread_distinguishes_missing_from_forbidden(
     user_client = FakeClient({"chat_threads": [FakeBuilder([])]})
     admin_client = FakeClient({"chat_threads": [FakeBuilder(admin_data)]})
 
-    with (
-        patch(
-            "app.database.chats.create_admin_supabase_client",
-            AsyncMock(return_value=admin_client),
-        ),
-        pytest.raises(expected_error),
-    ):
+    with pytest.raises(expected_error):
         asyncio.run(
             require_owned_thread(
                 user_client,
-                make_settings(),
+                admin_client,
                 uuid4(),
                 uuid4(),
             )
@@ -213,11 +178,12 @@ def test_rename_thread_sets_updated_at_and_owner_filter() -> None:
     updated_row = {"id": str(thread_id), "title": "Renamed"}
     update = FakeBuilder([updated_row])
     client = FakeClient({"chat_threads": [owned, update]})
+    admin = FakeClient({"chat_threads": []})
 
     result = asyncio.run(
         rename_thread(
             client,
-            make_settings(),
+            admin,
             thread_id,
             user_id,
             "Renamed",

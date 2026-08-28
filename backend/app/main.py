@@ -6,10 +6,13 @@ import structlog
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from httpx import AsyncClient as AsyncHTTPClient
+from httpx import Timeout, TimeoutException
 from postgrest import APIError
 
 from app.api.chat import router as chat_router
 from app.assistant.agent import DocumentAssistant, create_document_assistant
+from app.auth.dependencies import AuthenticationServiceUnavailableError
 from app.config import Settings, settings
 from app.database.chats import (
     ChatPositionConflictError,
@@ -28,6 +31,7 @@ def create_app(
     *,
     azure_openai: AzureOpenAIService | None = None,
     document_assistant: DocumentAssistant | None = None,
+    supabase_http_client: AsyncHTTPClient | None = None,
 ) -> FastAPI:
     owns_azure_openai = azure_openai is None
     shared_azure_openai = azure_openai or AzureOpenAIService(app_settings)
@@ -35,10 +39,21 @@ def create_app(
         app_settings,
         shared_azure_openai,
     )
+    owns_supabase_http_client = supabase_http_client is None
+    shared_supabase_http_client = supabase_http_client or AsyncHTTPClient(
+        timeout=Timeout(
+            connect=app_settings.supabase_http_connect_timeout_seconds,
+            read=app_settings.supabase_http_read_timeout_seconds,
+            write=app_settings.supabase_http_write_timeout_seconds,
+            pool=app_settings.supabase_http_pool_timeout_seconds,
+        )
+    )
 
     @asynccontextmanager
     async def lifespan(_application: FastAPI):
         yield
+        if owns_supabase_http_client:
+            await shared_supabase_http_client.aclose()
         if owns_azure_openai:
             await shared_azure_openai.close()
 
@@ -46,6 +61,7 @@ def create_app(
     application.state.settings = app_settings
     application.state.azure_openai = shared_azure_openai
     application.state.document_assistant = shared_assistant
+    application.state.supabase_http_client = shared_supabase_http_client
     application.add_middleware(
         CORSMiddleware,
         allow_origins=[
@@ -100,6 +116,33 @@ def create_app(
         return JSONResponse(
             status_code=502,
             content={"detail": "The chat database request failed"},
+        )
+
+    @application.exception_handler(AuthenticationServiceUnavailableError)
+    async def authentication_unavailable(
+        request: Request,
+        error: AuthenticationServiceUnavailableError,
+    ) -> JSONResponse:
+        _log_handled_chat_error(
+            request,
+            error,
+            "authentication_unavailable",
+            503,
+        )
+        return JSONResponse(
+            status_code=503,
+            content={"detail": "Authentication service is temporarily unavailable"},
+        )
+
+    @application.exception_handler(TimeoutException)
+    async def database_timeout(
+        request: Request,
+        error: TimeoutException,
+    ) -> JSONResponse:
+        _log_handled_chat_error(request, error, "database_unavailable", 503)
+        return JSONResponse(
+            status_code=503,
+            content={"detail": "The chat database is temporarily unavailable"},
         )
 
     return application

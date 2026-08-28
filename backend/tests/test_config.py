@@ -12,6 +12,10 @@ CONFIG_ENV_NAMES = {
     "SUPABASE_URL",
     "SUPABASE_ANON_KEY",
     "SUPABASE_SERVICE_ROLE_KEY",
+    "SUPABASE_HTTP_CONNECT_TIMEOUT_SECONDS",
+    "SUPABASE_HTTP_READ_TIMEOUT_SECONDS",
+    "SUPABASE_HTTP_WRITE_TIMEOUT_SECONDS",
+    "SUPABASE_HTTP_POOL_TIMEOUT_SECONDS",
     "DATABASE_URL",
     "AZURE_OPENAI_ENDPOINT",
     "AZURE_OPENAI_API_KEY",
@@ -21,9 +25,19 @@ CONFIG_ENV_NAMES = {
     "OPENAI_EMBEDDING_MODEL",
     "OPENAI_EMBEDDING_DIMENSIONS",
     "OPENAI_KEYWORD_MODEL",
+    "OPENAI_KEYWORD_MAX_OUTPUT_TOKENS",
     "OPENAI_ASSISTANT_MODEL",
     "OPENAI_ASSISTANT_REASONING_EFFORT",
     "OPENAI_ASSISTANT_MAX_OUTPUT_TOKENS",
+    "ASSISTANT_MAX_MODEL_REQUESTS",
+    "ASSISTANT_MAX_TOOL_CALLS",
+    "ASSISTANT_MAX_TOTAL_OUTPUT_TOKENS",
+    "ASSISTANT_MAX_TOTAL_INPUT_TOKENS",
+    "ASSISTANT_MAX_REQUEST_INPUT_TOKENS",
+    "ASSISTANT_EVIDENCE_PREVIEW_CHARACTERS",
+    "ASSISTANT_MAX_SEARCH_CALLS",
+    "ASSISTANT_MAX_SURROUNDING_CALLS",
+    "ASSISTANT_SEARCH_RESULT_LIMIT",
     "CHAT_TURN_TIMEOUT_SECONDS",
     "ALLOWED_ORIGINS",
 }
@@ -89,6 +103,24 @@ def test_loads_and_normalizes_valid_settings(tmp_path: Path) -> None:
             "'assistant_effort': settings.openai_assistant_reasoning_effort, "
             "'assistant_max_tokens': "
             "settings.openai_assistant_max_output_tokens, "
+            "'keyword_max_tokens': settings.openai_keyword_max_output_tokens, "
+            "'model_requests': settings.assistant_max_model_requests, "
+            "'tool_calls': settings.assistant_max_tool_calls, "
+            "'total_output_tokens': "
+            "settings.assistant_max_total_output_tokens, "
+            "'total_input_tokens': settings.assistant_max_total_input_tokens, "
+            "'request_input_tokens': "
+            "settings.assistant_max_request_input_tokens, "
+            "'search_calls': settings.assistant_max_search_calls, "
+            "'surrounding_calls': settings.assistant_max_surrounding_calls, "
+            "'search_results': settings.assistant_search_result_limit, "
+            "'preview_characters': "
+            "settings.assistant_evidence_preview_characters, "
+            "'supabase_timeouts': ["
+            "settings.supabase_http_connect_timeout_seconds, "
+            "settings.supabase_http_read_timeout_seconds, "
+            "settings.supabase_http_write_timeout_seconds, "
+            "settings.supabase_http_pool_timeout_seconds], "
             "'chat_timeout': settings.chat_turn_timeout_seconds, "
             "'app_environment': settings.app_environment}))"
         ),
@@ -102,6 +134,17 @@ def test_loads_and_normalizes_valid_settings(tmp_path: Path) -> None:
         "assistant_model": "gpt-5.6-terra",
         "assistant_effort": "medium",
         "assistant_max_tokens": 3000,
+        "keyword_max_tokens": 800,
+        "model_requests": 10,
+        "tool_calls": 8,
+        "total_output_tokens": 6000,
+        "total_input_tokens": 60_000,
+        "request_input_tokens": 32_000,
+        "search_calls": 5,
+        "surrounding_calls": 2,
+        "search_results": 10,
+        "preview_characters": 400,
+        "supabase_timeouts": [5.0, 15.0, 15.0, 5.0],
         "chat_timeout": 180,
         "app_environment": "test",
     }
@@ -142,9 +185,7 @@ def test_fails_when_required_azure_setting_is_missing(
 def test_requires_azure_openai_v1_endpoint(tmp_path: Path) -> None:
     result = run_config_import(
         tmp_path,
-        overrides={
-            "AZURE_OPENAI_ENDPOINT": "https://test-resource.openai.azure.com/"
-        },
+        overrides={"AZURE_OPENAI_ENDPOINT": "https://test-resource.openai.azure.com/"},
     )
 
     assert result.returncode != 0
@@ -211,6 +252,22 @@ def test_rejects_non_positive_chat_timeout(tmp_path: Path) -> None:
 
     assert result.returncode != 0
     assert "chat_turn_timeout_seconds" in result.stderr
+
+
+def test_rejects_per_request_input_limit_above_cumulative_limit(
+    tmp_path: Path,
+) -> None:
+    result = run_config_import(
+        tmp_path,
+        overrides={
+            "ASSISTANT_MAX_TOTAL_INPUT_TOKENS": "1000",
+            "ASSISTANT_MAX_REQUEST_INPUT_TOKENS": "1001",
+        },
+    )
+
+    assert result.returncode != 0
+    assert "ASSISTANT_MAX_REQUEST_INPUT_TOKENS cannot exceed" in result.stderr
+    assert "ASSISTANT_MAX_TOTAL_INPUT_TOKENS" in result.stderr
 
 
 def test_requires_psycopg_3_database_url(tmp_path: Path) -> None:

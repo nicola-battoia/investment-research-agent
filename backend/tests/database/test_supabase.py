@@ -1,6 +1,7 @@
 import asyncio
 from unittest.mock import AsyncMock, patch
 
+import httpx
 import pytest
 
 from app.config import Settings
@@ -36,10 +37,15 @@ def make_settings() -> Settings:
 def test_user_client_uses_anon_key_and_user_access_token() -> None:
     expected_client = object()
     factory = AsyncMock(return_value=expected_client)
+    shared_http_client = object()
 
     with patch("app.database.supabase.acreate_client", factory):
         client = asyncio.run(
-            create_user_supabase_client(make_settings(), "user-access-token")
+            create_user_supabase_client(
+                make_settings(),
+                "user-access-token",
+                http_client=shared_http_client,
+            )
         )
 
     assert client is expected_client
@@ -50,6 +56,7 @@ def test_user_client_uses_anon_key_and_user_access_token() -> None:
     assert call["options"].headers == {"Authorization": "Bearer user-access-token"}
     assert call["options"].auto_refresh_token is False
     assert call["options"].persist_session is False
+    assert call["options"].httpx_client is shared_http_client
 
 
 def test_user_client_rejects_a_missing_access_token() -> None:
@@ -60,9 +67,15 @@ def test_user_client_rejects_a_missing_access_token() -> None:
 def test_admin_client_uses_only_the_service_role_key() -> None:
     expected_client = object()
     factory = AsyncMock(return_value=expected_client)
+    shared_http_client = object()
 
     with patch("app.database.supabase.acreate_client", factory):
-        client = asyncio.run(create_admin_supabase_client(make_settings()))
+        client = asyncio.run(
+            create_admin_supabase_client(
+                make_settings(),
+                http_client=shared_http_client,
+            )
+        )
 
     assert client is expected_client
     factory.assert_awaited_once()
@@ -72,3 +85,38 @@ def test_admin_client_uses_only_the_service_role_key() -> None:
     assert "Authorization" not in call["options"].headers
     assert call["options"].auto_refresh_token is False
     assert call["options"].persist_session is False
+    assert call["options"].httpx_client is shared_http_client
+
+
+def test_concurrent_clients_keep_authorization_off_shared_transport() -> None:
+    async def create_clients():
+        async with httpx.AsyncClient() as shared_http_client:
+            first, second, admin = await asyncio.gather(
+                create_user_supabase_client(
+                    make_settings(),
+                    "first-user-token",
+                    http_client=shared_http_client,
+                ),
+                create_user_supabase_client(
+                    make_settings(),
+                    "second-user-token",
+                    http_client=shared_http_client,
+                ),
+                create_admin_supabase_client(
+                    make_settings(),
+                    http_client=shared_http_client,
+                ),
+            )
+            return (
+                first.postgrest.headers["Authorization"],
+                second.postgrest.headers["Authorization"],
+                admin.postgrest.headers["Authorization"],
+                shared_http_client.headers.get("Authorization"),
+            )
+
+    first_auth, second_auth, admin_auth, shared_auth = asyncio.run(create_clients())
+
+    assert first_auth == "Bearer first-user-token"
+    assert second_auth == "Bearer second-user-token"
+    assert admin_auth == "Bearer test-service-role-key"
+    assert shared_auth is None

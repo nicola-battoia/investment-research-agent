@@ -5,12 +5,16 @@ from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from httpx import TimeoutException
 from supabase import AsyncClient
 from supabase_auth import User
 from supabase_auth.errors import AuthError
 
 from app.config import Settings
-from app.database.supabase import create_user_supabase_client
+from app.database.supabase import (
+    create_admin_supabase_client,
+    create_user_supabase_client,
+)
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -21,6 +25,11 @@ class AuthenticatedContext:
 
     user: User
     supabase: AsyncClient
+    admin_supabase: AsyncClient
+
+
+class AuthenticationServiceUnavailableError(Exception):
+    """Supabase Auth could not verify a bearer token before its deadline."""
 
 
 def authentication_error() -> HTTPException:
@@ -44,17 +53,30 @@ async def get_authenticated_context(
 
     access_token = credentials.credentials
     app_settings: Settings = request.app.state.settings
-    client = await create_user_supabase_client(app_settings, access_token)
-
     try:
+        client = await create_user_supabase_client(
+            app_settings,
+            access_token,
+            http_client=request.app.state.supabase_http_client,
+        )
         response = await client.auth.get_user(access_token)
     except AuthError:
         raise authentication_error() from None
+    except TimeoutException as error:
+        raise AuthenticationServiceUnavailableError from error
 
     if response is None:
         raise authentication_error()
 
-    return AuthenticatedContext(user=response.user, supabase=client)
+    admin = await create_admin_supabase_client(
+        app_settings,
+        http_client=request.app.state.supabase_http_client,
+    )
+    return AuthenticatedContext(
+        user=response.user,
+        supabase=client,
+        admin_supabase=admin,
+    )
 
 
 async def get_current_user(
