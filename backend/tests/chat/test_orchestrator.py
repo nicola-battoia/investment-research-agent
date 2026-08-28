@@ -34,7 +34,11 @@ def make_settings() -> Settings:
         supabase_anon_key="test-anon-key",
         supabase_service_role_key="test-service-role-key",
         database_url="postgresql+psycopg://postgres:password@localhost:5432/postgres",
-        openai_api_key="test-openai-key",
+        azure_openai_endpoint="https://test-resource.openai.azure.com/openai/v1/",
+        azure_openai_api_key="test-azure-key",
+        azure_openai_assistant_deployment="assistant-gpt-5-6-terra",
+        azure_openai_keyword_deployment="keywords-gpt-5-4-nano",
+        azure_openai_embedding_deployment="embeddings-text-embedding-3-small",
         openai_embedding_model="text-embedding-3-small",
         openai_embedding_dimensions=1536,
         openai_keyword_model="gpt-5.4-nano",
@@ -147,7 +151,9 @@ def orchestrator(
     return ChatTurnOrchestrator(
         settings=make_settings(),
         supabase=object(),
-        openai_client=SimpleNamespace(responses=object(), embeddings=object()),
+        azure_openai=SimpleNamespace(
+            client=SimpleNamespace(responses=object(), embeddings=object())
+        ),
         assistant=assistant,
         trace=trace,
     )

@@ -116,7 +116,7 @@ data/ingestion_runs/sec_sections_v2/<accession>/
     └── embeddings.jsonl.gz
 ```
 
-Stage 1 is local and free. Stage 2 calls OpenAI, stage 3 writes
+Stage 1 is local and free. Stage 2 calls Azure AI Foundry, stage 3 writes
 `source_documents` and `document_chunks`, and stage 4 independently compares
 Supabase with the local checkpoints. Valid completed documents are reused, so an
 interrupted run can safely be restarted. Embedding and upload scripts also accept
@@ -168,8 +168,9 @@ filing concepts such as named segments, financial metrics, risks, causes, and ex
 phrases. PostgreSQL's `english` text-search dictionary then performs stemming and
 stop-word removal against the indexed `search_vector`; no separate NLP runtime
 dependency is needed. Extracted groups and the final lexical query are recorded in
-evaluation output for inspection. `OPENAI_KEYWORD_MODEL` configures the extraction
-model; the evaluated default is `gpt-5.4-nano`.
+evaluation output for inspection. `AZURE_OPENAI_KEYWORD_DEPLOYMENT` selects the
+Azure deployment while `OPENAI_KEYWORD_MODEL` records its underlying model identity;
+the evaluated default is `gpt-5.4-nano`.
 
 RRF combines ranks rather than incomparable vector and text-search scores. It
 deduplicates IDs and uses deterministic tie-breaking. The corpus-tuned weights are
@@ -272,6 +273,10 @@ for normal IPython inspection.
 Configure answer generation separately from embeddings and keyword extraction:
 
 ```dotenv
+AZURE_OPENAI_ENDPOINT=https://<foundry-resource>.openai.azure.com/openai/v1/
+AZURE_OPENAI_ASSISTANT_DEPLOYMENT=assistant-gpt-5-6-terra
+AZURE_OPENAI_KEYWORD_DEPLOYMENT=keywords-gpt-5-4-nano
+AZURE_OPENAI_EMBEDDING_DEPLOYMENT=embeddings-text-embedding-3-small
 OPENAI_ASSISTANT_MODEL=gpt-5.6-terra
 OPENAI_ASSISTANT_REASONING_EFFORT=medium
 OPENAI_ASSISTANT_MAX_OUTPUT_TOKENS=3000
@@ -286,7 +291,7 @@ one RLS-aware Postgres function. A failed grounding check, upstream failure,
 timeout, or cancellation never creates a partial assistant message. Client message
 IDs make a retry idempotent when a completed response was lost in transit.
 
-The fast test suite never calls Supabase or OpenAI:
+The fast test suite never calls Supabase or Azure AI Foundry:
 
 ```bash
 uv run pytest -m "not integration"

@@ -11,7 +11,7 @@ This file is the source of truth for any coding agent (Claude Code, Cursor, Code
 - **Retrieval:** Supabase `pgvector` + Postgres full-text search
 - **Auth:** Supabase Auth
 - **Hosting:** Railway (backend service + frontend service)
-- **LLM + embeddings:** OpenAI
+- **LLM + embeddings:** OpenAI models through Azure AI Foundry
 
 Stack is locked unless explicitly changed. Don't propose alternatives without a stated reason.
 

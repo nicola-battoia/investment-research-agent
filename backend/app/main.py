@@ -6,11 +6,10 @@ import structlog
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from openai import AsyncOpenAI
 from postgrest import APIError
 
 from app.api.chat import router as chat_router
-from app.assistant import DocumentAssistant, create_document_assistant
+from app.assistant.agent import DocumentAssistant, create_document_assistant
 from app.config import Settings, settings
 from app.database.chats import (
     ChatPositionConflictError,
@@ -18,6 +17,7 @@ from app.database.chats import (
     ChatThreadNotFoundError,
 )
 from app.logging_config import configure_logging
+from app.services import AzureOpenAIService
 
 configure_logging(settings)
 logger = structlog.get_logger()
@@ -26,28 +26,25 @@ logger = structlog.get_logger()
 def create_app(
     app_settings: Settings,
     *,
-    openai_client: AsyncOpenAI | None = None,
+    azure_openai: AzureOpenAIService | None = None,
     document_assistant: DocumentAssistant | None = None,
 ) -> FastAPI:
-    owns_openai_client = openai_client is None
-    shared_openai_client = openai_client or AsyncOpenAI(
-        api_key=app_settings.openai_api_key.get_secret_value(),
-        max_retries=app_settings.openai_http_max_retries,
-    )
+    owns_azure_openai = azure_openai is None
+    shared_azure_openai = azure_openai or AzureOpenAIService(app_settings)
     shared_assistant = document_assistant or create_document_assistant(
         app_settings,
-        shared_openai_client,
+        shared_azure_openai,
     )
 
     @asynccontextmanager
     async def lifespan(_application: FastAPI):
         yield
-        if owns_openai_client:
-            await shared_openai_client.close()
+        if owns_azure_openai:
+            await shared_azure_openai.close()
 
     application = FastAPI(title="Document Copilot API", lifespan=lifespan)
     application.state.settings = app_settings
-    application.state.openai_client = shared_openai_client
+    application.state.azure_openai = shared_azure_openai
     application.state.document_assistant = shared_assistant
     application.add_middleware(
         CORSMiddleware,

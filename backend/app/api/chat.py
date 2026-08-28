@@ -153,7 +153,7 @@ async def stream_chat(
     orchestrator = ChatTurnOrchestrator(
         settings=request.app.state.settings,
         supabase=context.supabase,
-        openai_client=request.app.state.openai_client,
+        azure_openai=request.app.state.azure_openai,
         assistant=request.app.state.document_assistant,
         trace=trace,
     )

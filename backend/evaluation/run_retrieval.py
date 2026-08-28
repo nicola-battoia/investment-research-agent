@@ -11,14 +11,13 @@ from pathlib import Path
 from statistics import fmean
 from uuid import UUID
 
-from openai import AsyncOpenAI
-
 from app.config import settings
 from app.database.supabase import create_admin_supabase_client
 from app.retrieval.keywords import OpenAIKeywordExtractor
 from app.retrieval.models import SourcePassage
 from app.retrieval.queries import RpcClient, hydrate_passages
 from app.retrieval.retriever import DocumentRetriever
+from app.services import AzureOpenAIService
 from evaluation.metrics import (
     evidence_group_recall_at_k,
     hit_rate_at_k,
@@ -110,19 +109,17 @@ async def run_evaluation(
     rrf_k: int,
 ) -> dict[str, object]:
     supabase = await create_admin_supabase_client(settings)
-    embedding_client = AsyncOpenAI(
-        api_key=settings.openai_api_key.get_secret_value(),
-        max_retries=settings.openai_http_max_retries,
-    )
+    azure_openai = AzureOpenAIService(settings)
+    embedding_client = azure_openai.client
     keyword_extractor = OpenAIKeywordExtractor(
         embedding_client,
-        model=settings.openai_keyword_model,
+        model=settings.azure_openai_keyword_deployment,
     )
     retriever = DocumentRetriever(
         supabase,
         embedding_client,
         keyword_extractor,
-        embedding_model=settings.openai_embedding_model,
+        embedding_model=settings.azure_openai_embedding_deployment,
         embedding_dimensions=settings.openai_embedding_dimensions,
         semantic_weight=semantic_weight,
         lexical_weight=lexical_weight,
@@ -157,13 +154,15 @@ async def run_evaluation(
         and hybrid_ndcg >= aggregate["semantic"]["ndcg_at_10"]
         and hybrid_ndcg >= aggregate["lexical"]["ndcg_at_10"]
     )
-    return {
+    result = {
         "dataset": dataset.name,
         "generated_at_utc": datetime.now(UTC).isoformat(),
         "configuration": {
             "embedding_model": settings.openai_embedding_model,
+            "embedding_deployment": settings.azure_openai_embedding_deployment,
             "embedding_dimensions": settings.openai_embedding_dimensions,
             "keyword_model": settings.openai_keyword_model,
+            "keyword_deployment": settings.azure_openai_keyword_deployment,
             "candidate_limit": candidate_limit,
             "result_limit": METRIC_CUTOFF,
             "rrf_k": rrf_k,
@@ -174,6 +173,8 @@ async def run_evaluation(
         "aggregate": aggregate,
         "accepted": accepted,
     }
+    await azure_openai.close()
+    return result
 
 
 def parse_args() -> argparse.Namespace:

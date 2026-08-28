@@ -7,8 +7,6 @@ import logging
 from dataclasses import dataclass
 from uuid import UUID
 
-from openai import AsyncOpenAI
-
 from app.config import settings
 from app.database.supabase import create_admin_supabase_client
 from app.retrieval.fusion import FusedRank
@@ -16,6 +14,7 @@ from app.retrieval.keywords import OpenAIKeywordExtractor
 from app.retrieval.models import RetrievalFilters, SourcePassage
 from app.retrieval.queries import RankedCandidate, RpcClient, hydrate_passages
 from app.retrieval.retriever import DocumentRetriever, RetrievalCandidates
+from app.services import AzureOpenAIService
 
 logger = logging.getLogger("retrieval-inspector")
 
@@ -40,21 +39,20 @@ def configure_logging() -> None:
     logger.setLevel(logging.INFO)
 
 
-async def build_live_retriever() -> tuple[DocumentRetriever, RpcClient]:
+async def build_live_retriever(
+) -> tuple[DocumentRetriever, RpcClient, AzureOpenAIService]:
     """Construct the same live retriever used by the application."""
     supabase = await create_admin_supabase_client(settings)
-    openai_client = AsyncOpenAI(
-        api_key=settings.openai_api_key.get_secret_value(),
-        max_retries=settings.openai_http_max_retries,
-    )
+    azure_openai = AzureOpenAIService(settings)
+    openai_client = azure_openai.client
     retriever = DocumentRetriever(
         supabase,
         openai_client,
         OpenAIKeywordExtractor(
             openai_client,
-            model=settings.openai_keyword_model,
+            model=settings.azure_openai_keyword_deployment,
         ),
-        embedding_model=settings.openai_embedding_model,
+        embedding_model=settings.azure_openai_embedding_deployment,
         embedding_dimensions=settings.openai_embedding_dimensions,
     )
     logger.info(
@@ -63,7 +61,7 @@ async def build_live_retriever() -> tuple[DocumentRetriever, RpcClient]:
         settings.openai_embedding_dimensions,
         settings.openai_keyword_model,
     )
-    return retriever, supabase
+    return retriever, supabase, azure_openai
 
 
 async def inspect_retrieval(
@@ -93,7 +91,7 @@ async def inspect_retrieval(
     )
 
     if retriever is None or client is None:
-        retriever, client = await build_live_retriever()
+        retriever, client, _azure_openai = await build_live_retriever()
 
     candidates = await retriever.candidate_details(
         query,

@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 from uuid import NAMESPACE_URL, uuid5
 
-from openai import AsyncOpenAI
+from ingestion.ingest_chunks import DocumentChunkRow, build_document_chunk_rows
 
 from ingestion.chunk_documents import (
     CHUNKER_VERSION,
@@ -23,8 +23,11 @@ from ingestion.chunk_documents import (
     document_paths,
     source_row_for_accession,
 )
-from ingestion.create_embeddings import EmbeddingResult, create_embeddings
-from ingestion.ingest_chunks import DocumentChunkRow, build_document_chunk_rows
+from ingestion.create_embeddings import (
+    EmbeddingClient,
+    EmbeddingResult,
+    create_embeddings,
+)
 from ingestion.ingest_documents import SourceDocumentRow
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
@@ -55,18 +58,18 @@ async def export_document_run(
     *,
     output_root: Path,
     embedding_model: str,
+    embedding_deployment: str,
     embedding_dimensions: int,
-    api_key: str,
+    embedding_client: EmbeddingClient,
 ) -> Path:
     parsed_path, markdown_path = document_paths(source_row)
     token_counter = OpenAITokenCounter(embedding_model)
     chunks = chunk_document(parsed_path, markdown_path, token_counter)
 
-    client = AsyncOpenAI(api_key=api_key, max_retries=3)
     embedding_result = await create_embeddings(
-        client,
+        embedding_client,
         chunks,
-        model=embedding_model,
+        model=embedding_deployment,
         dimensions=embedding_dimensions,
     )
 
@@ -330,19 +333,24 @@ def _write_json_lines(path: Path, records: Sequence[dict[str, Any]]) -> None:
 
 def main() -> None:
     from app.config import settings
+    from app.services import AzureOpenAIService
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     args = parse_args()
     source_row = source_row_for_accession(args.accession_number)
-    output_dir = asyncio.run(
-        export_document_run(
-            source_row,
-            output_root=args.output_root.resolve(),
-            embedding_model=settings.openai_embedding_model,
-            embedding_dimensions=settings.openai_embedding_dimensions,
-            api_key=settings.openai_api_key.get_secret_value(),
-        )
-    )
+
+    async def run() -> Path:
+        async with AzureOpenAIService(settings) as azure_openai:
+            return await export_document_run(
+                source_row,
+                output_root=args.output_root.resolve(),
+                embedding_model=settings.openai_embedding_model,
+                embedding_deployment=settings.azure_openai_embedding_deployment,
+                embedding_dimensions=settings.openai_embedding_dimensions,
+                embedding_client=azure_openai.client,
+            )
+
+    output_dir = asyncio.run(run())
     logger.info("Saved review bundle to %s", output_dir)
 
 

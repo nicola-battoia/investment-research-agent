@@ -7,7 +7,6 @@ from collections.abc import AsyncIterable, Sequence
 from dataclasses import dataclass
 from uuid import UUID, uuid4
 
-from openai import AsyncOpenAI
 from pydantic_ai import RunContext
 from pydantic_ai.messages import (
     AgentStreamEvent,
@@ -17,21 +16,21 @@ from pydantic_ai.messages import (
     ToolReturnPart,
 )
 
-from app.assistant import (
-    AssistantDeps,
-    AssistantModelSettings,
+from app.assistant.agent import DocumentAssistant, create_document_assistant
+from app.assistant.deps import AssistantDeps, AssistantModelSettings
+from app.assistant.outputs import (
     AssistantRunResult,
-    DocumentAssistant,
     HistoryMessage,
-    create_document_assistant,
+    ReadablePassage,
+    SearchToolResult,
 )
-from app.assistant.outputs import ReadablePassage, SearchToolResult
 from app.config import settings
 from app.database.supabase import create_user_supabase_client
 from app.grounding import GroundingValidator
 from app.retrieval.keywords import OpenAIKeywordExtractor
 from app.retrieval.models import SourcePassage
 from app.retrieval.retriever import DocumentRetriever
+from app.services import AzureOpenAIService
 
 logger = logging.getLogger("assistant-inspector")
 
@@ -68,7 +67,7 @@ def configure_logging() -> None:
 
 async def build_live_assistant(
     access_token: str,
-) -> tuple[DocumentAssistant, AssistantDeps]:
+) -> tuple[DocumentAssistant, AssistantDeps, AzureOpenAIService]:
     """Build the production assistant with an authenticated user-scoped retriever."""
     access_token = access_token.strip()
     if not access_token:
@@ -76,18 +75,16 @@ async def build_live_assistant(
 
     supabase = await create_user_supabase_client(settings, access_token)
     auth_response = await supabase.auth.get_user(access_token)
-    openai_client = AsyncOpenAI(
-        api_key=settings.openai_api_key.get_secret_value(),
-        max_retries=settings.openai_http_max_retries,
-    )
+    azure_openai = AzureOpenAIService(settings)
+    openai_client = azure_openai.client
     retriever = DocumentRetriever(
         supabase,
         openai_client,
         OpenAIKeywordExtractor(
             openai_client,
-            model=settings.openai_keyword_model,
+            model=settings.azure_openai_keyword_deployment,
         ),
-        embedding_model=settings.openai_embedding_model,
+        embedding_model=settings.azure_openai_embedding_deployment,
         embedding_dimensions=settings.openai_embedding_dimensions,
     )
     deps = AssistantDeps(
@@ -104,7 +101,7 @@ async def build_live_assistant(
         settings.openai_embedding_model,
         settings.openai_keyword_model,
     )
-    return create_document_assistant(settings), deps
+    return create_document_assistant(settings, azure_openai), deps, azure_openai
 
 
 async def inspect_assistant(
@@ -115,14 +112,17 @@ async def inspect_assistant(
     snippet_chars: int = 320,
 ) -> AssistantInspection:
     """Run the live assistant and log its tool, evidence, citation, and usage trace."""
-    assistant, deps = await build_live_assistant(access_token)
-    return await run_assistant_inspection(
-        question,
-        assistant,
-        deps,
-        history,
-        snippet_chars=snippet_chars,
-    )
+    assistant, deps, azure_openai = await build_live_assistant(access_token)
+    try:
+        return await run_assistant_inspection(
+            question,
+            assistant,
+            deps,
+            history,
+            snippet_chars=snippet_chars,
+        )
+    finally:
+        await azure_openai.close()
 
 
 async def run_assistant_inspection(

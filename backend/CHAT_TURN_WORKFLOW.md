@@ -155,7 +155,7 @@ the SSE response:
 orchestrator = ChatTurnOrchestrator(
     settings=request.app.state.settings,
     supabase=context.supabase,
-    openai_client=request.app.state.openai_client,
+    azure_openai=request.app.state.azure_openai,
     assistant=request.app.state.document_assistant,
 )
 prepared = await orchestrator.prepare(
@@ -227,31 +227,31 @@ fresh for every user message.
 ### 3.1 Backend startup creates the shared `DocumentAssistant`
 
 Importing [`app/main.py`](app/main.py) executes `app = create_app(settings)`.
-`create_app` creates one shared OpenAI client and passes it into
+`create_app` creates one shared Azure AI Foundry service and passes it into
 `create_document_assistant` from
 [`app/assistant/agent.py`](app/assistant/agent.py). The resulting
 `DocumentAssistant` is stored at `application.state.document_assistant`:
 
 ```py
 # app/main.py
-shared_openai_client = openai_client or AsyncOpenAI(...)
+shared_azure_openai = azure_openai or AzureOpenAIService(app_settings)
 shared_assistant = document_assistant or create_document_assistant(
     app_settings,
-    shared_openai_client,
+    shared_azure_openai,
 )
 ...
-application.state.openai_client = shared_openai_client
+application.state.azure_openai = shared_azure_openai
 application.state.document_assistant = shared_assistant
 ```
 
-`create_document_assistant` wraps that OpenAI client in PydanticAI's OpenAI
-Responses model and constructs `DocumentAssistant`:
+`create_document_assistant` asks the Azure service for a PydanticAI Responses
+model and constructs `DocumentAssistant`:
 
 ```py
 # app/assistant/agent.py
-model = OpenAIResponsesModel(
+model = azure_openai.create_responses_model(
+    settings.azure_openai_assistant_deployment,
     settings.openai_assistant_model,
-    provider=OpenAIProvider(openai_client=openai_client),
 )
 return DocumentAssistant(model)
 ```

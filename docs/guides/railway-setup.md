@@ -263,6 +263,11 @@ railway variable set \
   --service 974a863b-2ee3-455e-a903-fec1c92343ca \
   'SUPABASE_URL=https://<project-ref>.supabase.co' \
   'SUPABASE_ANON_KEY=<publishable-anon-key>' \
+  AZURE_OPENAI_ENDPOINT=https://foundry-10k-club.openai.azure.com/openai/v1/ \
+  AZURE_OPENAI_ASSISTANT_DEPLOYMENT=assistant-gpt-5-6-terra \
+  AZURE_OPENAI_KEYWORD_DEPLOYMENT=keywords-gpt-5-4-nano \
+  AZURE_OPENAI_EMBEDDING_DEPLOYMENT=embeddings-text-embedding-3-small \
+  AZURE_OPENAI_HTTP_MAX_RETRIES=3 \
   OPENAI_EMBEDDING_MODEL=text-embedding-3-small \
   OPENAI_EMBEDDING_DIMENSIONS=1536 \
   OPENAI_KEYWORD_MODEL=gpt-5.4-nano \
@@ -307,19 +312,22 @@ unset RAILWAY_SECRET_VALUE
 ```
 
 ```sh
-read -rs 'RAILWAY_SECRET_VALUE?Paste funded OpenAI API key: '
+read -rs 'RAILWAY_SECRET_VALUE?Paste Azure AI Foundry API key: '
 printf '\n'
 printf '%s' "$RAILWAY_SECRET_VALUE" | railway variable set \
   --project 42cace43-5886-4706-b9f2-f8312e798507 \
   --environment 7b864536-d01b-47f2-bf19-c44582daf6cf \
   --service 974a863b-2ee3-455e-a903-fec1c92343ca \
-  --stdin OPENAI_API_KEY
+  --stdin AZURE_OPENAI_API_KEY
 unset RAILWAY_SECRET_VALUE
 ```
 
 `DATABASE_URL` must use `postgresql+psycopg://`, a direct or session-pooler host on port `5432`, and a percent-encoded password. The settings validator rejects plain `postgresql://`.
 
-Before deployment, confirm that the OpenAI API organization or project owning the key has an active API balance and sufficient project limits at <https://platform.openai.com/settings/organization/billing/overview>. A ChatGPT or Codex subscription does not supply API credits. An exhausted balance produces `429 credit_balance_exhausted` even though Railway, CORS, authentication, and the stream endpoint are healthy.
+Before deployment, confirm the three model deployments report `Succeeded` and the
+Azure subscription has sufficient model quota. Azure throttling or exhausted quota
+can produce HTTP 429 even when Railway, CORS, authentication, and the stream endpoint
+are otherwise healthy.
 
 ### Frontend build-time values
 
@@ -588,7 +596,10 @@ railway logs \
   --json
 ```
 
-`429 credit_balance_exhausted` means the OpenAI API project has no usable API balance. Adding API credits to the organization that owns the current key requires no Railway redeploy. If moving to a funded key, replace `OPENAI_API_KEY` through `--stdin`; the variable change triggers a backend redeploy.
+An Azure HTTP 429 means the selected deployment has exhausted its allocated request
+or token quota. Inspect the deployment quota in Azure, then increase capacity or
+retry after the documented interval. Replacing `AZURE_OPENAI_API_KEY` through
+`--stdin` triggers a backend redeploy when credential rotation is required.
 
 ## 11. Supabase ingestion and branch promotion
 

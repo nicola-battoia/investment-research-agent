@@ -7,10 +7,10 @@ from dataclasses import dataclass, field
 from typing import Protocol
 from uuid import UUID, uuid4
 
-from openai import AsyncOpenAI
 from supabase import AsyncClient
 
-from app.assistant import AssistantDeps, AssistantModelSettings, DocumentAssistant
+from app.assistant.agent import DocumentAssistant
+from app.assistant.deps import AssistantDeps, AssistantModelSettings
 from app.assistant.tracing import AssistantTrace
 from app.chat.messages import (
     InternalUserMessage,
@@ -27,6 +27,7 @@ from app.database import chats
 from app.grounding import GroundingValidator
 from app.retrieval.keywords import OpenAIKeywordExtractor
 from app.retrieval.retriever import DocumentRetriever
+from app.services import AzureOpenAIService
 
 
 class AssistantRunner(Protocol):
@@ -56,13 +57,13 @@ class ChatTurnOrchestrator:
         *,
         settings: Settings,
         supabase: AsyncClient,
-        openai_client: AsyncOpenAI,
+        azure_openai: AzureOpenAIService,
         assistant: DocumentAssistant,
         trace: AssistantTrace | None = None,
     ) -> None:
         self._settings = settings
         self._supabase = supabase
-        self._openai_client = openai_client
+        self._azure_openai = azure_openai
         self._assistant: AssistantRunner = assistant
         self._trace = trace or AssistantTrace.disabled()
 
@@ -132,13 +133,13 @@ class ChatTurnOrchestrator:
 
         retriever = DocumentRetriever(
             self._supabase,
-            self._openai_client,
+            self._azure_openai.client,
             OpenAIKeywordExtractor(
-                self._openai_client,
-                model=self._settings.openai_keyword_model,
+                self._azure_openai.client,
+                model=self._settings.azure_openai_keyword_deployment,
                 trace=turn.trace,
             ),
-            embedding_model=self._settings.openai_embedding_model,
+            embedding_model=self._settings.azure_openai_embedding_deployment,
             embedding_dimensions=self._settings.openai_embedding_dimensions,
             semantic_weight=self._settings.retrieval_semantic_weight,
             lexical_weight=self._settings.retrieval_lexical_weight,

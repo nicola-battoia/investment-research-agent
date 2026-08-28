@@ -7,8 +7,6 @@ import asyncio
 import logging
 from pathlib import Path
 
-from openai import AsyncOpenAI
-
 from ingestion.checkpoints import (
     DEFAULT_CHECKPOINT_ROOT,
     checkpoint_paths,
@@ -48,15 +46,14 @@ async def embed_missing_checkpoints(
     checkpoint_root: Path,
 ) -> None:
     from app.config import settings
+    from app.services import AzureOpenAIService
 
     source_rows = select_source_rows(
         load_source_document_rows(),
         accession_number,
     )
-    client = AsyncOpenAI(
-        api_key=settings.openai_api_key.get_secret_value(),
-        max_retries=3,
-    )
+    azure_openai = AzureOpenAIService(settings)
+    client = azure_openai.client
     embedded_documents = 0
     skipped_documents = 0
     total_tokens = 0
@@ -90,7 +87,7 @@ async def embed_missing_checkpoints(
         result = await create_embeddings(
             client,
             chunks,
-            model=settings.openai_embedding_model,
+            model=settings.azure_openai_embedding_deployment,
             dimensions=settings.openai_embedding_dimensions,
         )
         embedding_checkpoint = save_document_embeddings(
@@ -121,6 +118,7 @@ async def embed_missing_checkpoints(
         skipped_documents,
         total_tokens,
     )
+    await azure_openai.close()
 
 
 def main() -> None:

@@ -4,6 +4,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 CONFIG_ENV_NAMES = {
     "APP_ENVIRONMENT",
@@ -11,7 +13,11 @@ CONFIG_ENV_NAMES = {
     "SUPABASE_ANON_KEY",
     "SUPABASE_SERVICE_ROLE_KEY",
     "DATABASE_URL",
-    "OPENAI_API_KEY",
+    "AZURE_OPENAI_ENDPOINT",
+    "AZURE_OPENAI_API_KEY",
+    "AZURE_OPENAI_ASSISTANT_DEPLOYMENT",
+    "AZURE_OPENAI_KEYWORD_DEPLOYMENT",
+    "AZURE_OPENAI_EMBEDDING_DEPLOYMENT",
     "OPENAI_EMBEDDING_MODEL",
     "OPENAI_EMBEDDING_DIMENSIONS",
     "OPENAI_KEYWORD_MODEL",
@@ -27,7 +33,11 @@ VALID_ENV = {
     "SUPABASE_ANON_KEY": "test-anon-key",
     "SUPABASE_SERVICE_ROLE_KEY": "test-service-role-key",
     "DATABASE_URL": "postgresql+psycopg://postgres:password@localhost:5432/postgres",
-    "OPENAI_API_KEY": "test-openai-key",
+    "AZURE_OPENAI_ENDPOINT": "https://test-resource.openai.azure.com/openai/v1/",
+    "AZURE_OPENAI_API_KEY": "test-azure-key",
+    "AZURE_OPENAI_ASSISTANT_DEPLOYMENT": "assistant-gpt-5-6-terra",
+    "AZURE_OPENAI_KEYWORD_DEPLOYMENT": "keywords-gpt-5-4-nano",
+    "AZURE_OPENAI_EMBEDDING_DEPLOYMENT": "embeddings-text-embedding-3-small",
     "OPENAI_EMBEDDING_MODEL": "text-embedding-3-small",
     "OPENAI_EMBEDDING_DIMENSIONS": "1536",
     "OPENAI_KEYWORD_MODEL": "gpt-5.4-nano",
@@ -97,16 +107,48 @@ def test_loads_and_normalizes_valid_settings(tmp_path: Path) -> None:
     }
 
 
-def test_fails_when_a_required_setting_is_missing(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    ("environment_name", "field_name"),
+    [
+        ("AZURE_OPENAI_ENDPOINT", "azure_openai_endpoint"),
+        ("AZURE_OPENAI_API_KEY", "azure_openai_api_key"),
+        (
+            "AZURE_OPENAI_ASSISTANT_DEPLOYMENT",
+            "azure_openai_assistant_deployment",
+        ),
+        ("AZURE_OPENAI_KEYWORD_DEPLOYMENT", "azure_openai_keyword_deployment"),
+        (
+            "AZURE_OPENAI_EMBEDDING_DEPLOYMENT",
+            "azure_openai_embedding_deployment",
+        ),
+    ],
+)
+def test_fails_when_required_azure_setting_is_missing(
+    tmp_path: Path,
+    environment_name: str,
+    field_name: str,
+) -> None:
     result = run_config_import(
         tmp_path,
-        missing={"OPENAI_API_KEY"},
+        missing={environment_name},
         script="from app.config import Settings; Settings(_env_file=None)",
     )
 
     assert result.returncode != 0
-    assert "openai_api_key" in result.stderr
+    assert field_name in result.stderr
     assert "Field required" in result.stderr
+
+
+def test_requires_azure_openai_v1_endpoint(tmp_path: Path) -> None:
+    result = run_config_import(
+        tmp_path,
+        overrides={
+            "AZURE_OPENAI_ENDPOINT": "https://test-resource.openai.azure.com/"
+        },
+    )
+
+    assert result.returncode != 0
+    assert "must end with /openai/v1/" in result.stderr
 
 
 def test_requires_keyword_extraction_model(tmp_path: Path) -> None:

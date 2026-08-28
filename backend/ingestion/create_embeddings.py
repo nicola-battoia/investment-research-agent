@@ -9,8 +9,6 @@ from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
-from openai import AsyncOpenAI
-
 from ingestion.chunk_documents import (
     MAX_EMBEDDING_INPUT_TOKENS,
     OpenAITokenCounter,
@@ -171,6 +169,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     from app.config import settings
+    from app.services import AzureOpenAIService
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     args = parse_args()
@@ -184,18 +183,17 @@ def main() -> None:
         markdown_path,
         OpenAITokenCounter(settings.openai_embedding_model),
     )[: args.limit_chunks]
-    client = AsyncOpenAI(
-        api_key=settings.openai_api_key.get_secret_value(),
-        max_retries=3,
-    )
-    result = asyncio.run(
-        create_embeddings(
-            client,
-            chunks,
-            model=settings.openai_embedding_model,
-            dimensions=settings.openai_embedding_dimensions,
-        )
-    )
+
+    async def run() -> EmbeddingResult:
+        async with AzureOpenAIService(settings) as azure_openai:
+            return await create_embeddings(
+                azure_openai.client,
+                chunks,
+                model=settings.azure_openai_embedding_deployment,
+                dimensions=settings.openai_embedding_dimensions,
+            )
+
+    result = asyncio.run(run())
     logger.info(
         "Embedding smoke test complete: %d chunks, %d dimensions, %d input "
         "tokens, %d request(s); no database rows were written",

@@ -5,12 +5,9 @@ from __future__ import annotations
 import time
 from collections.abc import Sequence
 
-from openai import AsyncOpenAI
 from pydantic_ai import Agent, ModelRetry, NativeOutput, RunContext, UsageLimits
 from pydantic_ai.agent import EventStreamHandler
 from pydantic_ai.models import Model
-from pydantic_ai.models.openai import OpenAIResponsesModel
-from pydantic_ai.providers.openai import OpenAIProvider
 
 from app.assistant.deps import AssistantDeps
 from app.assistant.history import build_message_history
@@ -35,6 +32,7 @@ from app.grounding.validator import (
     GroundingFailureError,
     GroundingValidationError,
 )
+from app.services import AzureOpenAIService
 
 
 class DocumentAssistant:
@@ -200,16 +198,11 @@ class DocumentAssistant:
 
 def create_document_assistant(
     app_settings: Settings,
-    openai_client: AsyncOpenAI | None = None,
+    azure_openai: AzureOpenAIService,
 ) -> DocumentAssistant:
     """Create the reusable model boundary without request-scoped retrieval state."""
-    if openai_client is None:
-        openai_client = AsyncOpenAI(
-            api_key=app_settings.openai_api_key.get_secret_value(),
-            max_retries=app_settings.openai_http_max_retries,
-        )
-    model = OpenAIResponsesModel(
+    model = azure_openai.create_responses_model(
+        app_settings.azure_openai_assistant_deployment,
         app_settings.openai_assistant_model,
-        provider=OpenAIProvider(openai_client=openai_client),
     )
     return DocumentAssistant(model, app_settings)

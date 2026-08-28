@@ -37,8 +37,18 @@ class Settings(BaseSettings):
     # Direct Psycopg connection used by Alembic migrations.
     database_url: SecretStr
 
-    # Credential shared by assistant, keyword-extraction, and embedding requests.
-    openai_api_key: SecretStr
+    # Azure OpenAI-compatible v1 endpoint shared by every model workload.
+    azure_openai_endpoint: AnyHttpUrl
+    # Credential for the parent Azure AI Foundry resource.
+    azure_openai_api_key: SecretStr
+    # Azure deployment used by the grounded research assistant.
+    azure_openai_assistant_deployment: str
+    # Azure deployment used for typed keyword extraction.
+    azure_openai_keyword_deployment: str
+    # Azure deployment used for query and ingestion embeddings.
+    azure_openai_embedding_deployment: str
+    # Retry count used by the shared Azure OpenAI HTTP client.
+    azure_openai_http_max_retries: NonNegativeInt = 3
     # Embedding model used for semantic retrieval queries and ingestion.
     openai_embedding_model: str
     # Vector width used by OpenAI and the document_chunks embedding column.
@@ -47,9 +57,6 @@ class Settings(BaseSettings):
     openai_keyword_model: str
     # Maximum tokens returned by one keyword-extraction request.
     openai_keyword_max_output_tokens: PositiveInt = 2_000
-    # Retry count used by the shared OpenAI HTTP client for transient failures.
-    openai_http_max_retries: NonNegativeInt = 3
-
     # Main model used to plan research and produce the grounded answer.
     openai_assistant_model: str
     # Reasoning effort sent with each main assistant model request.
@@ -203,6 +210,25 @@ class Settings(BaseSettings):
             return tuple(
                 origin.strip() for origin in value.split(",") if origin.strip()
             )
+        return value
+
+    @field_validator("azure_openai_endpoint")
+    @classmethod
+    def require_azure_openai_v1_endpoint(cls, value: AnyHttpUrl) -> AnyHttpUrl:
+        if not str(value).rstrip("/").endswith("/openai/v1"):
+            raise ValueError("AZURE_OPENAI_ENDPOINT must end with /openai/v1/")
+        return value
+
+    @field_validator(
+        "azure_openai_assistant_deployment",
+        "azure_openai_keyword_deployment",
+        "azure_openai_embedding_deployment",
+    )
+    @classmethod
+    def require_azure_deployment_name(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Azure deployment names cannot be empty")
         return value
 
     @model_validator(mode="after")

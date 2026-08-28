@@ -112,7 +112,11 @@ SUPABASE_URL
 SUPABASE_ANON_KEY
 SUPABASE_SERVICE_ROLE_KEY
 DATABASE_URL
-OPENAI_API_KEY
+AZURE_OPENAI_ENDPOINT
+AZURE_OPENAI_API_KEY
+AZURE_OPENAI_ASSISTANT_DEPLOYMENT
+AZURE_OPENAI_KEYWORD_DEPLOYMENT
+AZURE_OPENAI_EMBEDDING_DEPLOYMENT
 OPENAI_EMBEDDING_MODEL
 OPENAI_EMBEDDING_DIMENSIONS
 OPENAI_KEYWORD_MODEL
@@ -141,7 +145,7 @@ The `VITE_*` values are public and embedded in browser JavaScript at image-build
 
 For this project, set both final domain values explicitly after reading them with `railway domain list`. During the first release, a `${{backend.RAILWAY_PUBLIC_DOMAIN}}` reference resolved to a superseded generated domain after the domain was renamed, and Vite permanently compiled that stale URL into its bundle.
 
-Enter `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, and `OPENAI_API_KEY` through hidden shell input and `railway variable set --stdin`. Never expose them in command arguments, documentation, screenshots, chat, or logs.
+Enter `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, and `AZURE_OPENAI_API_KEY` through hidden shell input and `railway variable set --stdin`. Never expose them in command arguments, documentation, screenshots, chat, or logs.
 
 Be careful with CLI inspection: `railway environment config --json` and `railway variable list --json` can return raw variable values. Run them only in a private terminal and never paste their output. Treat any shared output containing those values as a credential exposure and rotate the affected secrets.
 
