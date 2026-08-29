@@ -235,6 +235,35 @@ The candidate deployed commit `118a2af7837e74e1f3af8da600648b12f9355bb7` from `r
 
 Both services run one replica in EU West and showed no crash loop. A successful Railway status means the containers deployed; it does not by itself prove every external API dependency works.
 
+## Foundry reliability rollout record
+
+Backend commit `71467aecd0168e0ad4dd7540aa07bb1a3040fbad` deployed from
+`railway-deploy` as Railway deployment
+`8c853f44-7a4c-4e34-87e5-40d70f3f180f`. Railway built
+`backend/Dockerfile`, completed the Alembic pre-deploy step, passed `/health`,
+and reported `SUCCESS`.
+
+Before deploying the code, the Azure Foundry allocations were changed and
+verified as `GlobalStandard` and `Succeeded`: assistant capacity 100
+(100 RPM/100,000 TPM), keyword capacity 25 (25 RPM/25,000 TPM), and unchanged
+embedding capacity 10 (10 RPM/10,000 TPM).
+
+Controlled live checks against the production Foundry deployments and Supabase
+corpus completed a conversational turn, a single-filing AAPL turn, a
+multi-filing MSFT/NVDA turn, and two back-to-back multi-search turns. The final
+two turns used 42,390 and 50,831 actual total tokens and produced cited answers
+without an Azure 429. An authenticated production-browser turn could not be run
+because the available browser had no private-pilot session and the opt-in test
+JWT had expired.
+
+The deployment was monitored from `2026-08-28T16:08:19Z` through at least
+`2026-08-29T00:07:19Z`. Railway recorded 46 HTTP requests: 45 successful 2xx
+responses, the expected 401 from an explicit unauthenticated probe, and zero
+5xx responses. Focused runtime logs contained no Azure rate-limit, Supabase
+timeout, unhandled ASGI, `assistant_rate_limited`, or `database_unavailable`
+event. Current CPU was zero and memory was approximately 0.157 GB of 1 GB at
+the final snapshot.
+
 ## Problems found and the corrected approach
 
 | Symptom | Cause | Correct approach |
@@ -251,7 +280,7 @@ Both services run one replica in EU West and showed no crash loop. A successful 
 
 Completed:
 
-- 239 backend tests and all Ruff checks passed.
+- 260 fast backend tests and Ruff checks for the application and test paths passed.
 - Frontend TypeScript, ESLint, and production build passed.
 - Both production Docker images deployed successfully.
 - Alembic reached the current migration head.
@@ -262,13 +291,16 @@ Completed:
   `78895768-eb1a-4286-bdc3-27146092e83e`). The healthcheck passed, and a bounded
   audit of the new deployment's runtime logs found no event over 4 KiB and no
   traceback, frame-local, content, or disallowed-correlation-ID patterns.
+- Foundry reliability hardening deployed in commit `71467ae` (Railway deployment
+  `8c853f44-7a4c-4e34-87e5-40d70f3f180f`) and remained healthy through the
+  extended monitoring window described above.
 
 Still required before final promotion:
 
-- Verify complete conversational, single-filing, and multi-filing streamed responses
-  against Azure Foundry. Confirm each successful trace ends in `stream.completed`,
-  persists its citations, stays inside the configured usage bounds, and contains no
-  Azure 429 or unhandled ASGI exception.
+- Run conversational, single-filing, multi-filing, and back-to-back multi-search
+  turns through a signed-in production frontend session. Confirm each trace ends in
+  `stream.completed`, persists its citations, stays inside the configured usage
+  bounds, and contains no Azure 429 or unhandled ASGI exception.
 - Prove Watch Paths with isolated frontend-only and backend-only commits.
 - Merge the candidate to `main` and change the production branch only after the gates above pass.
 
