@@ -81,11 +81,11 @@ class Settings(BaseSettings):
     # Maximum total tool invocations allowed across one assistant run.
     assistant_max_tool_calls: PositiveInt = 8
     # Cumulative output-token ceiling across all model requests in one run.
-    assistant_max_total_output_tokens: PositiveInt = 6_000
+    assistant_max_total_output_tokens: PositiveInt = 10_000
     # Cumulative input-token ceiling across all model requests in one run.
-    assistant_max_total_input_tokens: PositiveInt = 60_000
+    assistant_max_total_input_tokens: PositiveInt = 120_000
     # Input-token ceiling applied separately to every model request.
-    assistant_max_request_input_tokens: PositiveInt = 32_000
+    assistant_max_request_input_tokens: PositiveInt = 50_000
     # Shared character ceiling for user questions, answers, and stored history messages.
     assistant_max_message_characters: PositiveInt = 10_000
     # Number of automatic retries allowed after tool validation or execution errors.
@@ -93,7 +93,7 @@ class Settings(BaseSettings):
     # Number of correction attempts allowed after invalid structured/grounded output.
     assistant_output_retries: NonNegativeInt = 1
     # Deadline in seconds for one assistant tool invocation.
-    assistant_tool_timeout_seconds: PositiveFloat = 60
+    assistant_tool_timeout_seconds: PositiveFloat = 120
     # Whether the main model may request multiple tool calls concurrently.
     assistant_parallel_tool_calls: bool = False
     # Whether OpenAI may retain assistant and keyword-extraction responses.
