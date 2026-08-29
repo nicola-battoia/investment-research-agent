@@ -74,7 +74,7 @@ class Settings(BaseSettings):
         "max",
     ]
     # Per-request response cap sent to the main assistant model.
-    openai_assistant_max_output_tokens: PositiveInt
+    openai_assistant_max_output_tokens: PositiveInt = 2500
 
     # Maximum model requests allowed across one assistant run, including retries.
     assistant_max_model_requests: PositiveInt = 10
@@ -83,7 +83,7 @@ class Settings(BaseSettings):
     # Cumulative output-token ceiling across all model requests in one run.
     assistant_max_total_output_tokens: PositiveInt = 10_000
     # Cumulative input-token ceiling across all model requests in one run.
-    assistant_max_total_input_tokens: PositiveInt = 120_000
+    assistant_max_total_input_tokens: PositiveInt = 75_000
     # Input-token ceiling applied separately to every model request.
     assistant_max_request_input_tokens: PositiveInt = 50_000
     # Shared character ceiling for user questions, answers, and stored history messages.
