@@ -24,7 +24,7 @@ See universal policy in [../AGENTS.md](../AGENTS.md). Backend-specific:
 - **Not OK without justification:** `python-dateutil`, `toolz`, `funcy`, `more-itertools`, small JSON/string micro-libs, "ergonomic" wrappers on top of declared SDKs.
 - Dev deps (test/lint/build) have a looser bar but still pick widely-used, low-footprint tools (`pytest`, `ruff`, `httpx`).
 
-## Layout (to be created during build)
+## Current layout
 
 ```text
 backend/
@@ -35,15 +35,18 @@ backend/
 │   │   └── versions/    # Reviewed migration files
 │   ├── main.py          # FastAPI entrypoint
 │   ├── config.py        # Pydantic settings — single source of truth for env
-│   ├── api/             # FastAPI routers (chat, ingest, auth)
+│   ├── api/             # FastAPI routers (chat and health)
 │   ├── auth/            # Supabase JWT verification + current user dependency
 │   ├── chat/            # turn orchestration, AI SDK message conversion, streaming
-│   ├── assistant/       # PydanticAI agent, deps, outputs, instructions
+│   ├── assistant/       # PydanticAI agent, deps, outputs, policy.py instructions
 │   ├── retrieval/       # pgvector/full-text queries, RRF fusion, source passage lookup
 │   ├── grounding/       # citation validation and answer grounding checks
 │   ├── database/        # SQLAlchemy models, Supabase client wrapper, typed query helpers
-│   └── prompts/         # prompt/instruction templates if not colocated with assistant
-├── ingest/              # one-off ingestion scripts (Markdown extraction, chunking, embedding, Supabase writes)
+│   ├── services/        # Azure model clients and Responses adapter
+│   └── telemetry.py     # Optional Azure Monitor instrumentation
+├── ingestion/           # SEC parsing, checkpointing, embeddings, Supabase writes
+├── evaluation/          # Retrieval evaluation and production-tool inspection
+├── playground/          # IPython inspection cells
 ├── tests/
 └── pyproject.toml
 ```

@@ -21,6 +21,7 @@ from app.database.chats import (
 )
 from app.logging_config import configure_logging
 from app.services import AzureOpenAIService
+from app.telemetry import configure_azure_monitor_tracing
 
 configure_logging(settings)
 logger = structlog.get_logger()
@@ -33,6 +34,7 @@ def create_app(
     document_assistant: DocumentAssistant | None = None,
     supabase_http_client: AsyncHTTPClient | None = None,
 ) -> FastAPI:
+    configure_azure_monitor_tracing(app_settings)
     owns_azure_openai = azure_openai is None
     shared_azure_openai = azure_openai or AzureOpenAIService(app_settings)
     shared_assistant = document_assistant or create_document_assistant(

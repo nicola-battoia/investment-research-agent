@@ -33,6 +33,7 @@ from app.grounding.validator import (
     GroundingValidationError,
 )
 from app.services import AzureOpenAIService
+from app.telemetry import assistant_turn_span, instrument_assistant_model
 
 
 class DocumentAssistant:
@@ -48,7 +49,7 @@ class DocumentAssistant:
         self._settings = app_settings
         self._count_tokens_before_request = count_tokens_before_request
         self._agent = Agent(
-            model,
+            instrument_assistant_model(model, app_settings),
             name="document_copilot",
             deps_type=AssistantDeps,
             output_type=NativeOutput(
@@ -156,23 +157,24 @@ class DocumentAssistant:
             model=deps.model_settings.model_name,
             model_settings=deps.model_settings,
         )
-        result = await self._agent.run(
-            question,
-            deps=deps,
-            message_history=build_message_history(history),
-            model_settings=deps.model_settings.to_pydantic_ai(),
-            usage_limits=UsageLimits(
-                request_limit=self._settings.assistant_max_model_requests,
-                tool_calls_limit=self._settings.assistant_max_tool_calls,
-                input_tokens_limit=self._settings.assistant_max_total_input_tokens,
-                output_tokens_limit=self._settings.assistant_max_total_output_tokens,
-                per_request_input_tokens_limit=(
-                    self._settings.assistant_max_request_input_tokens
+        with assistant_turn_span(deps.trace.trace_id, deps.model_settings.model_name):
+            result = await self._agent.run(
+                question,
+                deps=deps,
+                message_history=build_message_history(history),
+                model_settings=deps.model_settings.to_pydantic_ai(),
+                usage_limits=UsageLimits(
+                    request_limit=self._settings.assistant_max_model_requests,
+                    tool_calls_limit=self._settings.assistant_max_tool_calls,
+                    input_tokens_limit=self._settings.assistant_max_total_input_tokens,
+                    output_tokens_limit=self._settings.assistant_max_total_output_tokens,
+                    per_request_input_tokens_limit=(
+                        self._settings.assistant_max_request_input_tokens
+                    ),
+                    count_tokens_before_request=self._count_tokens_before_request,
                 ),
-                count_tokens_before_request=self._count_tokens_before_request,
-            ),
-            event_stream_handler=event_stream_handler,
-        )
+                event_stream_handler=event_stream_handler,
+            )
         if deps.validated_answer is None:
             raise GroundingFailureError(
                 "The assistant completed without a validated grounded answer"

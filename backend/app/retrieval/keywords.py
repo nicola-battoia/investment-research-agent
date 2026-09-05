@@ -6,6 +6,7 @@ from typing import Protocol
 from app.assistant.tracing import AssistantTrace
 from app.config import settings
 from app.retrieval.models import ExtractedKeywords
+from app.telemetry import model_call_span, record_model_input, record_model_response
 
 KEYWORD_EXTRACTION_INSTRUCTIONS = f"""
 You extract lexical search concepts for an internal SEC filing retrieval system.
@@ -96,14 +97,29 @@ class OpenAIKeywordExtractor:
             input=query,
             max_output_tokens=settings.openai_keyword_max_output_tokens,
         )
-        response = await self._responses.parse(
+        with model_call_span(
+            "generate_content",
             model=self._model,
-            instructions=KEYWORD_EXTRACTION_INSTRUCTIONS,
-            input=query,
-            text_format=ExtractedKeywords,
-            max_output_tokens=settings.openai_keyword_max_output_tokens,
-            store=settings.openai_store_responses,
-        )
+            role="keyword_extraction",
+        ) as span:
+            record_model_input(
+                span,
+                instructions=KEYWORD_EXTRACTION_INSTRUCTIONS,
+                user_input=query,
+            )
+            response = await self._responses.parse(
+                model=self._model,
+                instructions=KEYWORD_EXTRACTION_INSTRUCTIONS,
+                input=query,
+                text_format=ExtractedKeywords,
+                max_output_tokens=settings.openai_keyword_max_output_tokens,
+                store=settings.openai_store_responses,
+            )
+            record_model_response(
+                span,
+                response,
+                output=response.output_parsed,
+            )
         if response.output_parsed is None:
             self._trace.emit(
                 "retrieval_keyword_model_invalid_response",

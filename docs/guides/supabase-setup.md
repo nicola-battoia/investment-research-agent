@@ -1,76 +1,97 @@
 # Supabase setup
 
-We use Supabase for **Postgres** (users, chats, source documents, chunks, embeddings, and citations) and **Auth** (email sign-in only). You need one hosted Supabase project before wiring up `backend/` and `frontend/`.
+Supabase hosts Postgres and email/password authentication. The browser signs in
+with a public key; backend request paths use that user's JWT for database access.
+Admin ingestion and some integration tests use a server-only service-role key.
 
-## 1. Create an account
+Use an existing project when one is already configured. For a new environment,
+create a project in the [Supabase dashboard](https://supabase.com/dashboard),
+save its database password, and collect the values below. Dashboard labels can
+change; the project's Connect/API settings expose the credentials.
 
-1. Go to [supabase.com](https://supabase.com) and sign up (GitHub or email).
-2. Confirm your email if prompted.
-3. You land in the [dashboard](https://supabase.com/dashboard). The free tier is enough for local development.
+## Configure the two services
 
-## 2. Create a project
+| Project value | Backend variable | Frontend variable |
+| --- | --- | --- |
+| Project URL | `SUPABASE_URL` | `VITE_SUPABASE_URL` |
+| Public anon key | `SUPABASE_ANON_KEY` | `VITE_SUPABASE_ANON_KEY` |
+| Service-role key | `SUPABASE_SERVICE_ROLE_KEY` | Never put in the frontend |
+| Direct or session Postgres URL | `DATABASE_URL` | Never put in the frontend |
 
-1. Open [New project](https://supabase.com/dashboard/new).
-2. Pick your organization (a personal org is created automatically on first signup).
-3. Set a **project name** (e.g. `Document Copilot`).
-4. Choose a **database password** — save it somewhere safe; you need it for direct DB access and `supabase link`.
-5. Pick a **region** close to you.
-6. Click **Create new project** and wait until status is healthy (~1–2 minutes).
+The current application expects these names. See the
+[configuration reference](../configuration.md) and each service's `.env.example`.
+Keep secrets in ignored local env files or the hosting service's secret store.
 
-## 3. Collect credentials
+Use a SQLAlchemy URL with the `postgresql+psycopg://` scheme for migrations.
+Use the direct endpoint or the session pooler, normally port `5432`; do not use
+the transaction pooler on `6543`. URL-encode special characters in credentials.
+The direct endpoint may require IPv6 from the host running migrations; the
+[Railway guide](railway-setup.md#decide-whether-backend-ipv6-is-required) explains
+that deployment choice.
 
-You need these values in backend and frontend env config (exact variable names will live in each service's settings module once the app is built).
+Application queries use the Supabase API clients. The database URL is principally
+for Alembic/schema operations, not the browser or the normal chat request path.
 
-| Value | Where to find it | Used by |
-| ----- | ---------------- | ------- |
-| **Project URL** | Dashboard → **Project Settings** → **API** → Project URL | Frontend + backend |
-| **anon (public) key** | Same page → `anon` `public` key | Frontend (browser-safe) |
-| **service_role (secret) key** | Same page → `service_role` `secret` key | Backend only — never expose to the browser |
-| **Project ref** | Dashboard URL `supabase.com/dashboard/project/<ref>` or `supabase projects list` | CLI commands |
-| **Direct database connection string** | Dashboard → **Project Settings** → **Database** → Connection string; use the `postgresql+psycopg://` scheme in backend configuration | Alembic migrations and backend DB access |
-| **Database password** | What you set at project creation | Direct Postgres connection |
+## Private-pilot authentication
 
-From the CLI you can also print API keys:
+The implemented screen supports email **and password** sign-in, with no
+self-service registration or password-reset screen.
+
+For the intended manually provisioned pilot:
+
+1. Enable the Email provider.
+2. Disable **Allow new users to sign up** in the project's Auth configuration.
+3. Create approved users administratively and arrange their credentials through
+   the team's normal process.
+4. Test sign-in and sign-out with an approved account, then verify a second
+   account cannot access the first account's threads.
+
+Hiding registration in the UI does not disable Supabase's registration API. The
+backend accepts users authenticated by the configured Supabase project; it does
+not implement a company-domain or email allowlist. The auth trigger creates a
+public user record for new Auth users. Verify the hosted settings for each
+environment rather than treating repository documentation as proof they are set.
+
+Supabase documents the signup controls in its
+[general Auth configuration](https://supabase.com/docs/guides/auth/general-configuration).
+Set Site URL and permitted redirect URLs to the intended frontend domains if
+using invitation, confirmation, or recovery links. Direct password sign-in itself
+does not introduce a redirect flow, and recovery UI still needs a product decision.
+
+## Apply the schema
+
+Alembic owns schema changes. Do not recreate application tables manually in the
+dashboard. From a configured `backend/`:
 
 ```bash
-supabase projects api-keys --project-ref <your-project-ref>
+uv sync --locked --dev
+uv run --locked alembic heads
+uv run --locked alembic upgrade head --sql > /tmp/document-copilot-schema.sql
 ```
 
-Keep `service_role` out of git, client bundles, and frontend env files.
-
-## 4. Auth settings (email only)
-
-This app uses email auth only — no Google/SSO.
-
-1. Dashboard → **Authentication** → **Providers**.
-2. Leave **Email** enabled.
-3. For local dev, you may want **Authentication** → **Email** → disable "Confirm email" so sign-up works without inbox access (re-enable for production).
-
-## 5. Database schema management
-
-Document Copilot uses Alembic from the Python backend to manage database schema. Do not create production tables manually in the Supabase dashboard.
-
-Alembic migrations create and update:
-
-- the `vector` extension for `pgvector`
-- source document and chunk tables
-- embedding columns
-- generated full-text search columns
-- HNSW and GIN indexes
-- chat and citation tables
-- row-level security policies
-
-Use the direct/session database connection string for Alembic. Do not use the transaction pooler connection string for migrations.
-
-From `backend/`:
+Offline SQL renders the migration chain from its assumed starting revision; it
+does not inspect the connected database or identify only pending changes. Review
+the intended migration range before applying:
 
 ```bash
-uv run alembic upgrade head
+uv run --locked alembic current
+uv run --locked alembic upgrade head
 ```
 
-See [Backend setup](backend-setup.md) for the Alembic workflow.
+Current repository head: `20260823_0008`. Migrations cover tables, indexes,
+vector/full-text retrieval, RLS/grants, user synchronization, atomic chat-turn
+completion, and chunk source offsets.
 
-## Next steps
+RLS separates users' chats, but authenticated users also retain direct write
+permissions on their own messages/citations. The
+[audit](../repository-audit.md#f02-assistant-message-provenance-is-not-enforced-at-the-database-boundary)
+records the distinction between ownership isolation and trusted assistant output.
 
-- [Backend setup](backend-setup.md) — Python service + Supabase client
-- [Frontend setup](frontend-setup.md) — React app + `@supabase/supabase-js`
+## Load and verify the corpus
+
+Use the [checkpointed ingestion guide](../../backend/ingestion/README.md) from a
+local operator environment. Parsing, embedding, and bulk upload are separate from
+application startup and Railway deployment.
+
+For live integration tests, use the [evaluation guide](../../backend/evaluation/README.md#offline-and-live-tests).
+Some tests create and remove database records; choose their target deliberately.

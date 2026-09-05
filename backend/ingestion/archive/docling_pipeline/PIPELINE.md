@@ -1,5 +1,11 @@
 # SEC filing ingestion pipeline
 
+> **Historical design — not a runnable setup guide.** This describes the replaced
+> Docling/direct pipeline. Old command and module names are preserved as history;
+> some referenced implementations have moved or no longer exist. Use the
+> [active ingestion guide](../../README.md) for supported commands.
+
+
 This directory contains the one-off pipeline that turns downloaded SEC filing HTML
 into retrieval-ready rows in Supabase. The most important detail is that Docling
 produces **two representations of every filing**:
@@ -34,15 +40,15 @@ flowchart TD
 
 | Stage | Code | Result |
 | --- | --- | --- |
-| Download | [`data/download.py`](../../data/download.py) | Raw HTML plus `manifest.json` |
-| Convert | [`data/convert_documents.py`](../../data/convert_documents.py) | Matching Markdown and Docling JSON files |
-| Build/store documents | [`ingest_documents.py`](ingest_documents.py) | One `source_documents` row per filing |
+| Download | [`data/download.py`](../../../../data/download.py) | Raw HTML plus `manifest.json` |
+| Convert | [`data/convert_documents.py`](convert_documents.py) | Matching Markdown and Docling JSON files |
+| Build/store documents | `ingest_documents.py` | One `source_documents` row per filing |
 | Prepare chunks | [`chunk_documents.py`](chunk_documents.py) | In-memory `PreparedChunk` objects |
-| Embed chunks | [`create_embeddings.py`](create_embeddings.py) | One vector per prepared chunk |
-| Build/store chunk rows | [`ingest_chunks.py`](ingest_chunks.py) | Retrieval-ready `document_chunks` rows |
+| Embed chunks | `create_embeddings.py` | One vector per prepared chunk |
+| Build/store chunk rows | `ingest_chunks.py` | Retrieval-ready `document_chunks` rows |
 
 The production call chain is visible in
-[`ingest_document_chunks()`](ingest_chunks.py):
+`ingest_document_chunks()`:
 
 ```python
 for source_row in source_rows:
@@ -74,7 +80,7 @@ Run this from the repository root:
 uv run data/download.py
 ```
 
-[`download_filings()`](../../data/download.py) selects supported SEC filings, saves
+[`download_filings()`](../../../../data/download.py) selects supported SEC filings, saves
 their HTML under a year directory, and records the identity of each file in
 `data/downloads/manifest.json`:
 
@@ -107,7 +113,7 @@ Run this from the repository root:
 uv run data/convert_documents.py
 ```
 
-[`convert_file()`](../../data/convert_documents.py) parses one HTML file once and
+[`convert_file()`](convert_documents.py) parses one HTML file once and
 writes two files with the same relative path and stem:
 
 ```python
@@ -143,8 +149,8 @@ uv run python -m ingestion.ingest_documents --dry-run
 uv run python -m ingestion.ingest_documents
 ```
 
-[`load_source_document_rows()`](ingest_documents.py) reads the manifest. For each
-entry, [`_build_source_document_row()`](ingest_documents.py) finds the corresponding
+`load_source_document_rows()` reads the manifest. For each
+entry, `_build_source_document_row()` finds the corresponding
 Markdown file, reads it without further text rewriting, validates the dates and
 paths, and creates the database payload:
 
@@ -180,7 +186,7 @@ in the manifest, duplicate accession numbers, and duplicate content checksums. I
 manifest has no report date, the filing date is used and that fallback is recorded
 in `extraction_metadata`.
 
-[`upsert_source_documents()`](ingest_documents.py) then sends one row at a time to
+`upsert_source_documents()` then sends one row at a time to
 Supabase through the server-only client, which uses the configured service-role key:
 
 ```python
@@ -205,7 +211,7 @@ docling_path = DOCLING_DOCUMENTS_DIR / Path(source_local_path).with_suffix(".jso
 markdown_path = MARKDOWN_DIR / markdown_local_path
 ```
 
-At the start of [`ingest_document_chunks()`](ingest_chunks.py), the pipeline also
+At the start of `ingest_document_chunks()`, the pipeline also
 loads `id`, `accession_number`, and `content_checksum` from `source_documents`. It
 stops if a source row is missing or if its stored checksum differs from the current
 local Markdown. That prevents chunks from being attached to a stale version of a
@@ -386,7 +392,7 @@ No intermediate chunk file is written to disk.
 
 ## 6. Create one embedding per prepared chunk
 
-[`create_embeddings()`](create_embeddings.py) groups chunks by both item count and
+`create_embeddings()` groups chunks by both item count and
 token count. Defaults are 128 chunks per request and 250,000 total tokens, while each
 individual chunk remains limited to 8,192 tokens.
 
@@ -406,7 +412,7 @@ schema requires 1,536 dimensions.
 
 ## 7. Build the final chunk rows
 
-[`build_document_chunk_rows()`](ingest_chunks.py) pairs chunks and vectors one for
+`build_document_chunk_rows()` pairs chunks and vectors one for
 one, attaches the `source_documents.id`, and enriches the chunk metadata with filing
 identity and embedding configuration:
 
@@ -439,7 +445,7 @@ lexical retrieval, filtering, source citations, and table rendering.
 
 ## 8. Upsert chunks into Supabase
 
-[`upsert_document_chunks()`](ingest_chunks.py) writes ten rows per database request:
+`upsert_document_chunks()` writes ten rows per database request:
 
 ```python
 for start in range(0, len(rows), batch_size):

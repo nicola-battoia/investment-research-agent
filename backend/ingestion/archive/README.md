@@ -10,8 +10,9 @@ past results reproducible when practical.
   runner. The active pipeline saves chunks and embeddings locally first.
 - `experiments/` contains one-off inspection utilities superseded by the durable
   checkpoint format.
-- `metrics/` contains dated historical measurements. Current metrics are generated
-  with `uv run python -m ingestion.helpers`.
+Dated measurements are in [`../metrics/`](../metrics/), outside this archive.
+Current metrics can be generated from `backend/` with
+`uv run --locked python -m ingestion.helpers`.
 
 Archived Python files are reference-only. Their imports, dependencies, and command
 examples are not maintained.

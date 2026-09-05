@@ -1,0 +1,4 @@
+# Docker image archives are large and may contain private application files.
+*.tar
+*.tar.gz
+*.tgz

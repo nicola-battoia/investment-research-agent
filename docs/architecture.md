@@ -1,419 +1,193 @@
-# Document Copilot Architecture
+# Document Copilot architecture
 
-## Purpose
+This describes the working-tree implementation reviewed on 2026-09-05. The
+[client brief](client-brief.md) defines product goals; [project status](todos.md)
+tracks gaps and unverified release gates.
 
-Document Copilot is an internal research assistant for analysts who need grounded answers from a curated SEC filing corpus. The architecture must optimize for trust: every answer is generated from retrieved source passages, every factual claim is citable, and the system fails clearly when the corpus does not support an answer.
-
-This document describes the target architecture for the chat experience, LLM orchestration, and the communication layer between the React SPA, Supabase, and FastAPI backend.
-
-## High-Level Architecture
-
-The best opening diagram is a service-level view that shows the two core paths: the live chat path that serves users, and the ingestion path that prepares SEC filings for retrieval.
+## Services and data flow
 
 ```mermaid
 flowchart LR
-    user[Analyst] --> browser[Browser<br/>React chat app]
-
-    subgraph railway[Railway]
-        frontend[Frontend service<br/>Vite build]
-        backend[Backend service<br/>FastAPI + PydanticAI]
-    end
-
-    subgraph supabase[Supabase]
-        auth[Auth<br/>email session]
-        db[(Postgres<br/>chats, documents, chunks<br/>pgvector + full-text)]
-    end
-
-    openai[OpenAI<br/>LLM + embeddings]
-    corpus[SEC filing corpus]
-    ingestion[Ingestion pipeline<br/>download, parse, chunk, embed]
-
-    frontend -->|serves app| browser
-    browser -->|sign in| auth
-    auth -->|JWT session| browser
-    browser -->|chat request + JWT| backend
-    backend -->|verify user| auth
-    backend -->|retrieve passages<br/>persist chats + citations| db
-    backend -->|generate grounded answer| openai
-    backend -->|stream answer + citations| browser
-
-    corpus --> ingestion
-    ingestion -->|create embeddings| openai
-    ingestion -->|store documents + chunks| db
+    Analyst --> Browser["React SPA"]
+    Caddy["Railway frontend: Caddy"] -->|static Vite build| Browser
+    Browser -->|email/password| Auth["Supabase Auth"]
+    Browser -->|HTTPS + bearer token| API["Railway backend: FastAPI"]
+    API -->|verify token| Auth
+    API -->|user JWT + RLS| DB[("Supabase Postgres")]
+    API --> Agent["PydanticAI assistant"]
+    Agent --> Retrieval["Hybrid retrieval tools"]
+    Retrieval --> DB
+    Agent --> Azure["Azure AI Foundry: Responses + embeddings"]
+    Retrieval --> Azure
+    Agent --> Grounding["Citation validator"]
+    Grounding -->|complete turn RPC| DB
+    DB -->|committed answer| API
+    API -->|status, then final answer + citations via SSE| Browser
+    SEC["Local SEC HTML"] --> Ingestion["Operator ingestion pipeline"]
+    Ingestion -->|embeddings| Azure
+    Ingestion -->|source documents + chunks| DB
 ```
 
-## Architectural Goals
-
-- Keep the browser thin: it renders chat state, manages the user's Supabase session, and streams assistant responses.
-- Keep the backend authoritative: retrieval, grounding, citation checks, tool execution, and database writes happen in FastAPI.
-- Use Supabase for identity and durable product state: users, chat threads, source documents, chunks, embeddings, and citation metadata.
-- Use Supabase `pgvector` for semantic retrieval and Postgres full-text search for keyword retrieval.
-- Make the LLM path typed and testable by using PydanticAI agents with explicit dependencies, outputs, and tool boundaries.
-- Preserve a simple deployment model on Railway: one frontend service, one stateless backend service, and hosted Supabase.
-
-## Stack
-
-Frontend:
-
-- Vite + React SPA + TypeScript
-- React Router for routing
-- Tailwind CSS and shadcn/ui for UI
-- `@supabase/supabase-js` for browser auth
-- Vercel AI SDK UI packages for chat state and streaming client behavior
-
-Backend:
-
-- Python 3.12+
-- FastAPI + Uvicorn
-- Pydantic v2 + pydantic-settings
-- PydanticAI for typed LLM orchestration
-- OpenAI SDK for generation and embeddings
-- Supabase Python client for server-side database access
-- SQLAlchemy models + Alembic migrations for schema management
-- Supabase `pgvector` for semantic search
-- Postgres full-text search for lexical retrieval
-- `httpx` for outbound HTTP
-- `structlog` for structured logs
-
-Persistence:
-
-- Supabase Auth for email login
-- Supabase Postgres for user records, chat threads, chat messages, source documents, chunks, embeddings, full-text search vectors, and citation metadata
-
-## System Boundaries
-
-The frontend is responsible for user interaction, local UI state, and sending the authenticated user's request to the backend. It should never hold service-role credentials, run retrieval logic, call OpenAI directly, or write privileged records to Supabase.
-
-The backend is responsible for request authorization, retrieval, prompt construction, LLM execution, citation validation, streaming responses, and durable persistence. It owns all privileged credentials and is the only service allowed to use the Supabase service-role key.
-
-Supabase is responsible for authentication and durable product state. Browser access uses the anon key and user JWT. Server access uses either the user's bearer token for user-scoped operations or the service-role key for privileged writes that must still be explicitly tied to the authenticated user.
-
-## Request Flow
-
-1. The user signs in with Supabase email auth in the React SPA.
-2. The frontend stores the Supabase session through `@supabase/supabase-js`.
-3. When the user opens a chat, the frontend loads the thread and prior messages through FastAPI, which reads user-scoped records from Supabase.
-4. The chat UI uses the Vercel AI SDK React primitives to manage message state and submit new user messages to the FastAPI chat endpoint.
-5. The frontend sends the Supabase access token as `Authorization: Bearer <token>`.
-6. FastAPI verifies the token with Supabase Auth before doing any retrieval or LLM work.
-7. FastAPI creates a request-scoped context containing the authenticated user, chat thread, Supabase client, retrieval service, citation policy, and LLM settings.
-8. A PydanticAI agent retrieves relevant document chunks, generates a grounded answer, and returns typed output containing answer text and citations.
-9. FastAPI streams assistant message parts back to the browser in the format expected by the AI SDK client.
-10. FastAPI persists the final user message, assistant message, cited chunks, and usage metadata to Supabase.
-
-## Frontend Chat Layer
-
-The frontend remains a plain Vite SPA. It should not adopt Next.js route handlers or server components. The AI SDK is used only for its React chat primitives and streaming client behavior.
-
-The chat module should be organized around these responsibilities:
-
-- `src/lib/env.ts` validates `VITE_API_BASE_URL`, `VITE_SUPABASE_URL`, and `VITE_SUPABASE_ANON_KEY`.
-- `src/lib/supabase.ts` creates the browser Supabase client.
-- `src/lib/http.ts` wraps `fetch`, applies the backend base URL, injects the Supabase bearer token, handles timeouts, and converts failures into typed API errors.
-- `src/lib/api.ts` exposes product-level calls such as loading threads, creating threads, and fetching message history.
-- `src/pages/chat/*` renders chat routes and delegates chat streaming to a focused chat component.
-- `src/components/chat/*` renders messages, citations, source passages, empty states, and streaming status.
-
-The chat component should initialize with stored messages and then let the AI SDK manage in-flight UI state. The transport points to FastAPI, not to a frontend server route.
-
-Conceptual shape:
-
-```ts
-const { messages, sendMessage, status, error } = useChat({
-  id: threadId,
-  messages: initialMessages,
-  transport: new DefaultChatTransport({
-    api: `${apiBaseUrl}/chat/stream`,
-    headers: async () => ({
-      Authorization: `Bearer ${await getAccessToken()}`,
-    }),
-  }),
-});
-```
-
-The exact API surface should be verified during implementation against the installed AI SDK version. The architectural rule is stable: the browser streams to FastAPI with the user's Supabase token, and FastAPI owns the assistant run.
-
-## Backend LLM Layer
-
-PydanticAI should be introduced as the backend's orchestration layer for answer generation. It replaces ad hoc prompt calls with a typed agent boundary.
-
-Recommended backend modules:
-
-```text
-backend/app/
-├── api/
-│   └── chat.py                 # FastAPI routes for chat threads and streaming
-├── auth/
-│   └── dependencies.py         # Supabase JWT verification and current user dependency
-├── chat/
-│   ├── orchestrator.py         # Coordinates one chat turn end-to-end
-│   ├── messages.py             # Converts AI SDK messages to and from internal message types
-│   └── streaming.py            # Emits AI SDK-compatible streaming events
-├── assistant/
-│   ├── agent.py                # PydanticAI agent definition
-│   ├── deps.py                 # Runtime dependency dataclass for the agent
-│   ├── outputs.py              # GroundedAnswer, Citation, and SourcePassage
-│   └── instructions.md         # System instructions and product contract
-├── retrieval/
-│   ├── queries.py              # pgvector and full-text SQL queries
-│   ├── fusion.py               # Reciprocal Rank Fusion for hybrid search
-│   └── retriever.py            # Query-to-source-passage retrieval logic
-├── grounding/
-│   └── validator.py            # Ensures citations map to retrieved passages
-└── database/
-    ├── supabase.py             # Supabase client construction
-    ├── models.py               # SQLAlchemy table models used by Alembic autogenerate
-    ├── chats.py                # Chat, thread, message, and citation persistence
-    └── documents.py            # Source document, chunk, embedding, and search queries
-```
-
-These names should follow the product workflow rather than a generic service layer. `chat/orchestrator.py` owns the full turn lifecycle, `assistant/agent.py` owns the LLM boundary, `retrieval/` owns hybrid source-passage search, and `grounding/` owns the trust contract that answers must cite retrieved evidence.
-
-The agent should receive explicit dependencies rather than reaching into globals:
-
-```python
-@dataclass
-class DocumentAgentDeps:
-    user_id: str
-    thread_id: str
-    retriever: DocumentRetriever
-    grounding_validator: GroundingValidator
-
-
-class GroundedAnswer(BaseModel):
-    answer: str
-    citations: list[Citation]
-    cited_passages: list[SourcePassage]
-```
-
-The agent's instructions should encode the product contract:
-
-- Answer only from retrieved passages.
-- Cite every factual claim.
-- If the retrieved context is insufficient, say that the corpus does not contain enough evidence.
-- Do not provide stock recommendations or investment advice.
-- Keep answers concise enough for analyst review, but include enough cited passages to verify the answer.
-
-Retrieval and grounding remain independent from PydanticAI. This keeps ingestion, retrieval tests, and citation validation testable without invoking the LLM.
-
-## Retrieval Strategy
-
-Document Copilot uses hybrid retrieval:
-
-1. Start two independent retrieval pipelines concurrently.
-2. In the semantic pipeline, embed the original user query with the configured OpenAI embedding model, then search `document_chunks.embedding` with `pgvector`.
-3. In the lexical pipeline, use a configured OpenAI model and typed Structured Outputs to extract bounded groups of SEC-relevant keywords and short phrases, then search `document_chunks.search_vector` with Postgres full-text search.
-4. Apply the same explicit document filters to both database searches. PostgreSQL's English text-search dictionary handles stemming and stop-word removal for lexical terms.
-5. Fuse the two stable-ID ranked lists in Python with Reciprocal Rank Fusion.
-6. Fetch the selected chunks, source document metadata, and only structurally useful neighboring context for grounding.
-
-This keeps the database responsible for efficient ranked retrieval and keeps the application responsible for product-specific ranking policy. The first implementation should avoid agent-generated SQL; the PydanticAI agent receives bounded tools such as `search_filings`, `read_chunk`, and `read_surrounding_chunks`.
-
-## Supabase and FastAPI Communication
-
-Supabase Auth is the identity source. FastAPI must treat the browser's Supabase JWT as the request credential.
-
-Frontend rules:
-
-- Use the anon key only in the browser.
-- Read the current session through the shared Supabase client.
-- Send the access token to FastAPI through the shared API client.
-- Never pass tokens through component props.
-- Never expose the service-role key to the frontend.
-
-Backend rules:
-
-- Verify `Authorization: Bearer <token>` at the FastAPI boundary.
-- Reject unauthenticated requests before retrieval or LLM work.
-- Derive `user_id` and email from the verified Supabase user.
-- Use user-scoped database operations wherever possible.
-- Use the service-role key only on the backend for privileged writes that cannot be safely performed with the anon key.
-- Always attach persisted chat records to the authenticated `user_id`.
-
-The backend can verify the JWT by calling Supabase Auth's user endpoint or by validating the project's JWT signing keys. For the first implementation, calling Supabase Auth is simpler and avoids local JWT validation mistakes. If request volume grows, local JWT verification can be added behind the same `AuthService` interface.
-
-Recommended backend units:
-
-- `app/auth/dependencies.py` validates bearer tokens and exposes `get_current_user`.
-- `app/database/supabase.py` creates user-scoped and admin Supabase clients.
-- `app/database/chats.py` stores and reads chat threads, messages, and citation records.
-- `app/database/documents.py` stores and reads source documents, chunks, embeddings, and full-text search data.
-
-## Streaming Contract
-
-The frontend should receive incremental assistant output, not wait for a full answer. FastAPI should expose a streaming endpoint that emits AI SDK-compatible message parts.
-
-Recommended endpoint:
-
-```text
-POST /chat/stream
-Authorization: Bearer <supabase_access_token>
-Content-Type: application/json
-```
-
-Request body:
-
-```json
-{
-  "threadId": "uuid",
-  "messages": []
-}
-```
-
-The `messages` payload should use the AI SDK UI message format at the frontend boundary. FastAPI can translate that wire format into internal Pydantic models before invoking the agent.
-
-Streaming responsibilities:
-
-- Send text deltas as the answer is generated.
-- Send citation/source metadata as structured parts once available.
-- Send clear error events for authentication failures, missing threads, retrieval failures, and grounding failures.
-- Persist only after the assistant run completes successfully, unless a separate partial-message model is deliberately introduced later.
-
-## Data Model
-
-Supabase tables should be small and product-oriented:
-
-- `users`: one application row per authenticated user, keyed by Supabase `auth.users.id`.
-- `chat_threads`: thread metadata, owner, title, timestamps.
-- `chat_messages`: user and assistant messages in order, with AI SDK-compatible message JSON where useful.
-- `message_citations`: normalized citation records linked to assistant messages.
-- `source_documents`: original document records with filing metadata, source URL, and normalized Markdown content.
-- `document_chunks`: chunk text, chunk metadata, embeddings, and generated full-text search vectors.
-
-`source_documents` stores the normalized Markdown version of each filing so the application can re-chunk, inspect, and cite the original extracted text without reaching back into downloaded HTML files. `document_chunks` stores retrieval-ready passages:
-
-- chunk ID
-- document ID
-- chunk index
-- page or section metadata
-- chunk text
-- embedding vector
-- generated `tsvector` for full-text search
-- token count
-- metadata JSON for ticker, company, filing type, filing date, year, accession number, page, section, and source offsets
-
-The ingestion path is deliberately checkpointed rather than streamed directly from
-HTML to Supabase. A custom SEC parser writes deterministic Markdown plus structured
-section/block JSON. Section-aware chunking then writes readable `chunks.md` and
-complete `chunks.jsonl` files per accession. OpenAI vectors are saved in a separate
-compressed checkpoint tied to the chunk checksum. Only after those local artifacts
-validate are `source_documents` and `document_chunks` upserted and independently
-verified against the checkpoints. This makes paid embedding work resumable and
-keeps a human-inspectable record of exactly what was uploaded.
-
-Hybrid retrieval runs two bounded queries against `document_chunks`: a semantic `pgvector` query and a Postgres full-text query. The backend fuses those ranked lists with Reciprocal Rank Fusion, then fetches the selected chunks and neighboring context for grounding.
-
-## Schema Management
-
-Database schema changes are managed from the backend with SQLAlchemy models and Alembic migrations. Supabase is the hosted Postgres database, but the Supabase dashboard is not the source of truth for table definitions.
-
-The workflow is:
-
-1. Update the table-specific SQLAlchemy models in `app/database/`.
-2. Generate a candidate migration with `uv run alembic revision --autogenerate -m "<change>"`.
-3. Review the generated migration file in `backend/app/alembic/versions/`.
-4. Add explicit migration operations for Postgres/Supabase features that autogenerate cannot infer reliably.
-5. Apply the migration locally or against the linked Supabase database with `uv run alembic upgrade head`.
-6. Commit both the model changes and the migration file.
-
-Normal tables and ordinary indexes should be represented in SQLAlchemy models where practical. The following should be written explicitly in migrations with `op.execute()` or carefully reviewed Alembic operations:
-
-- `create extension if not exists vector`
-- `vector(1536)` embedding columns if the SQLAlchemy type renderer is not sufficient
-- generated `tsvector` columns
-- HNSW indexes for vector search
-- GIN indexes for full-text search and JSON metadata
-- RLS enablement and policies
-- grants or Supabase role-specific permissions
-
-Alembic must connect with Supabase's direct/session database connection string. Do not run migrations through the transaction pooler URL, because schema migrations, extension setup, and index creation require session-level database behavior.
-
-## Grounding and Citation Policy
-
-Grounding is part of the architecture, not a prompt preference.
-
-The backend should enforce these invariants:
-
-- Every assistant answer has at least one citation unless the answer explicitly says there is not enough evidence.
-- Every citation maps to a retrieved source passage.
-- Cited passages include enough metadata for the frontend to show company, filing, date, page or section, and excerpt.
-- The model cannot cite documents that were not retrieved for the current request.
-- If citation validation fails, the backend returns a controlled failure instead of a polished unsupported answer.
-
-This policy should be covered by backend unit tests around retrieval, citation extraction, and grounding enforcement.
-
-## Error Handling
-
-Expected error classes:
-
-- `401 Unauthorized`: missing, expired, or invalid Supabase token.
-- `403 Forbidden`: authenticated user tries to access another user's thread.
-- `404 Not Found`: thread or source document does not exist.
-- `422 Unprocessable Entity`: invalid request payload.
-- `502 Bad Gateway`: upstream LLM or Supabase failure.
-- `500 Internal Server Error`: unexpected backend failure.
-
-The frontend should render friendly messages while preserving enough technical detail in logs for debugging. Network and CORS failures should be distinguishable from HTTP failures in the shared API client.
-
-## Configuration
-
-Each service must keep one settings module as the source of truth.
-
-Frontend settings:
-
-- `VITE_API_BASE_URL`
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY`
-
-Backend settings:
-
-- `SUPABASE_URL`
-- `SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `DATABASE_URL` for Alembic and direct Postgres access
-- `AZURE_OPENAI_ENDPOINT`
-- `AZURE_OPENAI_API_KEY`
-- `AZURE_OPENAI_ASSISTANT_DEPLOYMENT`
-- `AZURE_OPENAI_KEYWORD_DEPLOYMENT`
-- `AZURE_OPENAI_EMBEDDING_DEPLOYMENT`
-- `OPENAI_ASSISTANT_MODEL`
-- `OPENAI_ASSISTANT_REASONING_EFFORT`
-- `OPENAI_ASSISTANT_MAX_OUTPUT_TOKENS`
-- `ALLOWED_ORIGINS`
-- embedding model name and dimensions
-
-Do not read environment variables directly from components, route handlers, or services. Frontend code should use `src/lib/env.ts`. Backend code should use `app/config.py`.
-
-## Deployment Shape
-
-Railway should run two services:
-
-- Frontend: static Vite build served as a web app.
-- Backend: FastAPI service running Uvicorn.
-
-Supabase remains hosted and stores the durable retrieval data. The Railway backend can stay stateless because document chunks, embeddings, full-text search vectors, chats, and citations all live in Supabase Postgres. Raw filings, parsed documents, normalized Markdown, and resumable ingestion checkpoints remain gitignored local operator artifacts unless a later workflow stores them in object storage.
-
-## Implementation Sequence
-
-1. Scaffold the frontend SPA and backend FastAPI app according to the repo conventions.
-2. Add SQLAlchemy models and Alembic migration setup in the backend.
-3. Add the initial Alembic migration for `pgvector`, source document, chunk, full-text, chat, and citation tables.
-4. Add Supabase Auth in the frontend and token verification in FastAPI.
-5. Add the shared frontend API client with automatic bearer-token injection.
-6. Add the chat streaming endpoint with a stubbed assistant response.
-7. Add AI SDK chat UI on the frontend pointed at FastAPI.
-8. Add Markdown ingestion, chunking, embeddings, and Supabase writes.
-9. Add semantic search with `pgvector`.
-10. Add Postgres full-text search and Python RRF fusion.
-11. Add PydanticAI document agent with typed dependencies and typed answer output.
-12. Add citation validation and grounding enforcement.
-13. Add final UI for citations, source passages, empty states, and errors.
-
-## Non-Goals
-
-- No Next.js, SSR, server components, or frontend route handlers.
-- No direct OpenAI calls from the browser.
-- No separate managed vector database outside Supabase.
-- No multi-tenant architecture.
-- No external market/news data.
-- No trading recommendations or generated stock picks.
+The frontend has no server-side application runtime: Vite produces static files
+served by Caddy. The API is a separate stateless FastAPI service. Supabase hosts
+identity and durable data. Model requests use a shared Azure resource's
+OpenAI-compatible v1 endpoint, with separate deployment aliases for the assistant,
+keyword extraction and embeddings.
+
+## Ownership boundaries
+
+| Component | Responsibilities | Code |
+| --- | --- | --- |
+| Browser | Session, thread navigation, drafts, retries, citation display | [frontend/src](../frontend/src/) |
+| HTTP boundary | Token verification, request validation, thread CRUD and SSE | [api/chat.py](../backend/app/api/chat.py), [auth/dependencies.py](../backend/app/auth/dependencies.py) |
+| Orchestrator | Prepare a turn, reuse completed retries, construct dependencies, persist | [chat/orchestrator.py](../backend/app/chat/orchestrator.py) |
+| Assistant | Policy, typed output, bounded model/tool loop | [assistant/agent.py](../backend/app/assistant/agent.py), [assistant/policy.py](../backend/app/assistant/policy.py) |
+| Retrieval | Semantic/lexical branches, rank fusion, hydration and neighbors | [retrieval/](../backend/app/retrieval/) |
+| Grounding | Citation identity, read-before-cite and excerpt validation | [grounding/validator.py](../backend/app/grounding/validator.py) |
+| Persistence | Supabase query helpers, SQLAlchemy schema, Alembic | [database/](../backend/app/database/), [alembic/](../backend/app/alembic/) |
+| Ingestion | Parse, chunk, checkpoint, embed, upload and verify | [ingestion/README.md](../backend/ingestion/README.md) |
+
+The shipped browser calls FastAPI for product data and Supabase directly for auth.
+The API verifies tokens with `auth.get_user`, then uses the user's JWT for RLS-aware
+database reads and writes. An admin client distinguishes a nonexistent thread
+(404) from another user's thread (403). Ingestion uses privileged credentials.
+
+This is an application routing convention, not an exclusive database write boundary:
+the migrations grant authenticated users write access to their own chat records and
+execution of `complete_chat_turn`. The [audit](repository-audit.md) records the
+implications for server-validated provenance. Public signup restrictions also live
+in hosted Supabase settings; there is no application-level email allowlist.
+
+## One chat turn
+
+1. The browser sends the thread ID and **one newest user message** to `POST /chat/stream`.
+2. FastAPI validates the payload and bearer token, verifies thread ownership and
+   loads stored history. Reusing a completed client message ID with the same text
+   replays its persisted assistant result.
+3. The SSE response opens with a status event. A background task runs the assistant
+   with fresh tools, counters, evidence and a correlated trace.
+4. The agent can search, read passages and request neighboring chunks. It receives
+   up to five complete prior conversation pairs / 20,000 characters, with old
+   source markers removed.
+5. The agent returns typed output. Deterministic validation resolves citations
+   against passages retrieved and read in this turn.
+6. The orchestrator commits both messages, citations, assistant usage and thread
+   metadata in one database transaction.
+7. Only then does SSE send the final answer in text deltas and structured citation
+   parts. The browser never receives unvalidated model-token output.
+
+See the [chat-turn workflow](../backend/CHAT_TURN_WORKFLOW.md) for the exact wire
+format, tools, retries and errors.
+
+## Hybrid retrieval
+
+The model controls search questions and explicit filing filters, not SQL. Each
+`search_filings` call runs two branches concurrently:
+
+- Embed the original query, then call `match_document_chunks_semantic`.
+- Extract typed keyword groups with the keyword model, then call
+  `match_document_chunks_lexical`.
+
+Both RPCs apply the same company, ticker, form, report-year and filing-date filters.
+Postgres handles vector similarity and English full-text search. Python combines
+the ranked IDs using weighted Reciprocal Rank Fusion:
+`score += branch_weight / (60 + rank)`. The current defaults are 50 candidates per
+branch, 10 fused results, semantic weight 20 and lexical weight 1.
+
+After hydration, a missing middle chunk may be added when two retained chunks share
+a document and section and are two positions apart. These bridge passages are
+separate context, not ranked results. A failed branch fails the search.
+
+Search returns previews and current-turn `S#` labels. A passage must be explicitly
+read before citation. The 20:1 weights came from historical tuning; its frozen
+expected indexes no longer match the current chunker. See
+[evaluation status](../backend/evaluation/README.md).
+
+## Grounding contract and limits
+
+| Output status | Enforced contract |
+| --- | --- |
+| `conversational` | No searches, citations or source markers; at most 1,000 characters |
+| `out_of_scope` | Same structural constraints as conversational output |
+| `supported` | At least one search and citation; inline markers match structured citations |
+| `insufficient_evidence` | At least one search; exact fixed refusal and no citations |
+| `investment_advice_refused` | Required refusal sentence; any additional factual context needs citations |
+
+For each citation, the validator checks current-turn evidence membership,
+read-before-cite, and 20–500-character excerpts whose fragments occur in source
+order. Whitespace/case normalization and ellipses are allowed. It generates text
+highlight ranges or table-cell highlights for the frontend.
+
+These checks establish source identity and excerpt fidelity. They do **not**
+prove that every claim follows from its citation or that arithmetic is correct.
+The model policy asks for those behaviors; human answer evaluation remains necessary.
+
+The [configuration reference](configuration.md) separates current Python defaults
+from the lower example/deployment token profile. All searches and reads share an
+eight-tool-call ceiling. Budgets and local input-token estimates are not a
+deployment-wide Azure quota guarantee.
+
+## Durable data
+
+| Table | Purpose |
+| --- | --- |
+| `users` | Application identity linked to `auth.users`, populated by trigger |
+| `chat_threads` | Owner, title, timestamps |
+| `chat_messages` | Ordered user/assistant messages, UI parts and assistant usage |
+| `message_citations` | Normalized links from assistant messages to source chunks |
+| `source_documents` | Filing metadata, checksum and canonical normalized Markdown |
+| `document_chunks` | Passage text, section/offsets, table geometry, vectors and full-text index |
+
+The schema has RLS, vector/GIN indexes, unique accession and message-position keys,
+and a client-message idempotency index. `complete_chat_turn` locks the thread and
+rejects a stale expected position, preventing two completed turns from claiming
+the same positions. Cited chunks cannot be deleted while citations reference them.
+
+Alembic is the schema source of truth; the checked-in head is `20260823_0008`.
+Autogenerate candidates require review, especially for RLS, grants, vector types,
+generated columns, functions and indexes. Use a direct or session database connection.
+
+## Ingestion and corpus
+
+The current local manifest has 25 10-Ks for AAPL, AMZN, GOOGL, MSFT and NVDA
+(fiscal 2021–2025), plus BSP F-1 and 424B4 filings. The active parser supports
+`10-K`, `F-1` and `424B4`; 10-Q and full S&P 500 coverage remain product goals.
+
+The `sec_html_v1` parser saves normalized Markdown and structured blocks with table
+geometry. The `sec_sections_v2` chunker forms prose chunks of 100–500 tokens,
+allowing minimum-size merges up to 600. Complete tables remain atomic up to 8,192
+tokens, with explicitly marked small-table exceptions. The local checkpoints
+contain 6,373 chunks across 27 documents.
+
+Chunk and embedding checkpoints bind work to checksums and model/version metadata.
+The upload and database verifier perform documented structural checks; they do not
+compare every stored text or vector byte. Current HTML chunking leaves page numbers
+unset and uses sections/source offsets instead. These differ from the answer
+benchmark's printed-page expectations.
+
+## Observability and failures
+
+A per-turn `trace_id` correlates structured application events. Production JSON
+logging uses an allowlist and configurable event-size bound; full local traces
+include content. Optional Azure Monitor tracing adds a parent assistant-run span
+and child model/keyword/embedding spans. Azure capture controls are independent
+from application log controls.
+
+Before SSE opens, failures use HTTP status codes, including 401, 403, 404, 409,
+422, 502 and 503. After it opens, failures use typed stream events inside the
+HTTP-200 response. Status heartbeats are progress indicators; `stream.completed`
+marks final delivery. A timeout or disconnect can occur after a database commit,
+so the browser reconciles failed streams by reloading persisted messages.
+
+## Deployment
+
+Railway builds `backend/Dockerfile` and `frontend/Dockerfile` from separate roots.
+The backend runs Uvicorn and executes Alembic as its pre-deploy command. Caddy
+serves the SPA with route fallback and a separate health endpoint. Browser
+`VITE_*` values are baked into the frontend build; backend credentials remain
+runtime secrets.
+
+The API's health endpoint does not call external services. Ingestion and evaluation
+are local operator workflows and are excluded from the production image. See the
+[Railway runbook](guides/railway-setup.md) and its dated release history for
+deployment instructions and open verification gates.

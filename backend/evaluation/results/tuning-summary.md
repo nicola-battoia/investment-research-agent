@@ -1,4 +1,9 @@
-# Phase 7 retrieval tuning
+# Retrieval tuning — historical results (2026-08-19)
+
+> These scores predate the SEC parser/chunker replacement. All fourteen expected
+> passage references are missing from the current checkpoints. Preserve the results
+> as history; follow [the evaluation guide](../README.md) before rerunning or
+> claiming current retrieval quality.
 
 The frozen ten-case evaluation set was run against the ingested sample corpus on
 2026-08-19. Every run used 50 candidates per branch, a final limit of 10, and

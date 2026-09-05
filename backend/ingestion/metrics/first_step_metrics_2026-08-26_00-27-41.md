@@ -1,5 +1,9 @@
 # First-step ingestion metrics
 
+Historical local measurement, preserved without changing its values. Use the
+[active ingestion guide](../README.md#10-inspect-corpus-metrics) to generate a new
+report; this file does not verify the current hosted database.
+
 Recorded: `2026-08-26 00:27:41 CEST`
 
 ```text

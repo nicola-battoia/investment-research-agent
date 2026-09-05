@@ -1,8 +1,14 @@
-# Railway deployment plan
+# Railway design and release history
 
 This document records the repository-specific deployment design, the first Railway release, the failures encountered, and the corrected path for future releases. Use [`railway-setup.md`](./railway-setup.md) for the complete command-by-command procedure.
 
-## Deployment target
+
+**Historical record:** resource IDs, capacities, deployed commits, and completed
+checks below describe the recorded releases. They are not a fresh cloud inventory.
+For September 5 working-tree findings and verification, use the
+[repository audit](../repository-audit.md).
+
+## Recorded deployment target
 
 | Resource | Name | ID or URL |
 | --- | --- | --- |
@@ -33,7 +39,7 @@ flowchart LR
     FE -->|"public HTTPS + SSE"| BE
     FE -->|"Supabase Auth"| SB["Supabase"]
     BE -->|"Supabase API + Postgres migrations"| SB
-    BE -->|"model and embedding calls"| OA["OpenAI API"]
+    BE -->|"model and embedding calls"| OA["Azure AI Foundry v1"]
 ```
 
 ## Repository deployment boundaries
@@ -75,7 +81,7 @@ The settings validator rejects plain `postgresql://`. Use either:
 
 Do not use the transaction pooler on port `6543` for Alembic. Percent-encode reserved password characters in the URL.
 
-This deployment uses the Supavisor session pooler on port `5432`, so `ipv6EgressEnabled: false` is correct.
+The recorded deployment used the Supavisor session pooler on port `5432`, so `ipv6EgressEnabled: false` is correct.
 
 ## Target service configuration
 
@@ -101,128 +107,42 @@ The deployment manifest—not the editable configuration summary—is the final 
 
 Watch Paths prevent a frontend-only commit from rebuilding the backend and vice versa. A commit touching both service directories correctly rebuilds both.
 
-## Variables and domain wiring
+## Configuration and release procedure
 
-Do not upload local `.env` files wholesale and do not set `PORT`; Railway supplies it.
+Use the [Railway runbook](railway-setup.md) for commands and the
+[configuration reference](../configuration.md) for required variables and the
+difference between current defaults and the recorded operator profile. Keeping the
+procedure there avoids two competing copies of the same deployment instructions.
 
-Backend settings:
+The intended sequence for a new environment is: verify account/project access;
+create empty services; configure Docker roots, Watch Paths, pre-deploy migration,
+and healthchecks; obtain final public domains; set variables; then attach the
+reviewed GitHub branch. Existing services should be reused for routine releases.
 
-```text
-SUPABASE_URL
-SUPABASE_ANON_KEY
-SUPABASE_SERVICE_ROLE_KEY
-DATABASE_URL
-AZURE_OPENAI_ENDPOINT
-AZURE_OPENAI_API_KEY
-AZURE_OPENAI_ASSISTANT_DEPLOYMENT
-AZURE_OPENAI_KEYWORD_DEPLOYMENT
-AZURE_OPENAI_EMBEDDING_DEPLOYMENT
-OPENAI_EMBEDDING_MODEL
-OPENAI_EMBEDDING_DIMENSIONS
-OPENAI_KEYWORD_MODEL
-OPENAI_ASSISTANT_MODEL
-OPENAI_ASSISTANT_REASONING_EFFORT
-OPENAI_ASSISTANT_MAX_OUTPUT_TOKENS
-ALLOWED_ORIGINS=https://10k-club.up.railway.app
-APP_ENVIRONMENT=production
-LOG_LEVEL=INFO
-LOG_FORMAT=json
-ASSISTANT_TRACE_MODE=summary
-LOG_MAX_EVENT_BYTES=4096
-```
+`ALLOWED_ORIGINS` is the frontend origin; `VITE_API_BASE_URL` is the backend
+origin. Vite embeds public configuration at build time. During the first release,
+a `${{backend.RAILWAY_PUBLIC_DOMAIN}}` reference resolved to a superseded domain
+after a rename. The correction was to read the active domain and rebuild with its
+explicit value.
 
-Frontend build-time settings:
+Secrets belong in the backend secret store. Raw environment/variable inspection
+can reveal their values; use a private terminal. The frontend receives only its
+three public `VITE_*` values.
 
-```text
-VITE_API_BASE_URL=https://10k-club-backend.up.railway.app
-VITE_SUPABASE_URL
-VITE_SUPABASE_ANON_KEY
-```
+Release verification must cover the deployed commit and manifest, migration,
+healthchecks, CORS, compiled frontend URL, and signed-in chat/citation behavior.
+An HTTP 200 from `/chat/stream` only means SSE opened; a structured failure can
+still arrive later. Verify `stream.completed` and persisted results.
 
-`ALLOWED_ORIGINS` is the exact frontend origin, including `https://` and with no path or trailing slash. `VITE_API_BASE_URL` is the backend origin.
+The original plan used `railway-deploy` as a candidate branch and proposed
+promotion to `main` after the gates below. Verify the current source branches
+before acting on that plan. No GitHub Actions workflows are present in the
+reviewed repository; the decision to enable Railway's Wait for CI requires actual
+matching checks.
 
-The `VITE_*` values are public and embedded in browser JavaScript at image-build time. Never put the service-role key or another secret under that prefix. Changing `VITE_API_BASE_URL` requires a new frontend build to reach `SUCCESS`, followed by a browser hard refresh.
-
-For this project, set both final domain values explicitly after reading them with `railway domain list`. During the first release, a `${{backend.RAILWAY_PUBLIC_DOMAIN}}` reference resolved to a superseded generated domain after the domain was renamed, and Vite permanently compiled that stale URL into its bundle.
-
-Enter `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, and `AZURE_OPENAI_API_KEY` through hidden shell input and `railway variable set --stdin`. Never expose them in command arguments, documentation, screenshots, chat, or logs.
-
-Be careful with CLI inspection: `railway environment config --json` and `railway variable list --json` can return raw variable values. Run them only in a private terminal and never paste their output. Treat any shared output containing those values as a credential exposure and rotate the affected secrets.
-
-In Supabase Dashboard → Authentication → URL Configuration:
-
-- Set Site URL to `https://10k-club.up.railway.app`.
-- Add the same production URL as an allowed redirect URL.
-- Keep `http://localhost:5173` in allowed redirects while local Vite development is supported.
-
-Password sign-in does not use a redirect today. The entries are used by password recovery and any future magic-link or OAuth flow; the localhost entry allows those flows to return to the local frontend during development.
-
-## Correct deployment sequence
-
-The exact commands and expected outputs for every phase are in [`railway-setup.md`](./railway-setup.md).
-
-### 1. Clear release checks
-
-Run the locked backend test and Ruff checks, then the frontend TypeScript, ESLint, and production-build checks. The corrected release passed 228 backend tests and every listed check.
-
-### 2. Authenticate, link, and confirm GitHub access
-
-Link the repository to project `10-K Club` and environment `production`, verify both IDs, and confirm the Railway GitHub App can see the private repository. Local GitHub access does not prove Railway App access.
-
-### 3. Create empty services
-
-Create `backend` and `frontend` with no source. When `railway add` prompts for a variable, press `Esc`; variables are added deliberately later. Record the generated service IDs and do not create duplicates.
-
-### 4. Configure service settings
-
-Set Root Directory, explicit Dockerfile builder and path, Watch Paths, healthchecks, and the backend Pre-Deploy Command. Leave custom Build and Start Commands empty. Decide IPv6 from the database hostname and port, not by guesswork.
-
-### 5. Generate public domains
-
-Generate and list a domain for each empty service. Use the final active values returned by `railway domain list`, not a prior generated name.
-
-### 6. Set variables and Supabase URLs
-
-Set browser-safe values directly and secrets through standard input. Verify that the
-Azure Foundry deployments are `GlobalStandard` and `Succeeded`, with assistant
-capacity 100, keyword capacity 25, and embedding capacity 10.
-
-Configure the production and localhost URLs in Supabase Authentication as described above.
-
-### 7. Commit and push the candidate
-
-The GitHub source deploys the remote branch, not local uncommitted files. Confirm all required changes are committed, push `railway-deploy`, and verify the local/remote revision count is `0 0` before attaching sources.
-
-### 8. Attach GitHub sources last
-
-Connect both services to the same repository and exact `railway-deploy` branch. This starts both initial deployments.
-
-Use `railway service source connect`; do not use `railway up`, which uploads local files and establishes a different deployment source. Do not use `railway run` for production migrations; it runs a local process with Railway variables.
-
-### 9. Verify the release
-
-Wait for both deployments to reach `SUCCESS`, then verify:
-
-1. The deployment manifests show the expected commit, Dockerfile builders, roots, Watch Paths, backend migration, and healthchecks.
-2. Both `/health` endpoints return 200.
-3. A frontend client-side route returns the SPA.
-4. The CORS preflight returns the exact frontend HTTPS origin.
-5. The compiled frontend bundle contains the active backend URL and no obsolete Railway domain.
-6. Supabase sign-in, chat creation, retrieval, and the streamed assistant answer work end to end.
-7. Logs contain no secrets, prompts, retrieved documents, or serialized frame-local state and show no repeated restarts.
-8. Isolated frontend-only and backend-only commits prove the Watch Paths.
-
-An HTTP 200 from `/chat/stream` proves only that the SSE connection opened. The stream can still emit a structured failure event, so a visible assistant answer is part of the release gate.
-
-### 10. Promote the branch
-
-After every gate passes, merge `railway-deploy` into `main`, change both production services to `main`, and retain `railway-deploy` only if it becomes the source of a separate staging environment.
-
-The repository currently has no GitHub Actions workflows. Keep Railway **Wait for CI** disabled until equivalent checks exist in GitHub Actions.
-
-### 11. Run ingestion separately
-
-Ingestion is an intentional offline operation, not a web-service startup task or migration. Use the numbered workflow in [`../../backend/ingestion/README.md`](../../backend/ingestion/README.md).
+Ingestion stays a separate operator task. Follow the
+[ingestion guide](../../backend/ingestion/README.md); do not attach bulk parsing,
+embedding, or upload to web-service startup or migrations.
 
 ## First release record
 
@@ -233,7 +153,7 @@ The candidate deployed commit `118a2af7837e74e1f3af8da600648b12f9355bb7` from `r
 | `backend` | `cb1e1242-4c81-4bec-96e5-83777f258f4b` | `SUCCESS` | Dockerfile build, Alembic pre-deploy, runtime start, `/health`, HTTPS CORS, Supabase-authenticated chat endpoints |
 | `frontend` | `f3d5ac02-2657-4ba0-b481-a162f882dabf` | `SUCCESS` | Dockerfile build, Caddy `/health`, SPA routing, active backend URL in rebuilt bundle |
 
-Both services run one replica in EU West and showed no crash loop. A successful Railway status means the containers deployed; it does not by itself prove every external API dependency works.
+Both services ran one replica in EU West and showed no crash loop in that release check. A successful Railway status means the containers deployed; it does not by itself prove every external API dependency works.
 
 ## Foundry reliability rollout record
 
@@ -261,7 +181,7 @@ The deployment was monitored from `2026-08-28T16:08:19Z` through at least
 responses, the expected 401 from an explicit unauthenticated probe, and zero
 5xx responses. Focused runtime logs contained no Azure rate-limit, Supabase
 timeout, unhandled ASGI, `assistant_rate_limited`, or `database_unavailable`
-event. Current CPU was zero and memory was approximately 0.157 GB of 1 GB at
+event. CPU was zero and memory was approximately 0.157 GB of 1 GB at
 the final snapshot.
 
 ## Problems found and the corrected approach
@@ -271,14 +191,14 @@ the final snapshot.
 | Frontend reported that it could not reach the API | Backend CORS allowed the wrong origin | Set `ALLOWED_ORIGINS` to the exact active frontend HTTPS origin, wait for the backend redeploy, then verify with an OPTIONS preflight. `http` and `https` are different origins. |
 | CORS passed but the frontend still could not reach the API | `VITE_API_BASE_URL` had been compiled with an obsolete backend domain that returned Railway's `Application not found` | Read the active domain with `railway domain list`, set the explicit URL, wait for a new frontend build to finish, inspect the compiled asset, then hard-refresh. A restart alone cannot change Vite build-time values. |
 | UI says the research model is busy | The SSE route opened, but Azure Foundry returned `429 rate_limit_exceeded`; the outer HTTP status may still be 200 | Correlate the trace, inspect only the safe numeric retry/limit/remaining/reset fields, confirm assistant capacity 100 and the configured turn budgets, then honor `retry_after_ms`. Escalate sustained shared-capacity throttling to Azure. |
-| Authentication or database becomes unavailable | A Supabase HTTP read/connect deadline was reached before or during the SSE turn | Before streaming, expect HTTP 503 (`authentication_unavailable` or `database_unavailable`). After streaming starts, expect retryable `database_unavailable` inside the HTTP-200 SSE response. Check Supabase status and reachability; it must not become an unhandled ASGI exception. |
+| Authentication or database becomes unavailable | A Supabase HTTP read/connect deadline was reached before or during the SSE turn | Before streaming, expect HTTP 503 with a human-readable `detail`; the corresponding log code identifies authentication/database unavailability. After streaming starts, expect retryable `database_unavailable` inside the HTTP-200 SSE response. Check Supabase status and reachability; it must not become an unhandled ASGI exception. |
 | Railway showed some `INFO` startup messages with error severity | Alembic and Uvicorn wrote informational messages to stderr, which Railway classified by stream | Read the message and process state, not severity alone. One Pre-Deploy container stop followed by the runtime start is expected; repeated runtime restarts are not. |
-| One exception log was extremely large and contained prompts and runtime-local data | Structured exception logging rendered `exc_info=True` with a verbose traceback containing frame locals and tool schemas | Production now uses metadata-only summary traces, a strict scalar allowlist, safe structured error codes, and a 4 KiB event ceiling. Local development retains the full trace. |
+| One exception log was extremely large and contained prompts and runtime-local data | Structured exception logging rendered `exc_info=True` with a verbose traceback containing frame locals and tool schemas | Production now uses metadata-only summary traces, a strict scalar allowlist, safe structured error codes, and a 4 KiB event ceiling in that profile. Local development retains the full trace. This application-log rule does not sanitize the new Azure spans. |
 | `GET /` and `/favicon.ico` returned backend 404s | The API intentionally defines `/health` and API routes, not a homepage | Verify `/health`; the two 404s are expected. |
 
-## Current production gates
+## Gates recorded after the August 28–29 rollout
 
-Completed:
+Recorded completed checks (not rerun against production during the September 5 audit):
 
 - 260 fast backend tests and Ruff checks for the application and test paths passed.
 - Frontend TypeScript, ESLint, and production build passed.

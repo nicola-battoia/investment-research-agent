@@ -1,9 +1,20 @@
-Run Alembic commands from the backend directory.
+Run Alembic commands from backend/ with the configured direct/session database URL.
 
-Preview the pending migration without changing the database:
+Show the repository's migration head and the connected database revision:
 
-    uv run alembic upgrade head --sql
+    uv run --locked alembic heads
+    uv run --locked alembic current
 
-Apply migrations only after reviewing the generated SQL:
+Render offline SQL without connecting to the database:
 
-    uv run alembic upgrade head
+    uv run --locked alembic upgrade head --sql
+
+Without an explicit starting revision, offline mode renders the full chain from
+base, not just the connected database's pending migrations. Review the appropriate
+revision range before applying.
+
+Apply reviewed migrations to the configured database:
+
+    uv run --locked alembic upgrade head
+
+See ../../../docs/guides/backend-setup.md for migration authoring and setup.

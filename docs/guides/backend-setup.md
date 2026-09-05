@@ -1,90 +1,84 @@
 # Backend setup
 
-This project uses a separate Python + FastAPI backend because the server is responsible for AI and document-processing work, not just basic web CRUD. Python gives us the strongest ecosystem for ingestion, chunking, embeddings, retrieval, evaluation, and LLM workflows. Keeping this logic behind a dedicated API also keeps the frontend focused on the user experience while the backend owns data access, orchestration, and grounding.
+The existing backend is a FastAPI service. Do not re-scaffold it or run
+`alembic init`; its dependencies, package and migrations are already checked in.
 
-## Init (from empty `backend/`)
+## 1. Prepare dependencies and settings
 
-```bash
-cd backend
-uv sync
-uv add fastapi uvicorn pydantic pydantic-settings httpx structlog openai supabase pydantic-ai sqlalchemy alembic "psycopg[binary]" pgvector
-uv add --dev pytest ruff
-```
-
-## Database migrations
-
-Alembic owns database schema changes for this project. SQLAlchemy models describe the app tables, and Alembic migrations apply those changes to Supabase Postgres.
-
-Alembic is already initialized. Its configuration lives at `backend/alembic.ini`, with migration scripts under `backend/app/alembic/`. Do not run `alembic init` again.
-
-Configure `alembic/env.py` to import the app's SQLAlchemy metadata and read the direct database URL from `app.config.settings`. Use the direct/session Supabase database connection, not the transaction pooler URL, for migrations.
-
-Create a migration after changing SQLAlchemy models:
-
-```bash
-uv run alembic revision --autogenerate -m "add document tables"
-```
-
-Always review the generated migration. Add explicit operations for Supabase/Postgres features that autogenerate cannot reliably infer:
-
-- `create extension if not exists vector`
-- `vector(1536)` columns
-- generated `tsvector` columns
-- HNSW and GIN indexes
-- RLS enablement and policies
-
-Apply migrations:
-
-```bash
-uv run alembic upgrade head
-```
-
-## Run
+Install Python 3.12+ and uv. From the repository root:
 
 ```bash
 cd backend
-uv sync
-uv run alembic upgrade head
-uv run uvicorn app.main:app --reload
+uv sync --locked
+cp -n .env.example .env
 ```
 
-## Imports (`from app...`)
+Fill in the required values described in [configuration](../configuration.md).
+Use a [Supabase development project](supabase-setup.md) and
+[Azure Foundry deployments](azure-foundry-setup.md). A copied placeholder file
+is enough to describe the shape of configuration, but cannot authenticate to services.
 
-`backend/app` is installed as an editable package by `uv sync`, so `from app...` imports work from uvicorn, direct Python execution, tests, and Jupyter kernels that use the backend venv.
+`uv sync` installs `app/` as an editable package. Run operator modules from
+`backend/`; `ingestion/` and `evaluation/` are not included in the application wheel.
 
-The `[build-system]` and `[tool.hatch.build.targets.wheel]` sections in `backend/pyproject.toml` tell uv how to install the local `app/` package. Without that package install, imports depend on the current working directory or a manually configured `PYTHONPATH`, which is fragile in notebooks and IDE run buttons.
+## 2. Apply the schema and start the API
 
-Preferred API server command:
+Confirm that `DATABASE_URL` targets the intended database, then:
 
 ```bash
-cd backend
-uv run uvicorn app.main:app --reload
+uv run --locked alembic upgrade head
+uv run --locked uvicorn app.main:app --reload
 ```
 
-Direct file execution also works:
+The database URL must use `postgresql+psycopg://` with a direct or session
+connection. See [Supabase setup](supabase-setup.md) for pooler details.
+
+Open [health](http://localhost:8000/health) and [API docs](http://localhost:8000/docs).
+The health route checks process availability, not Azure/Supabase connectivity.
+Running `python app/main.py` imports the app but does not start Uvicorn.
+
+## 3. Check changes
 
 ```bash
-cd backend
-uv run python app/main.py
+uv run --locked pytest -m "not integration"
+uv run --locked ruff check app tests ingestion evaluation playground
+uv run --locked ruff format --check app tests ingestion evaluation playground
 ```
 
-For Jupyter, install and select the backend kernel:
+Tests need valid settings at collection time, but the selected suite uses mocked
+service boundaries. Keep Azure tracing disabled for ordinary offline tests.
+See [evaluation](../../backend/evaluation/README.md) for deliberate live tests.
+
+## Schema changes
+
+Update the relevant SQLAlchemy model in `app/database/`, then generate and review:
 
 ```bash
-cd backend
-uv run python -m ipykernel install --user --name document-copilot-backend --display-name "Document Copilot Backend"
+uv run --locked alembic revision --autogenerate -m "describe the schema change"
+uv run --locked alembic heads
+uv run --locked alembic upgrade head --sql
 ```
 
-Then notebooks can import backend modules:
+The last command renders the entire base-to-head SQL chain offline. Use
+`alembic upgrade <known-revision>:head --sql` to render a specific range.
+It cannot inspect which migrations the live database still needs.
 
-```python
-from app.config import settings
-```
+Review RLS, grants, functions, generated text-search columns, pgvector dimensions
+and indexes explicitly. Commit model and migration changes together. Apply reviewed
+migrations with `uv run --locked alembic upgrade head`; Railway uses the equivalent
+command in its pre-deploy container.
 
-## Sample SEC data
+## IPython and corpus work
 
-From the repo root (stdlib-only script, no backend env needed):
+Select `backend/.venv/bin/python` as the editor's Python/IPython environment.
+Optionally register a named kernel:
 
 ```bash
-uv run data/download.py
+uv run --locked python -m ipykernel install --user \
+  --name document-copilot-backend --display-name "Document Copilot Backend"
 ```
+
+Run the playground's `# %%` cells in that kernel, not as ordinary Python scripts.
+See [evaluation](../../backend/evaluation/README.md) for credentials and side effects.
+Use [data](../../data/README.md) and [ingestion](../../backend/ingestion/README.md)
+for downloading and preparing filings.

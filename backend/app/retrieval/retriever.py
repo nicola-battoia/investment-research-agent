@@ -28,6 +28,7 @@ from app.retrieval.queries import (
     passage_and_surroundings,
     semantic_search,
 )
+from app.telemetry import model_call_span, record_model_input, record_model_response
 
 
 @dataclass(frozen=True)
@@ -361,11 +362,21 @@ class DocumentRetriever:
             dimensions=self._embedding_dimensions,
             input=query,
         )
-        response = await self._embedding_client.embeddings.create(
-            input=[query],
+        with model_call_span(
+            "embeddings",
             model=self._embedding_model,
-            dimensions=self._embedding_dimensions,
-        )
+            role="retrieval_embedding",
+        ) as span:
+            span.set_attribute(
+                "gen_ai.request.embedding_dimensions", self._embedding_dimensions
+            )
+            record_model_input(span, user_input=query)
+            response = await self._embedding_client.embeddings.create(
+                input=[query],
+                model=self._embedding_model,
+                dimensions=self._embedding_dimensions,
+            )
+            record_model_response(span, response)
         data = getattr(response, "data", None)
         if not isinstance(data, list) or len(data) != 1 or data[0].index != 0:
             raise ValueError("OpenAI returned unexpected query embedding indexes")

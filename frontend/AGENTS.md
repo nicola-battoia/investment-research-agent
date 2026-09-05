@@ -38,7 +38,7 @@ Before adding a package, check:
 
 If yes to (3), add it — but flag the decision in the commit message.
 
-## Layout (to be created during build)
+## Current layout
 
 ```text
 frontend/
@@ -72,12 +72,12 @@ Keep imports consistent with the `@/*` alias (e.g. `@/lib/api`, `@/components/ui
 ## Backend integration
 
 - Talks to a separate Python backend over JSON. URL comes from `VITE_API_BASE_URL`.
-- Always use `api.get/post/put/patch/delete` from `@/lib/api` — it handles base URL, JSON, Supabase bearer token, timeouts, and typed `ApiError`s (including the `isNetworkError` flag that distinguishes CORS/network from HTTP errors).
+- Use the product methods on `api` from `@/lib/api` (for example, `api.getThread` and `api.createThread`). They use `lib/http.ts` for the base URL, JSON, bearer token, timeouts, and typed `ApiError`s, including `isNetworkError`. Chat SSE uses the AI SDK transport configured in `src/lib/chat-transport.ts`.
 - Auth is Supabase email. The bearer token is injected automatically via the `api` client; never thread tokens through component props.
 
 ## Testing
 
-**No frontend tests.** Do not write `*.test.ts` / `*.test.tsx` files or introduce a test runner. We verify the frontend manually in the browser plus `pnpm tsc --noEmit` and `pnpm lint`. If you find yourself reaching for vitest, Playwright, or Cypress — stop. That's not what this project does. Correctness for shared logic comes from keeping it simple and well-typed, not from a test suite.
+**No frontend tests.** Do not write `*.test.ts` / `*.test.tsx` files or introduce a test runner. We verify the frontend manually in the browser plus `pnpm exec tsc -b`, `pnpm lint`, and `pnpm build`. If you find yourself reaching for vitest, Playwright, or Cypress — stop. That's not what this project does. Correctness for shared logic comes from keeping it simple and well-typed, not from a test suite.
 
 ## Anti-patterns (rejected)
 

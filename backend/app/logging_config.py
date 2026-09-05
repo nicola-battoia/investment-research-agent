@@ -17,6 +17,7 @@ _MAX_PRODUCTION_STRING_CHARACTERS = 160
 _PRODUCTION_LOG_FIELDS = frozenset(
     {
         "answer_status",
+        "azure_monitor_capture_content",
         "cached_replay",
         "cache_read_tokens",
         "cache_write_tokens",
@@ -85,6 +86,7 @@ _PRODUCTION_LOG_FIELDS = frozenset(
         "tool_name",
         "total_duration_ms",
         "total_tokens",
+        "trace_sample_rate",
         "trace_id",
         "upstream_error_code",
         "upstream_status_code",

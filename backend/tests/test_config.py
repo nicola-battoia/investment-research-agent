@@ -39,6 +39,10 @@ CONFIG_ENV_NAMES = {
     "ASSISTANT_MAX_SURROUNDING_CALLS",
     "ASSISTANT_SEARCH_RESULT_LIMIT",
     "CHAT_TURN_TIMEOUT_SECONDS",
+    "APPLICATION_INSIGHTS_CONNECTION_STRING",
+    "AZURE_MONITOR_TRACING_ENABLED",
+    "AZURE_MONITOR_CAPTURE_CONTENT",
+    "AZURE_MONITOR_TRACE_SAMPLE_RATE",
     "ALLOWED_ORIGINS",
 }
 VALID_ENV = {
@@ -137,9 +141,9 @@ def test_loads_and_normalizes_valid_settings(tmp_path: Path) -> None:
         "keyword_max_tokens": 800,
         "model_requests": 10,
         "tool_calls": 8,
-        "total_output_tokens": 6000,
-        "total_input_tokens": 60_000,
-        "request_input_tokens": 32_000,
+        "total_output_tokens": 10_000,
+        "total_input_tokens": 75_000,
+        "request_input_tokens": 50_000,
         "search_calls": 5,
         "surrounding_calls": 2,
         "search_results": 10,
@@ -315,3 +319,41 @@ def test_rejects_unsafe_production_logging_profiles(tmp_path: Path) -> None:
     assert "Production logging requires LOG_FORMAT=json" in console.stderr
     assert full.returncode != 0
     assert "cannot use ASSISTANT_TRACE_MODE=full" in full.stderr
+
+
+def test_requires_application_insights_connection_when_tracing_is_enabled(
+    tmp_path: Path,
+) -> None:
+    result = run_config_import(
+        tmp_path,
+        overrides={"AZURE_MONITOR_TRACING_ENABLED": "true"},
+    )
+
+    assert result.returncode != 0
+    assert "APPLICATION_INSIGHTS_CONNECTION_STRING is required" in result.stderr
+
+
+def test_requires_tracing_when_azure_content_capture_is_enabled(
+    tmp_path: Path,
+) -> None:
+    result = run_config_import(
+        tmp_path,
+        overrides={"AZURE_MONITOR_CAPTURE_CONTENT": "true"},
+    )
+
+    assert result.returncode != 0
+    assert "AZURE_MONITOR_CAPTURE_CONTENT requires" in result.stderr
+
+
+@pytest.mark.parametrize("sample_rate", ["-0.1", "1.1"])
+def test_rejects_invalid_azure_monitor_sample_rate(
+    tmp_path: Path,
+    sample_rate: str,
+) -> None:
+    result = run_config_import(
+        tmp_path,
+        overrides={"AZURE_MONITOR_TRACE_SAMPLE_RATE": sample_rate},
+    )
+
+    assert result.returncode != 0
+    assert "azure_monitor_trace_sample_rate" in result.stderr

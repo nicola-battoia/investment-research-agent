@@ -198,6 +198,14 @@ class Settings(BaseSettings):
     assistant_trace_max_content_characters: PositiveInt = 12_000
     # Hard byte ceiling for one production JSON event.
     log_max_event_bytes: Annotated[int, Field(ge=1_024, le=65_536)] = 4_096
+    # Workspace-based Application Insights connection used only by Azure Monitor.
+    application_insights_connection_string: SecretStr | None = None
+    # Export explicit AI-call spans to Azure Monitor/Application Insights.
+    azure_monitor_tracing_enabled: bool = False
+    # Include model prompts and outputs in Azure spans; keep disabled by default.
+    azure_monitor_capture_content: bool = False
+    # Fraction of application spans exported to Azure Monitor.
+    azure_monitor_trace_sample_rate: Annotated[float, Field(ge=0, le=1)] = 1.0
     # Browser origins permitted to call the API through CORS.
     allowed_origins: Annotated[tuple[AnyHttpUrl, ...], NoDecode]
 
@@ -240,6 +248,22 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_tuning_relationships(self) -> Self:
+        if (
+            self.azure_monitor_tracing_enabled
+            and self.application_insights_connection_string is None
+        ):
+            raise ValueError(
+                "APPLICATION_INSIGHTS_CONNECTION_STRING is required when "
+                "AZURE_MONITOR_TRACING_ENABLED=true"
+            )
+        if (
+            self.azure_monitor_capture_content
+            and not self.azure_monitor_tracing_enabled
+        ):
+            raise ValueError(
+                "AZURE_MONITOR_CAPTURE_CONTENT requires "
+                "AZURE_MONITOR_TRACING_ENABLED=true"
+            )
         if self.app_environment == "production":
             if self.log_format != "json":
                 raise ValueError("Production logging requires LOG_FORMAT=json")

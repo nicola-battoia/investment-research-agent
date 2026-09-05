@@ -5,7 +5,7 @@ in Supabase. It uses a focused SEC parser because filings express structure thro
 anchors, CSS, and layout tables rather than reliable `<h1>`–`<h6>` elements.
 
 ```text
-data/downloads/*.htm
+data/downloads/<year>/*.htm
     → SEC HTML parser
     → data/markdown/*.md + data/parsed_documents/*.json
     → section-aware chunks (100-token minimum, normally at most 500)
@@ -17,6 +17,30 @@ data/downloads/*.htm
 The active parser supports `10-K`, `F-1`, and `424B4`. The previous Docling
 implementation is preserved under [`archive/docling_pipeline/`](archive/docling_pipeline/)
 but is not imported or executed.
+
+## Start here
+
+Run commands from `backend/` unless using the repository-root shell scripts.
+Install the locked environment and configure `.env` first. Existing local
+downloads can be reused; fetching is not part of the numbered pipeline.
+
+| Stage | External calls / writes |
+| --- | --- |
+| Parse and prepare | Local files; no model or database calls |
+| Embed | Paid Azure embedding calls; local checkpoint writes |
+| Upload | Supabase writes using the service-role key; no model calls |
+| Verify | Supabase reads and local checkpoint checks |
+
+For the usual path use `01_prepare_local.sh`, review its local output, then
+`02_create_embeddings.sh`, `03_upload_supabase.sh`, and
+`04_verify_supabase.sh`. Their commands appear in section 9. Source-document
+upsert is explained early below but can wait until the upload stage.
+
+Current limitations: printed page numbers are unavailable; database completeness
+checks do not prove vector/model equivalence; the retrieval evaluation's labels
+need remapping. These are tracked in the [audit](../../docs/repository-audit.md).
+Embedding batches are bounded by tokens/items, not a shared tokens-per-minute
+scheduler. Check the actual Azure quota before regenerating a corpus.
 
 ## Active files
 
@@ -34,8 +58,8 @@ being hidden behind extra package layers:
 | Verify and maintain | `verify_ingestion.py`, `helpers.py`, `reset_ingestion.py` |
 | Operator commands | `scripts/` |
 
-Historical code and dated results live under [`archive/`](archive/) and are never
-used by the active commands.
+Historical code lives under [`archive/`](archive/) and is never used by active
+commands. Dated measurements are in [`metrics/`](metrics/).
 
 ## 1. Downloaded inputs
 
@@ -44,7 +68,9 @@ used by the active commands.
 dates, SEC URL, and local path used by every later stage.
 
 Raw HTML remains the source of truth. Parsing does not call SEC EDGAR or any other
-network service.
+network service. Read [the downloader notes](../../data/README.md#before-running-the-downloader)
+before fetching: its default clears existing downloads, years roll with the
+calendar, and some downloadable forms are not supported by this parser.
 
 ## 2. Parse SEC HTML
 
@@ -168,8 +194,10 @@ row = {
 }
 ```
 
-Rows are upserted by accession number. The checksum prevents chunks generated from
-one Markdown version from being attached to a different source document.
+Rows are upserted by accession number. Later checkpoint/upload checks compare the
+source checksum with the chunk version. Source upserts themselves are separate
+writes, so do not replace canonical Markdown ahead of a planned chunk migration:
+old chunks/citations may still refer to the previous document.
 
 ## 4. Create meaningful chunks
 
@@ -265,6 +293,9 @@ class PreparedChunk:
     display_table: StoredDisplayTable | None = None
 ```
 
+The current parser/chunker does not populate `page_number`. Citations use section
+titles and offsets into canonical Markdown; these are not printed PDF page numbers.
+
 ## 5. Save local chunk checkpoints
 
 After parsing and dry-run validation, materialize every chunk locally:
@@ -324,7 +355,7 @@ uv run --locked python -m ingestion.embed_checkpoints \
 
 ## 7. Upload from checkpoints
 
-First upsert all 27 source documents from the new normalized Markdown, then upload
+First upsert the source documents in the manifest (27 in the recorded corpus), then upload
 chunks without calling OpenAI:
 
 ```bash
@@ -353,10 +384,12 @@ therefore populated through the same tested path:
 }
 ```
 
-Uploads are idempotent by `(document_id, chunk_index)`. A complete existing filing
-with matching parser, chunker, checksum, chunk count, and final index is verified and
-skipped. A partial upload is completed from local vectors without paying for new
-embeddings.
+Uploads are idempotent by `(document_id, chunk_index)`. Before skipping an existing
+filing, the uploader checks parser/chunker/source-checksum metadata on one sampled
+chunk plus the row count and final index. A partial upload is completed from local
+vectors without paying for new embeddings. The skip check does not compare every
+stored row, vector, or embedding-model identity; see the
+[audit](../../docs/repository-audit.md#f06-upload-completeness-does-not-prove-embedding-identity).
 
 ## 8. Verify Supabase independently
 
@@ -368,7 +401,9 @@ uv run --locked python -m ingestion.verify_ingestion
 
 The verifier checks the exact accession set, source checksums/parser version, chunk
 counts and contiguous indexes, table counts, and parser/chunker/checksum metadata on
-every uploaded chunk.
+every uploaded chunk. It does not compare stored text/vectors byte-for-byte with
+local checkpoints or validate uploaded embedding-model identity. Treat it as a
+structural consistency check, not complete corpus equivalence.
 
 ## 9. Bash scripts
 
@@ -381,8 +416,9 @@ backend/ingestion/scripts/03_upload_supabase.sh
 backend/ingestion/scripts/04_verify_supabase.sh
 ```
 
-Embedding and upload scripts accept an optional accession number for a focused retry.
-Running them again is safe because valid checkpoints and complete uploads are reused.
+Embedding and upload scripts accept an optional accession number. In the upload
+script this narrows only the **chunk upload**: it still upserts all source documents
+first. Matching local checkpoints and uploads are reused under the checks above.
 
 The guarded all-in-one command is:
 
@@ -391,7 +427,9 @@ backend/ingestion/scripts/run_pipeline.sh run-paid-embeddings-and-upload
 ```
 
 It intentionally requires the explicit argument because it calls the paid OpenAI
-API and writes to Supabase. It never resets or deletes database data.
+API and writes to Supabase. It does not call the full reset. The chunk upsert helper
+can delete trailing rows beyond the new final index during an upload; the command
+is not a blanket guarantee that no rows are deleted.
 
 ## 10. Inspect corpus metrics
 
@@ -416,7 +454,7 @@ The recorded 27-file ingestion run produced:
 - about 37.3 MiB of raw 1,536-dimensional float vectors.
 
 The dated first-run report is preserved under
-[`archive/metrics/`](archive/metrics/). Retrieval evaluation expectations must be
+[`metrics/`](metrics/). Retrieval evaluation expectations must be
 updated for the new chunk indexes before the frozen evaluation is run again.
 
 ## 11. One-time reset

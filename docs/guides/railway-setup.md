@@ -1,8 +1,16 @@
 # Railway setup
 
-This is the end-to-end execution guide for the Docker-based Railway deployment. It incorporates the commands and corrections from the first production deployment. See [`railway-deployment-plan.md`](./railway-deployment-plan.md) for the repository audit, design rationale, deployment record, and remaining production gates.
+This is the operator runbook for the two Docker-based Railway services. Use
+[deployment history](railway-deployment-plan.md) for dated releases and design
+rationale, [configuration](../configuration.md) for settings, and the
+[repository audit](../repository-audit.md) for current code findings.
 
-## Verified target
+For a routine release, inspect the existing services, confirm the source branch and
+profile, run release checks, deploy the reviewed commit, then follow section 9.
+Sections 3–8 describe initial provisioning; do not recreate services or reset their
+variables as part of an ordinary release.
+
+## Recorded deployment target
 
 | Resource | Name | ID or URL |
 | --- | --- | --- |
@@ -15,7 +23,10 @@ This is the end-to-end execution guide for the Docker-based Railway deployment. 
 | GitHub source | — | `nicola-battoia/investment-research-agent` |
 | Initial branch | — | `railway-deploy` |
 
-These are the exact values for the existing deployment. If the project or services are ever recreated, substitute the new IDs and domains returned in phases 2, 3, and 5.
+These values come from the deployment records last updated August 28–29, 2026.
+They were not queried during the September 5 documentation audit. Verify them
+before running commands. If services were recreated, use the returned IDs/domains;
+`railway-deploy` is the recorded initial branch, not proof of today's source branch.
 
 The repository becomes two services:
 
@@ -35,21 +46,22 @@ Run the backend checks:
 ```sh
 cd backend
 uv run --locked pytest -m 'not integration'
-uv run --locked ruff check app tests
-uv run --locked ruff format --check app tests
+uv run --locked ruff check app tests ingestion evaluation playground
+uv run --locked ruff format --check app tests ingestion evaluation playground
 ```
 
 Run the frontend checks:
 
 ```sh
 cd ../frontend
-pnpm exec tsc --noEmit
 pnpm lint
 pnpm build
 cd ..
 ```
 
-The first release finished with 228 backend tests passing and all Ruff, TypeScript, ESLint, and Vite build checks passing.
+`pnpm build` runs the referenced TypeScript projects (`tsc -b`) before Vite.
+The first release's 228-test result is historical. See the
+[audit validation record](../repository-audit.md#validation) for current results.
 
 Optionally validate both production images locally:
 
@@ -254,7 +266,10 @@ Do not upload local `.env` files wholesale and do not set `PORT`.
 
 ### Backend non-secret values
 
-Replace the Supabase public values if the project changes:
+The command below reproduces the earlier operator profile. It explicitly overrides
+four newer Python token defaults; review the
+[comparison](../configuration.md#assistant-limits-defaults-versus-example-profile)
+before applying it. Replace the Supabase public values if the project changes:
 
 ```sh
 railway variable set \
@@ -302,7 +317,10 @@ railway variable set \
 
 ### Backend secrets
 
-Set each secret through hidden shell input so it does not enter shell history. Do not paste secrets into documentation, chat, or visible CLI arguments.
+Set each secret through hidden shell input so it does not enter shell history.
+The `read -rs 'VARIABLE?prompt'` snippets below use **zsh**, as on the development
+machine. Use the secret editor or equivalent hidden-input syntax in another shell.
+Do not paste secrets into documentation, chat, or visible CLI arguments.
 
 ```sh
 read -rs 'RAILWAY_SECRET_VALUE?Paste SUPABASE_SERVICE_ROLE_KEY: '
@@ -343,6 +361,16 @@ Before deployment, confirm the three model deployments report `Succeeded` and th
 Azure subscription has sufficient model quota. Azure throttling or exhausted quota
 can produce HTTP 429 even when Railway, CORS, authentication, and the stream endpoint
 are otherwise healthy.
+
+### Optional Azure Monitor tracing
+
+The local backend now supports `AZURE_MONITOR_TRACING_ENABLED`,
+`AZURE_MONITOR_CAPTURE_CONTENT`, and `AZURE_MONITOR_TRACE_SAMPLE_RATE`, plus the
+secret `APPLICATION_INSIGHTS_CONNECTION_STRING`. Tracing and content capture
+both default to false. These settings are separate from application logging.
+See [Azure tracing setup](azure-foundry-setup.md#model-diagnostics-and-distributed-traces)
+for configuration and the known exception-content/usage gaps. Do not assume the
+uncommitted feature is already deployed.
 
 ### Frontend build-time values
 
@@ -570,7 +598,9 @@ counts. Rate-limit failures may contain only numeric `retry_after_ms`,
 answers, queries, passages, tool payloads, arbitrary response headers, response
 bodies, application identifiers, exception messages, tracebacks, credentials, and
 frame locals must be absent. The backend enforces this with the production runtime
-profile, a strict field allowlist, and a 4 KiB event ceiling.
+profile, a strict field allowlist, and a configurable event ceiling (4 KiB in this
+profile). These protections apply to application logs; Azure spans have separate
+controls and the exception-content limitation documented in the audit.
 
 ## 10. Correct common first-deployment failures
 
@@ -621,12 +651,13 @@ railway logs \
 ```
 
 Check `retry_after_ms`, the token/request limit and remaining values, and their reset
-intervals. The expected assistant deployment is `GlobalStandard`, capacity 100
-(100 RPM and 100,000 TPM); the keyword deployment is capacity 25. Azure estimates
+intervals. The recorded assistant deployment was `GlobalStandard`, capacity 100
+(100 RPM and 100,000 TPM); the keyword deployment was capacity 25. Recheck the
+current allocation and effective rate-limit headers before changing capacity. Azure estimates
 TPM from input plus configured maximum output, so a 429 can occur while billed-token
 metrics still look low. Honor the retry interval. If sustained 429s report an
-effective limit below 100,000 TPM, escalate to Azure support or evaluate Provisioned
-Throughput. Do not retry a complete turn server-side because that can repeat tool
+effective limit below the confirmed allocation, investigate quota/shared-capacity
+limits with Azure support before deciding whether to change the deployment tier. Do not retry a complete turn server-side because that can repeat tool
 calls that already finished.
 
 The outer `/chat/stream` request can still show HTTP 200: the status was committed
@@ -635,8 +666,8 @@ stream. Use `stream.completed` as the success signal.
 
 ### Supabase authentication or database timeout
 
-A Supabase Auth timeout before the SSE response starts returns HTTP 503 with
-`authentication_unavailable`. A database timeout before streaming returns HTTP 503;
+A Supabase Auth timeout before the SSE response starts returns HTTP 503 with a
+human-readable `detail`; `authentication_unavailable` is the correlated log code. A database timeout before streaming returns HTTP 503;
 one after streaming starts emits retryable `database_unavailable` inside the SSE
 stream (whose outer HTTP status may remain 200).
 
@@ -660,7 +691,8 @@ connectivity error.
 
 Ingestion remains a deliberate offline operation. Use the numbered workflow documented in [`../../backend/ingestion/README.md`](../../backend/ingestion/README.md); do not run ingestion inside either web service or as a deployment migration.
 
-After all release gates pass:
+The original promotion plan below remains a recorded action, not a verified current
+branch state. Confirm it is still applicable. After all release gates pass:
 
 1. Merge `railway-deploy` into `main` through review.
 2. Change both production service source branches to `main`.

@@ -490,9 +490,9 @@ def test_agent_applies_bounded_cumulative_usage_limits() -> None:
 
     assert captured.request_limit == 10
     assert captured.tool_calls_limit == 8
-    assert captured.input_tokens_limit == 60_000
-    assert captured.output_tokens_limit == 6_000
-    assert captured.per_request_input_tokens_limit == 32_000
+    assert captured.input_tokens_limit == 75_000
+    assert captured.output_tokens_limit == 10_000
+    assert captured.per_request_input_tokens_limit == 50_000
     assert captured.count_tokens_before_request is True
 
 

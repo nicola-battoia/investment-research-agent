@@ -12,6 +12,30 @@ The benchmark is intended to test answer quality, not only first-stage
 retrieval. The existing `retrieval_cases.json` remains the frozen atomic
 retrieval benchmark.
 
+## Implementation compatibility (2026-09-05)
+
+This remains a target benchmark, not a recorded passing run. Its gold financial
+values were preserved during the documentation audit; they were not independently
+revalidated against all original filings.
+
+Current implementation gaps affect scoring:
+
+- Printed-page citations are required below, but none of the current 6,373 chunks
+  has a populated `page_number`. Section/Markdown offsets are available.
+- DR-01, DR-02, DR-03, and DR-14 require ten filings. The default turn permits eight
+  total tool calls, including searches, and citations require explicitly read
+  evidence. A read call covers one filing, so the full source requirement cannot
+  fit that budget.
+- The assistant has retrieval tools but no code-execution/calculator tool.
+  Numerical results still require human checking.
+- There is no automated runner for this Markdown benchmark. The separate atomic
+  retrieval dataset also needs new passage labels after the chunker replacement.
+
+These notes do not weaken the criteria below. Decide whether to extend the
+implementation or explicitly revise the benchmark before using it as a gate.
+See the [evaluation guide](../README.md) and
+[repository audit](../../../docs/repository-audit.md).
+
 ## Corpus scope
 
 - Companies: Apple (`AAPL`), Microsoft (`MSFT`), NVIDIA (`NVDA`), Amazon
