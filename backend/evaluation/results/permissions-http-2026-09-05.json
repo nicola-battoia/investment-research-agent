@@ -1,0 +1,60 @@
+{
+  "scope": "real JWT and public PostgREST API",
+  "temporary_accounts_deleted": true,
+  "passed": 4,
+  "failed": 4,
+  "checks": [
+    {
+      "name": "owner_can_create_thread",
+      "expected_allowed": true,
+      "actual_allowed": true,
+      "http_status": 201,
+      "passed": true
+    },
+    {
+      "name": "other_user_cannot_read_thread",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "http_status": 200,
+      "passed": true
+    },
+    {
+      "name": "anonymous_cannot_read_thread",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "http_status": 401,
+      "passed": true
+    },
+    {
+      "name": "user_cannot_complete_fabricated_turn",
+      "expected_allowed": false,
+      "actual_allowed": true,
+      "http_status": 200,
+      "passed": false
+    },
+    {
+      "name": "forged_answer_not_persisted",
+      "passed": false,
+      "persisted": true
+    },
+    {
+      "name": "user_cannot_edit_assistant",
+      "expected_allowed": false,
+      "actual_allowed": true,
+      "http_status": 200,
+      "passed": false
+    },
+    {
+      "name": "other_user_cannot_read_assistant",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "http_status": 200,
+      "passed": true
+    },
+    {
+      "name": "assistant_edit_not_persisted",
+      "passed": false,
+      "persisted": true
+    }
+  ]
+}

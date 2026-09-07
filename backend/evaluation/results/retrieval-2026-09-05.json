@@ -1,0 +1,1091 @@
+{
+  "accepted": true,
+  "aggregate": {
+    "hybrid": {
+      "evidence_group_recall_at_10": 1.0,
+      "hit_rate_at_10": 1.0,
+      "ndcg_at_10": 0.7462028239251739
+    },
+    "lexical": {
+      "evidence_group_recall_at_10": 0.9,
+      "hit_rate_at_10": 0.9,
+      "ndcg_at_10": 0.5993667745546334
+    },
+    "semantic": {
+      "evidence_group_recall_at_10": 1.0,
+      "hit_rate_at_10": 1.0,
+      "ndcg_at_10": 0.7400585691297252
+    }
+  },
+  "cases": [
+    {
+      "expected_passages": [
+        {
+          "accession_number": "0000320193-24-000123",
+          "chunk_id": "bafdbd26-9456-4172-b6a8-149e7aad9219",
+          "chunk_index": 57,
+          "evidence_group": "services-growth",
+          "relevance": 3,
+          "text_sha256": "9a39f256b2522ee86ea5e3fb6a29eda93fda25e881d2b06ec5e3a8b9405f8965"
+        }
+      ],
+      "filters": {
+        "companies": [],
+        "filed_on_or_after": null,
+        "filed_on_or_before": null,
+        "filing_types": [
+          "10-K"
+        ],
+        "filing_years": [
+          2024
+        ],
+        "tickers": [
+          "AAPL"
+        ]
+      },
+      "id": "aapl-2024-services-growth",
+      "keywords": {
+        "groups": [
+          {
+            "terms": [
+              "Services",
+              "net sales",
+              "increase"
+            ]
+          }
+        ]
+      },
+      "latency_ms": 2003.26,
+      "lexical_query": "Services net sales increase",
+      "metrics": {
+        "hybrid": {
+          "evidence_group_recall_at_10": 1.0,
+          "hit_rate_at_10": 1.0,
+          "ndcg_at_10": 1.0
+        },
+        "lexical": {
+          "evidence_group_recall_at_10": 1.0,
+          "hit_rate_at_10": 1.0,
+          "ndcg_at_10": 0.6309297535714574
+        },
+        "semantic": {
+          "evidence_group_recall_at_10": 1.0,
+          "hit_rate_at_10": 1.0,
+          "ndcg_at_10": 1.0
+        }
+      },
+      "query": "What drove the increase in Services net sales?",
+      "rankings": {
+        "hybrid": [
+          "0000320193-24-000123:57",
+          "0000320193-24-000123:55",
+          "0000320193-24-000123:56",
+          "0000320193-24-000123:80",
+          "0000320193-24-000123:60",
+          "0000320193-24-000123:78",
+          "0000320193-24-000123:54",
+          "0000320193-24-000123:58",
+          "0000320193-24-000123:42",
+          "0000320193-24-000123:77"
+        ],
+        "lexical": [
+          "0000320193-24-000123:55",
+          "0000320193-24-000123:57",
+          "0000320193-24-000123:42",
+          "0000320193-24-000123:12",
+          "0000320193-24-000123:60",
+          "0000320193-24-000123:16",
+          "0000320193-24-000123:78",
+          "0000320193-24-000123:7",
+          "0000320193-24-000123:77",
+          "0000320193-24-000123:24"
+        ],
+        "semantic": [
+          "0000320193-24-000123:57",
+          "0000320193-24-000123:56",
+          "0000320193-24-000123:55",
+          "0000320193-24-000123:80",
+          "0000320193-24-000123:60",
+          "0000320193-24-000123:58",
+          "0000320193-24-000123:78",
+          "0000320193-24-000123:54",
+          "0000320193-24-000123:59",
+          "0000320193-24-000123:42"
+        ]
+      }
+    },
+    {
+      "expected_passages": [
+        {
+          "accession_number": "0000320193-24-000123",
+          "chunk_id": "93757ae9-d451-42b1-ba45-2cb577f4d525",
+          "chunk_index": 56,
+          "evidence_group": "iphone-change",
+          "relevance": 3,
+          "text_sha256": "067404588b71a8a87ca2cb5a488e633ca5750d75b566d710ebef5b5b6a7813df"
+        }
+      ],
+      "filters": {
+        "companies": [],
+        "filed_on_or_after": null,
+        "filed_on_or_before": null,
+        "filing_types": [
+          "10-K"
+        ],
+        "filing_years": [
+          2024
+        ],
+        "tickers": [
+          "AAPL"
+        ]
+      },
+      "id": "aapl-2024-iphone-sales",
+      "keywords": {
+        "groups": [
+          {
+            "terms": [
+              "iPhone",
+              "net sales"
+            ]
+          },
+          {
+            "terms": [
+              "2023"
+            ]
+          },
+          {
+            "terms": [
+              "change",
+              "compared with 2023"
+            ]
+          }
+        ]
+      },
+      "latency_ms": 2261.55,
+      "lexical_query": "iPhone net sales 2023 change compared with 2023",
+      "metrics": {
+        "hybrid": {
+          "evidence_group_recall_at_10": 1.0,
+          "hit_rate_at_10": 1.0,
+          "ndcg_at_10": 1.0
+        },
+        "lexical": {
+          "evidence_group_recall_at_10": 0.0,
+          "hit_rate_at_10": 0.0,
+          "ndcg_at_10": 0.0
+        },
+        "semantic": {
+          "evidence_group_recall_at_10": 1.0,
+          "hit_rate_at_10": 1.0,
+          "ndcg_at_10": 1.0
+        }
+      },
+      "query": "How did iPhone net sales change compared with 2023?",
+      "rankings": {
+        "hybrid": [
+          "0000320193-24-000123:56",
+          "0000320193-24-000123:79",
+          "0000320193-24-000123:81",
+          "0000320193-24-000123:57",
+          "0000320193-24-000123:54",
+          "0000320193-24-000123:118",
+          "0000320193-24-000123:55",
+          "0000320193-24-000123:120",
+          "0000320193-24-000123:78",
+          "0000320193-24-000123:61"
+        ],
+        "lexical": [
+          "0000320193-24-000123:55",
+          "0000320193-24-000123:57",
+          "0000320193-24-000123:72",
+          "0000320193-24-000123:42",
+          "0000320193-24-000123:118",
+          "0000320193-24-000123:78",
+          "0000320193-24-000123:12",
+          "0000320193-24-000123:28",
+          "0000320193-24-000123:53",
+          "0000320193-24-000123:75"
+        ],
+        "semantic": [
+          "0000320193-24-000123:56",
+          "0000320193-24-000123:79",
+          "0000320193-24-000123:81",
+          "0000320193-24-000123:57",
+          "0000320193-24-000123:54",
+          "0000320193-24-000123:118",
+          "0000320193-24-000123:55",
+          "0000320193-24-000123:120",
+          "0000320193-24-000123:78",
+          "0000320193-24-000123:61"
+        ]
+      }
+    },
+    {
+      "expected_passages": [
+        {
+          "accession_number": "0001018724-25-000004",
+          "chunk_id": "670cc6a6-b738-4edc-bf1f-6f8ec2a68a79",
+          "chunk_index": 57,
+          "evidence_group": "aws-sales",
+          "relevance": 3,
+          "text_sha256": "294c624d4decd4ab3ab588e9fa73478870cd5f429dee0cac5353ff831065427d"
+        }
+      ],
+      "filters": {
+        "companies": [],
+        "filed_on_or_after": null,
+        "filed_on_or_before": null,
+        "filing_types": [
+          "10-K"
+        ],
+        "filing_years": [
+          2024
+        ],
+        "tickers": [
+          "AMZN"
+        ]
+      },
+      "id": "amzn-2024-aws-sales",
+      "keywords": {
+        "groups": [
+          {
+            "terms": [
+              "AWS",
+              "Amazon Web Services",
+              "sales"
+            ]
+          },
+          {
+            "terms": [
+              "growth",
+              "grew"
+            ]
+          },
+          {
+            "terms": [
+              "drove the change",
+              "drove"
+            ]
+          }
+        ]
+      },
+      "latency_ms": 1940.26,
+      "lexical_query": "AWS Amazon Web Services sales growth grew drove the change drove",
+      "metrics": {
+        "hybrid": {
+          "evidence_group_recall_at_10": 1.0,
+          "hit_rate_at_10": 1.0,
+          "ndcg_at_10": 1.0
+        },
+        "lexical": {
+          "evidence_group_recall_at_10": 1.0,
+          "hit_rate_at_10": 1.0,
+          "ndcg_at_10": 1.0
+        },
+        "semantic": {
+          "evidence_group_recall_at_10": 1.0,
+          "hit_rate_at_10": 1.0,
+          "ndcg_at_10": 1.0
+        }
+      },
+      "query": "How much did AWS sales grow and what drove the change?",
+      "rankings": {
+        "hybrid": [
+          "0001018724-25-000004:57",
+          "0001018724-25-000004:56",
+          "0001018724-25-000004:59",
+          "0001018724-25-000004:60",
+          "0001018724-25-000004:155",
+          "0001018724-25-000004:63",
+          "0001018724-25-000004:61",
+          "0001018724-25-000004:152",
+          "0001018724-25-000004:92",
+          "0001018724-25-000004:82"
+        ],
+        "lexical": [
+          "0001018724-25-000004:57",
+          "0001018724-25-000004:60",
+          "0001018724-25-000004:61",
+          "0001018724-25-000004:56",
+          "0001018724-25-000004:11",
+          "0001018724-25-000004:92",
+          "0001018724-25-000004:155",
+          "0001018724-25-000004:20",
+          "0001018724-25-000004:7",
+          "0001018724-25-000004:59"
+        ],
+        "semantic": [
+          "0001018724-25-000004:57",
+          "0001018724-25-000004:56",
+          "0001018724-25-000004:59",
+          "0001018724-25-000004:60",
+          "0001018724-25-000004:155",
+          "0001018724-25-000004:63",
+          "0001018724-25-000004:152",
+          "0001018724-25-000004:61",
+          "0001018724-25-000004:92",
+          "0001018724-25-000004:82"
+        ]
+      }
+    },
+    {
+      "expected_passages": [
+        {
+          "accession_number": "0001018724-25-000004",
+          "chunk_id": "7e4a26f5-6c9f-4f34-8e1b-37ec30dc24ec",
+          "chunk_index": 63,
+          "evidence_group": "aws-income",
+          "relevance": 3,
+          "text_sha256": "02f265f7b65a1210899180439e4ef6bb6ce883fc54be08efcaec9aed8fabda44"
+        }
+      ],
+      "filters": {
+        "companies": [],
+        "filed_on_or_after": null,
+        "filed_on_or_before": null,
+        "filing_types": [
+          "10-K"
+        ],
+        "filing_years": [
+          2024
+        ],
+        "tickers": [
+          "AMZN"
+        ]
+      },
+      "id": "amzn-2024-aws-operating-income",
+      "keywords": {
+        "groups": [
+          {
+            "terms": [
+              "AWS",
+              "Amazon Web Services"
+            ]
+          },
+          {
+            "terms": [
+              "operating income"
+            ]
+          },
+          {
+            "terms": [
+              "increase"
+            ]
+          }
+        ]
+      },
+      "latency_ms": 1751.3,
+      "lexical_query": "AWS Amazon Web Services operating income increase",
+      "metrics": {
+        "hybrid": {
+          "evidence_group_recall_at_10": 1.0,
+          "hit_rate_at_10": 1.0,
+          "ndcg_at_10": 1.0
+        },
+        "lexical": {
+          "evidence_group_recall_at_10": 1.0,
+          "hit_rate_at_10": 1.0,
+          "ndcg_at_10": 1.0
+        },
+        "semantic": {
+          "evidence_group_recall_at_10": 1.0,
+          "hit_rate_at_10": 1.0,
+          "ndcg_at_10": 1.0
+        }
+      },
+      "query": "What caused the increase in AWS operating income?",
+      "rankings": {
+        "hybrid": [
+          "0001018724-25-000004:63",
+          "0001018724-25-000004:57",
+          "0001018724-25-000004:62",
+          "0001018724-25-000004:59",
+          "0001018724-25-000004:60",
+          "0001018724-25-000004:152",
+          "0001018724-25-000004:56",
+          "0001018724-25-000004:61",
+          "0001018724-25-000004:92",
+          "0001018724-25-000004:53"
+        ],
+        "lexical": [
+          "0001018724-25-000004:63",
+          "0001018724-25-000004:33",
+          "0001018724-25-000004:46",
+          "0001018724-25-000004:11",
+          "0001018724-25-000004:60",
+          "0001018724-25-000004:20",
+          "0001018724-25-000004:61",
+          "0001018724-25-000004:153",
+          "0001018724-25-000004:21",
+          "0001018724-25-000004:146"
+        ],
+        "semantic": [
+          "0001018724-25-000004:63",
+          "0001018724-25-000004:57",
+          "0001018724-25-000004:62",
+          "0001018724-25-000004:152",
+          "0001018724-25-000004:59",
+          "0001018724-25-000004:60",
+          "0001018724-25-000004:56",
+          "0001018724-25-000004:53",
+          "0001018724-25-000004:61",
+          "0001018724-25-000004:92"
+        ]
+      }
+    },
+    {
+      "expected_passages": [
+        {
+          "accession_number": "0001045810-24-000029",
+          "chunk_id": "834d228a-7214-403c-8481-8479afb6e71a",
+          "chunk_index": 87,
+          "evidence_group": "data-center-demand",
+          "relevance": 3,
+          "text_sha256": "76cef6320ba2848da65743516ff3efd0db77d6c22719589ec8a2e29514313246"
+        },
+        {
+          "accession_number": "0001045810-24-000029",
+          "chunk_id": "37a2fc5e-6694-4d49-a5b6-e63e2260bbd3",
+          "chunk_index": 88,
+          "evidence_group": "data-center-demand",
+          "relevance": 2,
+          "text_sha256": "ced410fef7940c54d8a50d5b2e6c7ceb7068b64fcdb48688fc65abbc25c0f5f6"
+        }
+      ],
+      "filters": {
+        "companies": [],
+        "filed_on_or_after": null,
+        "filed_on_or_before": null,
+        "filing_types": [
+          "10-K"
+        ],
+        "filing_years": [
+          2024
+        ],
+        "tickers": [
+          "NVDA"
+        ]
+      },
+      "id": "nvda-2024-data-center-demand",
+      "keywords": {
+        "groups": [
+          {
+            "terms": [
+              "Data Center",
+              "demand"
+            ]
+          },
+          {
+            "terms": [
+              "revenue growth"
+            ]
+          }
+        ]
+      },
+      "latency_ms": 1762.87,
+      "lexical_query": "Data Center demand revenue growth",
+      "metrics": {
+        "hybrid": {
+          "evidence_group_recall_at_10": 1.0,
+          "hit_rate_at_10": 1.0,
+          "ndcg_at_10": 0.5540663910176149
+        },
+        "lexical": {
+          "evidence_group_recall_at_10": 1.0,
+          "hit_rate_at_10": 1.0,
+          "ndcg_at_10": 0.8854598815714874
+        },
+        "semantic": {
+          "evidence_group_recall_at_10": 1.0,
+          "hit_rate_at_10": 1.0,
+          "ndcg_at_10": 0.5540663910176149
+        }
+      },
+      "query": "What drove Data Center demand and revenue growth?",
+      "rankings": {
+        "hybrid": [
+          "0001045810-24-000029:32",
+          "0001045810-24-000029:96",
+          "0001045810-24-000029:87",
+          "0001045810-24-000029:88",
+          "0001045810-24-000029:82",
+          "0001045810-24-000029:8",
+          "0001045810-24-000029:34",
+          "0001045810-24-000029:9",
+          "0001045810-24-000029:191",
+          "0001045810-24-000029:29"
+        ],
+        "lexical": [
+          "0001045810-24-000029:87",
+          "0001045810-24-000029:96",
+          "0001045810-24-000029:69",
+          "0001045810-24-000029:32",
+          "0001045810-24-000029:88",
+          "0001045810-24-000029:82",
+          "0001045810-24-000029:8",
+          "0001045810-24-000029:81",
+          "0001045810-24-000029:34",
+          "0001045810-24-000029:31"
+        ],
+        "semantic": [
+          "0001045810-24-000029:32",
+          "0001045810-24-000029:96",
+          "0001045810-24-000029:87",
+          "0001045810-24-000029:88",
+          "0001045810-24-000029:82",
+          "0001045810-24-000029:8",
+          "0001045810-24-000029:34",
+          "0001045810-24-000029:9",
+          "0001045810-24-000029:191",
+          "0001045810-24-000029:29"
+        ]
+      }
+    },
+    {
+      "expected_passages": [
+        {
+          "accession_number": "0001045810-24-000029",
+          "chunk_id": "a71096de-e89c-406c-a589-4f78f4a61a61",
+          "chunk_index": 33,
+          "evidence_group": "supply-risk",
+          "relevance": 3,
+          "text_sha256": "d33926276f052104c78e016be7eaab21498e85da5858348edbb9f38023701cb2"
+        },
+        {
+          "accession_number": "0001045810-24-000029",
+          "chunk_id": "371db6d6-93d5-4fc4-b0c5-ba6c89090a74",
+          "chunk_index": 36,
+          "evidence_group": "supply-risk",
+          "relevance": 2,
+          "text_sha256": "4128dba24418a938161297f7836978b0a09817103efd6c5ec7a470ce2a5b74a6"
+        }
+      ],
+      "filters": {
+        "companies": [],
+        "filed_on_or_after": null,
+        "filed_on_or_before": null,
+        "filing_types": [
+          "10-K"
+        ],
+        "filing_years": [
+          2024
+        ],
+        "tickers": [
+          "NVDA"
+        ]
+      },
+      "id": "nvda-2024-supply-constraints",
+      "keywords": {
+        "groups": [
+          {
+            "terms": [
+              "foundry capacity",
+              "capacity constraints",
+              "meet demand"
+            ]
+          },
+          {
+            "terms": [
+              "supply constraints",
+              "prevent meeting demand"
+            ]
+          },
+          {
+            "terms": [
+              "NVIDIA",
+              "meeting demand"
+            ]
+          }
+        ]
+      },
+      "latency_ms": 1606.17,
+      "lexical_query": "foundry capacity capacity constraints meet demand supply constraints prevent meeting demand NVIDIA meeting demand",
+      "metrics": {
+        "hybrid": {
+          "evidence_group_recall_at_10": 1.0,
+          "hit_rate_at_10": 1.0,
+          "ndcg_at_10": 0.46927872602275644
+        },
+        "lexical": {
+          "evidence_group_recall_at_10": 1.0,
+          "hit_rate_at_10": 1.0,
+          "ndcg_at_10": 0.4203536442889616
+        },
+        "semantic": {
+          "evidence_group_recall_at_10": 1.0,
+          "hit_rate_at_10": 1.0,
+          "ndcg_at_10": 0.46927872602275644
+        }
+      },
+      "query": "How could foundry capacity and supply constraints prevent NVIDIA from meeting demand?",
+      "rankings": {
+        "hybrid": [
+          "0001045810-24-000029:36",
+          "0001045810-24-000029:31",
+          "0001045810-24-000029:81",
+          "0001045810-24-000029:34",
+          "0001045810-24-000029:35",
+          "0001045810-24-000029:61",
+          "0001045810-24-000029:82",
+          "0001045810-24-000029:30",
+          "0001045810-24-000029:16",
+          "0001045810-24-000029:59"
+        ],
+        "lexical": [
+          "0001045810-24-000029:31",
+          "0001045810-24-000029:81",
+          "0001045810-24-000029:32",
+          "0001045810-24-000029:30",
+          "0001045810-24-000029:33",
+          "0001045810-24-000029:82",
+          "0001045810-24-000029:88",
+          "0001045810-24-000029:36",
+          "0001045810-24-000029:35",
+          "0001045810-24-000029:175"
+        ],
+        "semantic": [
+          "0001045810-24-000029:36",
+          "0001045810-24-000029:31",
+          "0001045810-24-000029:81",
+          "0001045810-24-000029:34",
+          "0001045810-24-000029:35",
+          "0001045810-24-000029:61",
+          "0001045810-24-000029:82",
+          "0001045810-24-000029:30",
+          "0001045810-24-000029:16",
+          "0001045810-24-000029:56"
+        ]
+      }
+    },
+    {
+      "expected_passages": [
+        {
+          "accession_number": "0000950170-24-087843",
+          "chunk_id": "ce496764-f907-4fc2-8fa6-ecbb6327988c",
+          "chunk_index": 91,
+          "evidence_group": "azure-growth",
+          "relevance": 3,
+          "text_sha256": "52d0a0d327e9b646747483731c7562b66fea2710fc7af198200f8e870e0d86a3"
+        },
+        {
+          "accession_number": "0000950170-24-087843",
+          "chunk_id": "93f2fc6c-03f9-4e20-b7b3-4a06916388b7",
+          "chunk_index": 82,
+          "evidence_group": "azure-growth",
+          "relevance": 2,
+          "text_sha256": "9357bb24c168c2497a4e4c310fa68b1c5ebb81b425638a200dd5891c2809c88a"
+        }
+      ],
+      "filters": {
+        "companies": [],
+        "filed_on_or_after": null,
+        "filed_on_or_before": null,
+        "filing_types": [
+          "10-K"
+        ],
+        "filing_years": [
+          2024
+        ],
+        "tickers": [
+          "MSFT"
+        ]
+      },
+      "id": "msft-2024-azure-growth",
+      "keywords": {
+        "groups": [
+          {
+            "terms": [
+              "Azure",
+              "Azure growth"
+            ]
+          },
+          {
+            "terms": [
+              "other cloud services",
+              "cloud services growth"
+            ]
+          },
+          {
+            "terms": [
+              "what drove it",
+              "driving factors"
+            ]
+          }
+        ]
+      },
+      "latency_ms": 1774.35,
+      "lexical_query": "Azure Azure growth other cloud services cloud services growth what drove it driving factors",
+      "metrics": {
+        "hybrid": {
+          "evidence_group_recall_at_10": 1.0,
+          "hit_rate_at_10": 1.0,
+          "ndcg_at_10": 0.4744200353065766
+        },
+        "lexical": {
+          "evidence_group_recall_at_10": 1.0,
+          "hit_rate_at_10": 1.0,
+          "ndcg_at_10": 0.6256646589861505
+        },
+        "semantic": {
+          "evidence_group_recall_at_10": 1.0,
+          "hit_rate_at_10": 1.0,
+          "ndcg_at_10": 0.4744200353065766
+        }
+      },
+      "query": "How fast did Azure and other cloud services grow and what drove it?",
+      "rankings": {
+        "hybrid": [
+          "0000950170-24-087843:7",
+          "0000950170-24-087843:18",
+          "0000950170-24-087843:19",
+          "0000950170-24-087843:82",
+          "0000950170-24-087843:91",
+          "0000950170-24-087843:6",
+          "0000950170-24-087843:17",
+          "0000950170-24-087843:5",
+          "0000950170-24-087843:89",
+          "0000950170-24-087843:9"
+        ],
+        "lexical": [
+          "0000950170-24-087843:86",
+          "0000950170-24-087843:91",
+          "0000950170-24-087843:18",
+          "0000950170-24-087843:123",
+          "0000950170-24-087843:82",
+          "0000950170-24-087843:85",
+          "0000950170-24-087843:109",
+          "0000950170-24-087843:30",
+          "0000950170-24-087843:163",
+          "0000950170-24-087843:25"
+        ],
+        "semantic": [
+          "0000950170-24-087843:7",
+          "0000950170-24-087843:18",
+          "0000950170-24-087843:19",
+          "0000950170-24-087843:82",
+          "0000950170-24-087843:91",
+          "0000950170-24-087843:6",
+          "0000950170-24-087843:17",
+          "0000950170-24-087843:5",
+          "0000950170-24-087843:89",
+          "0000950170-24-087843:9"
+        ]
+      }
+    },
+    {
+      "expected_passages": [
+        {
+          "accession_number": "0000950170-24-087843",
+          "chunk_id": "158be9c7-f65b-4862-9346-d1264ec6f596",
+          "chunk_index": 24,
+          "evidence_group": "capacity",
+          "relevance": 3,
+          "text_sha256": "e1204d0c86c0eaccab18eb272cf002a74445914512e6cb99496c3e3793f7c171"
+        }
+      ],
+      "filters": {
+        "companies": [],
+        "filed_on_or_after": null,
+        "filed_on_or_before": null,
+        "filing_types": [
+          "10-K"
+        ],
+        "filing_years": [
+          2024
+        ],
+        "tickers": [
+          "MSFT"
+        ]
+      },
+      "id": "msft-2024-datacenter-capacity",
+      "keywords": {
+        "groups": [
+          {
+            "terms": [
+              "datacenter component",
+              "server capacity",
+              "capacity constraints"
+            ]
+          }
+        ]
+      },
+      "latency_ms": 2266.46,
+      "lexical_query": "datacenter component server capacity capacity constraints",
+      "metrics": {
+        "hybrid": {
+          "evidence_group_recall_at_10": 1.0,
+          "hit_rate_at_10": 1.0,
+          "ndcg_at_10": 0.3333333333333333
+        },
+        "lexical": {
+          "evidence_group_recall_at_10": 1.0,
+          "hit_rate_at_10": 1.0,
+          "ndcg_at_10": 0.3562071871080222
+        },
+        "semantic": {
+          "evidence_group_recall_at_10": 1.0,
+          "hit_rate_at_10": 1.0,
+          "ndcg_at_10": 0.3333333333333333
+        }
+      },
+      "query": "What datacenter component and server capacity constraints did Microsoft describe?",
+      "rankings": {
+        "hybrid": [
+          "0000950170-24-087843:19",
+          "0000950170-24-087843:7",
+          "0000950170-24-087843:55",
+          "0000950170-24-087843:18",
+          "0000950170-24-087843:154",
+          "0000950170-24-087843:82",
+          "0000950170-24-087843:24",
+          "0000950170-24-087843:108",
+          "0000950170-24-087843:84",
+          "0000950170-24-087843:5"
+        ],
+        "lexical": [
+          "0000950170-24-087843:55",
+          "0000950170-24-087843:54",
+          "0000950170-24-087843:18",
+          "0000950170-24-087843:84",
+          "0000950170-24-087843:19",
+          "0000950170-24-087843:24",
+          "0000950170-24-087843:86",
+          "0000950170-24-087843:163",
+          "0000950170-24-087843:91",
+          "0000950170-24-087843:129"
+        ],
+        "semantic": [
+          "0000950170-24-087843:19",
+          "0000950170-24-087843:7",
+          "0000950170-24-087843:55",
+          "0000950170-24-087843:18",
+          "0000950170-24-087843:154",
+          "0000950170-24-087843:82",
+          "0000950170-24-087843:24",
+          "0000950170-24-087843:61",
+          "0000950170-24-087843:108",
+          "0000950170-24-087843:5"
+        ]
+      }
+    },
+    {
+      "expected_passages": [
+        {
+          "accession_number": "0001652044-25-000014",
+          "chunk_id": "c11a5716-f634-4345-ab61-54c3a08fce62",
+          "chunk_index": 72,
+          "evidence_group": "youtube-growth",
+          "relevance": 3,
+          "text_sha256": "6ffe804a6096401c9e443f1fcc31f04cb5960ed198a09dcca47fcf0f40bff94b"
+        },
+        {
+          "accession_number": "0001652044-25-000014",
+          "chunk_id": "4aadfbe8-0302-4dcf-981e-aba547e39092",
+          "chunk_index": 71,
+          "evidence_group": "youtube-growth",
+          "relevance": 2,
+          "text_sha256": "708f81d2ca54d7306c6f60ba484aa50258f915358e348a342ff456b799cd510f"
+        }
+      ],
+      "filters": {
+        "companies": [],
+        "filed_on_or_after": null,
+        "filed_on_or_before": null,
+        "filing_types": [
+          "10-K"
+        ],
+        "filing_years": [
+          2024
+        ],
+        "tickers": [
+          "GOOGL"
+        ]
+      },
+      "id": "googl-2024-youtube-ads",
+      "keywords": {
+        "groups": [
+          {
+            "terms": [
+              "YouTube ads revenue",
+              "ads revenue",
+              "increase"
+            ]
+          },
+          {
+            "terms": [
+              "drove the growth",
+              "growth"
+            ]
+          }
+        ]
+      },
+      "latency_ms": 1725.56,
+      "lexical_query": "YouTube ads revenue ads revenue increase drove the growth growth",
+      "metrics": {
+        "hybrid": {
+          "evidence_group_recall_at_10": 1.0,
+          "hit_rate_at_10": 1.0,
+          "ndcg_at_10": 1.0
+        },
+        "lexical": {
+          "evidence_group_recall_at_10": 1.0,
+          "hit_rate_at_10": 1.0,
+          "ndcg_at_10": 0.44412286644879784
+        },
+        "semantic": {
+          "evidence_group_recall_at_10": 1.0,
+          "hit_rate_at_10": 1.0,
+          "ndcg_at_10": 0.9385574520455129
+        }
+      },
+      "query": "How much did YouTube ads revenue increase and what drove the growth?",
+      "rankings": {
+        "hybrid": [
+          "0001652044-25-000014:72",
+          "0001652044-25-000014:71",
+          "0001652044-25-000014:73",
+          "0001652044-25-000014:78",
+          "0001652044-25-000014:126",
+          "0001652044-25-000014:12",
+          "0001652044-25-000014:64",
+          "0001652044-25-000014:114",
+          "0001652044-25-000014:61",
+          "0001652044-25-000014:65"
+        ],
+        "lexical": [
+          "0001652044-25-000014:114",
+          "0001652044-25-000014:72",
+          "0001652044-25-000014:74",
+          "0001652044-25-000014:61",
+          "0001652044-25-000014:64",
+          "0001652044-25-000014:78",
+          "0001652044-25-000014:84",
+          "0001652044-25-000014:128",
+          "0001652044-25-000014:66",
+          "0001652044-25-000014:69"
+        ],
+        "semantic": [
+          "0001652044-25-000014:72",
+          "0001652044-25-000014:126",
+          "0001652044-25-000014:71",
+          "0001652044-25-000014:73",
+          "0001652044-25-000014:78",
+          "0001652044-25-000014:12",
+          "0001652044-25-000014:64",
+          "0001652044-25-000014:114",
+          "0001652044-25-000014:61",
+          "0001652044-25-000014:65"
+        ]
+      }
+    },
+    {
+      "expected_passages": [
+        {
+          "accession_number": "0001652044-25-000014",
+          "chunk_id": "b587b357-dd63-4d19-97c4-73b63451a3fd",
+          "chunk_index": 73,
+          "evidence_group": "cloud-growth",
+          "relevance": 3,
+          "text_sha256": "ed197e9b2246f848f240402b7ad2ce0353509fb5071de8117680e2ccff8602ba"
+        }
+      ],
+      "filters": {
+        "companies": [],
+        "filed_on_or_after": null,
+        "filed_on_or_before": null,
+        "filing_types": [
+          "10-K"
+        ],
+        "filing_years": [
+          2024
+        ],
+        "tickers": [
+          "GOOGL"
+        ]
+      },
+      "id": "googl-2024-cloud-growth",
+      "keywords": {
+        "groups": [
+          {
+            "terms": [
+              "Google Cloud",
+              "revenue growth"
+            ]
+          }
+        ]
+      },
+      "latency_ms": 1491.3,
+      "lexical_query": "Google Cloud revenue growth",
+      "metrics": {
+        "hybrid": {
+          "evidence_group_recall_at_10": 1.0,
+          "hit_rate_at_10": 1.0,
+          "ndcg_at_10": 0.6309297535714574
+        },
+        "lexical": {
+          "evidence_group_recall_at_10": 1.0,
+          "hit_rate_at_10": 1.0,
+          "ndcg_at_10": 0.6309297535714574
+        },
+        "semantic": {
+          "evidence_group_recall_at_10": 1.0,
+          "hit_rate_at_10": 1.0,
+          "ndcg_at_10": 0.6309297535714574
+        }
+      },
+      "query": "What drove Google Cloud revenue growth?",
+      "rankings": {
+        "hybrid": [
+          "0001652044-25-000014:13",
+          "0001652044-25-000014:73",
+          "0001652044-25-000014:72",
+          "0001652044-25-000014:114",
+          "0001652044-25-000014:189",
+          "0001652044-25-000014:69",
+          "0001652044-25-000014:78",
+          "0001652044-25-000014:65",
+          "0001652044-25-000014:190",
+          "0001652044-25-000014:11"
+        ],
+        "lexical": [
+          "0001652044-25-000014:65",
+          "0001652044-25-000014:73",
+          "0001652044-25-000014:60",
+          "0001652044-25-000014:23",
+          "0001652044-25-000014:84",
+          "0001652044-25-000014:64",
+          "0001652044-25-000014:114",
+          "0001652044-25-000014:187",
+          "0001652044-25-000014:113",
+          "0001652044-25-000014:72"
+        ],
+        "semantic": [
+          "0001652044-25-000014:13",
+          "0001652044-25-000014:73",
+          "0001652044-25-000014:72",
+          "0001652044-25-000014:114",
+          "0001652044-25-000014:189",
+          "0001652044-25-000014:69",
+          "0001652044-25-000014:78",
+          "0001652044-25-000014:65",
+          "0001652044-25-000014:83",
+          "0001652044-25-000014:190"
+        ]
+      }
+    }
+  ],
+  "configuration": {
+    "candidate_limit": 50,
+    "embedding_deployment": "embeddings-text-embedding-3-small",
+    "embedding_dimensions": 1536,
+    "embedding_model": "text-embedding-3-small",
+    "keyword_deployment": "keywords-gpt-5-4-nano",
+    "keyword_model": "gpt-5.4-nano",
+    "lexical_weight": 1.0,
+    "result_limit": 10,
+    "rrf_k": 60,
+    "semantic_weight": 20.0
+  },
+  "dataset": "document-copilot-retrieval-sec-sections-v2-2026-09-05",
+  "generated_at_utc": "2026-09-05T17:59:51.207589+00:00"
+}

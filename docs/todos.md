@@ -4,7 +4,8 @@ Reviewed against the local working tree on **2026-09-05**. This replaces the
 original build-phase checklist, which mixed completed implementation with
 unverified operational tasks. The [repository audit](repository-audit.md)
 contains evidence, severity, and proposed decisions; no application fixes were
-made as part of that documentation review.
+made as part of that documentation review. The authorized security follow-up
+was implemented and deployed on **2026-09-06**.
 
 ## Implemented in the repository
 
@@ -12,7 +13,7 @@ made as part of that documentation review.
   request dependencies.
 - Supabase email/password sign-in, protected frontend routes, bearer-token
   verification, and user-scoped database access.
-- Alembic schema through `20260823_0008`, RLS, ordered chat persistence,
+- Alembic schema through `20260906_0011`, RLS, ordered chat persistence,
   idempotent turn completion, and stored citations.
 - SEC HTML parsing, local chunk/embedding checkpoints, upload and verification
   tools, and hybrid retrieval.
@@ -21,9 +22,9 @@ made as part of that documentation review.
 - React chat UI, thread management, answer status and citation display, and
   Docker/Caddy configuration for two Railway services.
 - Offline backend tests, opt-in live tests, retrieval inspection/evaluation
-  utilities, and a separate human-scored research benchmark.
+  utilities, and a versioned fifteen-case assistant QA suite with private database history.
 
-The initial uncommitted work adds optional Azure Monitor tracing, a production
+The changes reviewed by the initial audit add optional Azure Monitor tracing, a production
 search-tool inspector, related configuration/dependencies, and tests. Those
 features exist locally; their deployment has not been established by this audit.
 
@@ -39,14 +40,21 @@ lint, and the production frontend build. One existing Python format mismatch and
 a frontend bundle-size warning remain. Live authenticated flows and cloud
 configuration were not rechecked.
 
+The subsequent [QA investigation](qa-findings-2026-09-05.md) verified the live corpus,
+created private QA tables, exercised real authenticated requests and reproduced
+permission/budget failures. It passed 299 offline tests. Browser/cloud deployment
+configuration were outside that investigation. The [September 6 security
+follow-up](security-fix-2026-09-06.md) subsequently deployed server-only saves,
+passed 302 offline tests, 37 SQL checks, 34 public API checks and 16 real assistant
+API checks, and verified sign-in, citations, reload and tampering rejection in
+the deployed browser. Other audit findings remain open.
+
 ## Decisions to make before the next release
 
-- [ ] Repair the stale retrieval labels and rerun the quality gate on the current
-  corpus; reconcile the deep research benchmark with page availability and turn
-  limits.
-- [ ] Choose the intended database write boundary for assistant messages and
-  citations; authenticated users currently have direct write permissions on their
-  own chat records.
+- [x] Repair the stale retrieval labels and rerun the ten-case retrieval gate.
+- [ ] Resolve the budget and explained-abstention failures in the research benchmark.
+- [x] Enforce server-only assistant/message/citation persistence; see the
+  [security fix and live verification](security-fix-2026-09-06.md).
 - [ ] Decide how exception content should be handled in exported traces before
   enabling production tracing.
 - [ ] Choose one intended token-budget profile and align defaults, example env,
@@ -63,17 +71,17 @@ configuration were not rechecked.
 
 ## Operational checks still requiring evidence
 
-- [ ] Confirm the current deployed commits, service variables, migration head,
-  database corpus, and embedding deployment identity.
-- [ ] Verify Supabase public sign-up settings, approved-user provisioning, and
-  isolation with two real user accounts.
+- [x] Confirm the live migration head and database corpus in the QA investigation.
+- [ ] Confirm current deployed commits, service variables and embedding deployment identity.
+- [x] Verify tested ownership isolation with two real user accounts.
+- [ ] Verify Supabase public sign-up settings and approved-user provisioning.
 - [ ] Run the [frontend manual checklist](../frontend/README.md#verify-changes)
   against the intended environment, including citation, refresh, retry, and
   cancellation behavior.
 - [ ] Recheck Railway Watch Paths and the intended production source branch;
   prior release notes leave branch promotion and isolated rebuild checks open.
-- [ ] Run the corrected retrieval evaluation and an agreed end-to-end answer
-  benchmark before claiming current answer quality.
+- [x] Run corrected retrieval and a fifteen-case API/SSE research baseline.
+- [ ] Resolve failures and obtain human/browser acceptance before claiming release quality.
 - [ ] Review observed latency, provider quota, cost, and trace content with the
   actual production profile.
 

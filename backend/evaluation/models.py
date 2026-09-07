@@ -14,6 +14,8 @@ class ExpectedPassage(BaseModel):
     chunk_index: int = Field(ge=0)
     relevance: int = Field(default=1, ge=1, le=3)
     evidence_group: str = Field(default="answer", min_length=1)
+    chunk_id: str | None = None
+    text_sha256: str | None = None
 
     @property
     def key(self) -> str:
@@ -40,6 +42,7 @@ class RetrievalEvalDataset(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     name: str = Field(min_length=1)
+    corpus_fingerprint: str | None = None
     cases: tuple[RetrievalEvalCase, ...] = Field(min_length=1)
 
     @model_validator(mode="after")

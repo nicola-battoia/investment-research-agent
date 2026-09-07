@@ -1,8 +1,9 @@
 # Supabase setup
 
 Supabase hosts Postgres and email/password authentication. The browser signs in
-with a public key; backend request paths use that user's JWT for database access.
-Admin ingestion and some integration tests use a server-only service-role key.
+with a public key. Reads and owned-thread operations use that user's JWT.
+Validated turn persistence, ingestion and operator tests use a server-only
+service-role key; never expose it to the browser.
 
 Use an existing project when one is already configured. For a new environment,
 create a project in the [Supabase dashboard](https://supabase.com/dashboard),
@@ -78,14 +79,24 @@ uv run --locked alembic current
 uv run --locked alembic upgrade head
 ```
 
-Current repository head: `20260823_0008`. Migrations cover tables, indexes,
+Current repository head: `20260906_0011`. Migrations cover tables, indexes,
 vector/full-text retrieval, RLS/grants, user synchronization, atomic chat-turn
-completion, and chunk source offsets.
+completion, chunk source offsets, the private QA dataset/run schema, and server-only
+message/citation persistence.
+[QA commands and access rules](../../backend/evaluation/README.md#assistant-qa-dataset-permissions-and-complete-turns)
+use the operator database connection; browser and service roles cannot access `qa`.
 
-RLS separates users' chats, but authenticated users also retain direct write
-permissions on their own messages/citations. The
-[audit](../repository-audit.md#f02-assistant-message-provenance-is-not-enforced-at-the-database-boundary)
-records the distinction between ownership isolation and trusted assistant output.
+RLS separates users' chats. Authenticated users have SELECT-only access to saved
+messages/citations; whole-chat deletion remains allowed and cascades to child rows.
+Only `service_role` can execute the current `complete_chat_turn` signature, which
+requires the owner ID derived from the verified user token.
+
+For an existing deployment older than this fix, do **not** apply both security
+migrations before updating the backend: apply `20260906_0010`, deploy the backend
+that passes `p_owner_id` through its service-role client, verify a normal turn,
+then apply `20260906_0011`. The latter removes the old function signature and
+browser write grants/policies. New installations can apply the full chain.
+See the [rollout and verification record](../security-fix-2026-09-06.md).
 
 ## Load and verify the corpus
 

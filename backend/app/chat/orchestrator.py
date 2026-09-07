@@ -204,7 +204,7 @@ class ChatTurnOrchestrator:
         )
         persistence_started = time.perf_counter()
         persistence = await chats.complete_chat_turn(
-            self._supabase,
+            self._admin_supabase,
             turn.thread_id,
             turn.expected_position,
             turn.user_message,
@@ -215,6 +215,7 @@ class ChatTurnOrchestrator:
             model_usage,
             stored_citations,
             first_turn_title,
+            user_id=turn.user_id,
         )
         turn.trace.emit(
             "chat_turn_persistence_completed",

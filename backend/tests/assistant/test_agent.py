@@ -10,6 +10,7 @@ import pytest
 from httpx import Request as HttpxRequest
 from httpx import Response as HttpxResponse
 from openai import RateLimitError
+from pydantic_ai.exceptions import UnexpectedModelBehavior, UsageLimitExceeded
 from pydantic_ai.messages import ModelResponse, RequestUsage, TextPart, ToolCallPart
 from pydantic_ai.models.function import FunctionModel
 from pydantic_ai.usage import RunUsage
@@ -20,6 +21,8 @@ from app.assistant.deps import AssistantDeps, AssistantModelSettings
 from app.assistant.outputs import GroundedAnswer
 from app.assistant.policy import INVESTMENT_ADVICE_STATEMENT
 from app.assistant.tracing import AssistantTrace
+from app.chat.streaming import _mapped_failure
+from app.config import settings
 from app.grounding.validator import GroundingFailureError, GroundingValidator
 from app.retrieval.models import (
     ExtractedKeywords,
@@ -494,6 +497,173 @@ def test_agent_applies_bounded_cumulative_usage_limits() -> None:
     assert captured.output_tokens_limit == 10_000
     assert captured.per_request_input_tokens_limit == 50_000
     assert captured.count_tokens_before_request is True
+
+
+@pytest.mark.parametrize("reads, succeeds", [(7, True), (8, False)])
+def test_actual_tool_budget_boundary(reads: int, succeeds: bool) -> None:
+    calls = 0
+
+    def model_function(_messages, _info) -> ModelResponse:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            part = ToolCallPart(
+                "search_filings",
+                {"query": "Services growth", "filters": {"tickers": ["AAPL"]}},
+                "search",
+            )
+        elif calls <= reads + 1:
+            part = ToolCallPart("read_chunk", {"source_id": "S1"}, f"read-{calls}")
+        else:
+            part = TextPart(content=json.dumps(grounded_output()))
+        return ModelResponse(
+            parts=[part], usage=RequestUsage(input_tokens=100, output_tokens=100)
+        )
+
+    retriever = SimpleNamespace(
+        search=AsyncMock(return_value=retrieval_result()),
+        surrounding_chunks=AsyncMock(),
+    )
+    deps = make_deps(retriever)
+    assistant = function_assistant(FunctionModel(model_function))
+    if succeeds:
+        result = asyncio.run(assistant.run("Apple Services growth", deps))
+        assert result.usage.tool_calls == 8
+        assert result.answer.citations[0].chunk_id == passage().chunk_id
+    else:
+        with pytest.raises(UsageLimitExceeded) as caught:
+            asyncio.run(assistant.run("Apple Services growth", deps))
+        assert _mapped_failure(caught.value).code == "assistant_tool_calls_limit"
+        assert deps.validated_answer is None
+    assert calls == 9
+    retriever.search.assert_awaited_once()
+
+
+@pytest.mark.parametrize(
+    "limits, input_tokens, output_tokens, expected_calls, error_code",
+    [
+        ({"assistant_max_model_requests": 2}, 100, 100, 2, "assistant_request_limit"),
+        (
+            {
+                "assistant_max_total_input_tokens": 1000,
+                "assistant_max_request_input_tokens": 1000,
+            },
+            500,
+            100,
+            3,
+            "assistant_input_tokens_limit",
+        ),
+        (
+            {"assistant_max_total_output_tokens": 4000},
+            100,
+            2000,
+            3,
+            "assistant_output_tokens_limit",
+        ),
+        (
+            {"assistant_max_request_input_tokens": 1000},
+            1001,
+            100,
+            1,
+            "assistant_context_limit",
+        ),
+    ],
+)
+def test_actual_request_and_token_boundaries(
+    limits: dict,
+    input_tokens: int,
+    output_tokens: int,
+    expected_calls: int,
+    error_code: str,
+) -> None:
+    calls = 0
+
+    def model_function(_messages, _info) -> ModelResponse:
+        nonlocal calls
+        calls += 1
+        part = (
+            ToolCallPart(
+                "search_filings",
+                {"query": "Services growth", "filters": {"tickers": ["AAPL"]}},
+                "search",
+            )
+            if calls == 1
+            else ToolCallPart("read_chunk", {"source_id": "S1"}, f"read-{calls}")
+        )
+        return ModelResponse(
+            parts=[part],
+            usage=RequestUsage(input_tokens=input_tokens, output_tokens=output_tokens),
+        )
+
+    retriever = SimpleNamespace(
+        search=AsyncMock(return_value=retrieval_result()),
+        surrounding_chunks=AsyncMock(),
+    )
+    deps = make_deps(retriever)
+    app_settings = type(settings).model_validate({**settings.model_dump(), **limits})
+    assistant = DocumentAssistant(
+        FunctionModel(model_function), app_settings, count_tokens_before_request=False
+    )
+    with pytest.raises(UsageLimitExceeded) as caught:
+        asyncio.run(assistant.run("Apple Services growth", deps))
+    assert _mapped_failure(caught.value).code == error_code
+    assert calls == expected_calls
+    assert deps.validated_answer is None
+
+
+def test_context_preflight_blocks_before_paid_model_request() -> None:
+    model_function = AsyncMock(return_value=ModelResponse(parts=[]))
+    model = FunctionModel(model_function)
+    app_settings = settings.model_copy(
+        update={"assistant_max_request_input_tokens": 1000}
+    )
+    assistant = DocumentAssistant(model, app_settings, count_tokens_before_request=True)
+    retriever = SimpleNamespace(search=AsyncMock(), surrounding_chunks=AsyncMock())
+    with (
+        patch.object(
+            model,
+            "count_tokens",
+            AsyncMock(return_value=RequestUsage(input_tokens=1001)),
+        ),
+        pytest.raises(UsageLimitExceeded) as caught,
+    ):
+        asyncio.run(assistant.run("Apple Services growth", make_deps(retriever)))
+    assert _mapped_failure(caught.value).code == "assistant_context_limit"
+    model_function.assert_not_awaited()
+    retriever.search.assert_not_awaited()
+
+
+def test_tool_timeout_cancels_retrieval_and_cannot_produce_an_answer() -> None:
+    cancelled = []
+
+    async def stalled_search(*_args, **_kwargs):
+        try:
+            await asyncio.Event().wait()
+        finally:
+            cancelled.append(True)
+
+    def model_function(_messages, _info):
+        return ModelResponse(
+            parts=[
+                ToolCallPart(
+                    "search_filings",
+                    {"query": "Services", "filters": {"tickers": ["AAPL"]}},
+                    "search",
+                )
+            ]
+        )
+
+    app_settings = settings.model_copy(
+        update={"assistant_tool_timeout_seconds": 0.02, "assistant_tool_retries": 0}
+    )
+    assistant = DocumentAssistant(
+        FunctionModel(model_function), app_settings, count_tokens_before_request=False
+    )
+    deps = make_deps(SimpleNamespace(search=stalled_search))
+    with pytest.raises(UnexpectedModelBehavior):
+        asyncio.run(assistant.run("Apple Services growth", deps))
+    assert cancelled == [True]
+    assert deps.validated_answer is None
 
 
 def test_fourth_model_call_429_logs_cumulative_usage_and_rate_headers() -> None:

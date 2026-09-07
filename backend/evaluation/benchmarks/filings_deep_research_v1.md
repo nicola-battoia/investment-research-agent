@@ -2,39 +2,55 @@
 
 ## Purpose
 
-This is a human-reviewed answer benchmark for end-to-end testing of Document
+This is a reference-answer benchmark for end-to-end testing of Document
 Copilot. It is deliberately harder than a fact-lookup or a single-table
 question. The cases require the system to retrieve evidence from multiple
 filings, reconcile differences in definitions, perform calculations, explain
-what the calculations do and do not prove, and cite the relevant filing pages.
+what the calculations do and do not prove, and cite the relevant filing passages.
 
 The benchmark is intended to test answer quality, not only first-stage
 retrieval. The existing `retrieval_cases.json` remains the frozen atomic
 retrieval benchmark.
 
-## Implementation compatibility (2026-09-05)
+## Current evidence and runtime compatibility (2026-09-05)
 
-This remains a target benchmark, not a recorded passing run. Its gold financial
-values were preserved during the documentation audit; they were not independently
-revalidated against all original filings.
+The executable companion is [filings_deep_research_v1.json](filings_deep_research_v1.json).
+Its 15 cases contain questions, reference answers, required evidence groups,
+exact chunk UUIDs, text hashes and excerpts from the current Supabase corpus.
+Each evidence group counts once; any listed alternative satisfies that group.
+The source is the `sec_sections_v2` corpus: 27 documents and 6,373 chunks.
+All live chunk texts were compared with the local ingestion checkpoints and matched.
+Only the 25 company 10-Ks are used for these cases; BSP documents are excluded.
 
-Current implementation gaps affect scoring:
+The financial table inputs and selected risk passages were checked against the
+current chunks. Arithmetic is evaluated from the stated inputs. This is still a
+research benchmark, not evidence that the assistant passes it. Independent human
+review of qualitative completeness and the machine judge remains a release task.
+Whole-document absence claims cannot be proved by retrieving one passage.
+The Apple FY2021 AI-expression scan covered all 260,855 characters of its canonical
+Markdown, whose SHA-256 matches the database document checksum; it found no `AI`,
+`artificial intelligence`, or `machine learning` expressions.
 
-- Printed-page citations are required below, but none of the current 6,373 chunks
-  has a populated `page_number`. Section/Markdown offsets are available.
-- DR-01, DR-02, DR-03, and DR-14 require ten filings. The default turn permits eight
-  total tool calls, including searches, and citations require explicitly read
-  evidence. A read call covers one filing, so the full source requirement cannot
-  fit that budget.
-- The assistant has retrieval tools but no code-execution/calculator tool.
-  Numerical results still require human checking.
-- There is no automated runner for this Markdown benchmark. The separate atomic
-  retrieval dataset also needs new passage labels after the chunker replacement.
+- The current chunks have no populated `page_number`; old manual printed-page
+  references have been replaced below by executable chunk references. This does
+  not imply that the original printed pages were wrong.
+- DR-01, DR-02, DR-03 and DR-14 explicitly compare ten filings. Eight total tool
+  calls cannot cover ten filing reads plus a search. Evidence-group recall and
+  answer quality are reported separately from turn completion.
+- DR-07 can use the FY2022 and FY2025 comparative segment tables to cover all
+  five requested fiscal years; five separate filings are unnecessary.
+- The standalone prompts now name all five companies where the original relied
+  on the document-level scope. The initial literal-prompt run elicited reasonable
+  clarification requests; those are test-input defects, not assistant failures.
+- DR-03 explicitly uses Amazon's capex net of sales and incentives. Its old
+  wording could be read as requiring gross purchases while the gold used net.
+- DR-15 requires an explained, cited abstention. The runtime's fixed,
+  citation-free `insufficient_evidence` response is a known contract gap.
+- The API/SSE runner exercises the actual model, tools, validation and stored
+  answer reload. Browser rendering, Stop and multi-tab behavior are separate QA.
 
-These notes do not weaken the criteria below. Decide whether to extend the
-implementation or explicitly revise the benchmark before using it as a gate.
-See the [evaluation guide](../README.md) and
-[repository audit](../../../docs/repository-audit.md).
+Run instructions: [evaluation guide](../README.md). Work plan:
+[QA suite TODO](../../../docs/qa-suite-todo.md).
 
 ## Corpus scope
 
@@ -54,8 +70,8 @@ For every case, a strong answer must:
 
 1. Answer the exact question and show enough arithmetic to reproduce the
    conclusion.
-2. Cite every filing used, with the printed 10-K page containing the relevant
-   table or passage.
+2. Cite the relevant filing passage using its accession, section and current
+   chunk identity. Do not invent a printed page number when page metadata is absent.
 3. Preserve the filing's fiscal-year convention and disclosure definition.
 4. Separate facts from calculations and calculations from interpretation.
 5. State material comparability limits. It must not silently treat unlike
@@ -99,6 +115,8 @@ causal claim that the filings do not establish.
 
 **Question**
 
+Use the 10-K filings for Apple (AAPL), Microsoft (MSFT), NVIDIA (NVDA), Amazon (AMZN), and Alphabet (GOOGL).
+
 Across the five companies, calculate the incremental operating margin from
 fiscal 2021 to fiscal 2025, defined as `(2025 operating income - 2021 operating
 income) / (2025 revenue - 2021 revenue)`. Rank the companies, compare that result
@@ -126,18 +144,20 @@ fiscal calendars, acquisitions, accounting estimates, and each company's
 business model differ materially. In particular, NVIDIA's shift toward Data
 Center and Microsoft/Alphabet server useful-life changes affect the comparison.
 
-**Required evidence**
+**Required evidence (current corpus)**
 
-- AAPL FY2021 10-K, accession `0000320193-21-000105`, pp. 20 and 29; FY2025,
-  accession `0000320193-25-000079`, pp. 22 and 28.
-- MSFT FY2021 10-K, accession `0001564590-21-039151`, pp. 42 and 59; FY2025,
-  accession `0000950170-25-100235`, pp. 37 and 52.
-- NVDA FY2021 10-K, accession `0001045810-21-000010`, pp. 29 and 50; FY2025,
-  accession `0001045810-25-000023`, pp. 37 and 55.
-- AMZN FY2021 10-K, accession `0001018724-22-000005`, p. 23; FY2025,
-  accession `0001018724-26-000004`, pp. 24 and 26.
-- GOOGL FY2021 10-K, accession `0001652044-22-000019`, pp. 31-32; FY2025,
-  accession `0001652044-26-000018`, pp. 31-32.
+| Required fact group | Accession | Chunk index (alternatives) |
+|---|---|---|
+| AAPL FY2021: Revenue and operating income; use the column for this fiscal year | `0000320193-21-000105` | `73` |
+| AAPL FY2025: Revenue and operating income; use the column for this fiscal year | `0000320193-25-000079` | `76` |
+| MSFT FY2021: Revenue and operating income; use the column for this fiscal year | `0001564590-21-039151` | `141` |
+| MSFT FY2025: Revenue and operating income; use the column for this fiscal year | `0000950170-25-100235` | `99` |
+| NVDA FY2021: Revenue and operating income; use the column for this fiscal year | `0001045810-21-000010` | `99` |
+| NVDA FY2025: Revenue and operating income; use the column for this fiscal year | `0001045810-25-000023` | `125` |
+| AMZN FY2021: Revenue and operating income; use the column for this fiscal year | `0001018724-22-000005` | `75` |
+| AMZN FY2025: Revenue and operating income; use the column for this fiscal year | `0001018724-26-000004` | `77` |
+| GOOGL FY2021: Revenue and operating income; use the column for this fiscal year | `0001652044-22-000019` | `98` |
+| GOOGL FY2025: Revenue and operating income; use the column for this fiscal year | `0001652044-26-000018` | `102` |
 
 **Critical failure**: ranking by the change in ordinary operating margin rather
 than calculating incremental operating margin.
@@ -147,6 +167,8 @@ than calculating incremental operating margin.
 ## DR-02 - Did revenue per employee improve, and is the ranking truly comparable?
 
 **Question**
+
+Use the 10-K filings for Apple (AAPL), Microsoft (MSFT), NVIDIA (NVDA), Amazon (AMZN), and Alphabet (GOOGL).
 
 Calculate fiscal-year revenue per disclosed employee for all five companies in
 2021 and 2025. Which company improved the most, and what disclosure differences
@@ -169,13 +191,30 @@ uses contractors and temporary personnel; the other companies' workforce and
 outsourcing models differ. The figures are point-in-time headcounts divided by
 full-year revenue, and mix and price changes can dominate labor productivity.
 
-**Required evidence**
+**Required evidence (current corpus)**
 
-- AAPL FY2021 pp. 3 and 20; FY2025 pp. 3 and 22.
-- MSFT FY2021 pp. 7 and 42; FY2025 pp. 8 and 37.
-- NVDA FY2021 pp. 10 and 29; FY2025 pp. 10 and 37.
-- AMZN FY2021 pp. 3 and 23; FY2025 pp. 3 and 24.
-- GOOGL FY2021 pp. 8 and 32; FY2025 pp. 6 and 32.
+| Required fact group | Accession | Chunk index (alternatives) |
+|---|---|---|
+| AAPL FY2021: Revenue and operating income; use the column for this fiscal year | `0000320193-21-000105` | `73` |
+| AAPL FY2021: Headcount and its definition; year-end rather than annual average | `0000320193-21-000105` | `11` |
+| AAPL FY2025: Revenue and operating income; use the column for this fiscal year | `0000320193-25-000079` | `76` |
+| AAPL FY2025: Headcount and its definition; year-end rather than annual average | `0000320193-25-000079` | `12` |
+| MSFT FY2021: Revenue and operating income; use the column for this fiscal year | `0001564590-21-039151` | `141` |
+| MSFT FY2021: Headcount and its definition; year-end rather than annual average | `0001564590-21-039151` | `17` |
+| MSFT FY2025: Revenue and operating income; use the column for this fiscal year | `0000950170-25-100235` | `99` |
+| MSFT FY2025: Headcount and its definition; year-end rather than annual average | `0000950170-25-100235` | `16` |
+| NVDA FY2021: Revenue and operating income; use the column for this fiscal year | `0001045810-21-000010` | `99` |
+| NVDA FY2021: Headcount and its definition; year-end rather than annual average | `0001045810-21-000010` | `21` |
+| NVDA FY2025: Revenue and operating income; use the column for this fiscal year | `0001045810-25-000023` | `125` |
+| NVDA FY2025: Headcount and its definition; year-end rather than annual average | `0001045810-25-000023` | `23` |
+| AMZN FY2021: Revenue and operating income; use the column for this fiscal year | `0001018724-22-000005` | `75` |
+| AMZN FY2021: Headcount and its definition; year-end rather than annual average | `0001018724-22-000005` | `7` |
+| AMZN FY2025: Revenue and operating income; use the column for this fiscal year | `0001018724-26-000004` | `77` |
+| AMZN FY2025: Headcount and its definition; year-end rather than annual average | `0001018724-26-000004` | `8` |
+| GOOGL FY2021: Revenue and operating income; use the column for this fiscal year | `0001652044-22-000019` | `98` |
+| GOOGL FY2021: Headcount and its definition; year-end rather than annual average | `0001652044-22-000019` | `14` |
+| GOOGL FY2025: Revenue and operating income; use the column for this fiscal year | `0001652044-26-000018` | `102` |
+| GOOGL FY2025: Headcount and its definition; year-end rather than annual average | `0001652044-26-000018` | `12` |
 
 **Critical failure**: calling Amazon's denominator “full-time employees” or
 claiming the ratios prove relative employee quality.
@@ -186,9 +225,12 @@ claiming the ratios prove relative employee quality.
 
 **Question**
 
+Use the 10-K filings for Apple (AAPL), Microsoft (MSFT), NVIDIA (NVDA), Amazon (AMZN), and Alphabet (GOOGL).
+
 For every company, calculate a filing-based cash free-cash-flow proxy for 2021
 and 2025 as operating cash flow less cash purchases/additions of property and
-equipment (and intangible assets where NVIDIA combines them). Divide by revenue.
+equipment (and intangible assets where NVIDIA combines them); use Amazon's
+net-of-sales-and-incentives measure. Divide by revenue.
 Rank 2025 and identify the largest improvement and deterioration.
 
 **Gold answer**
@@ -208,13 +250,30 @@ of sales and incentives, NVIDIA combines intangible assets, and leases,
 financing obligations, acquisitions, and working-capital timing are not made
 fully comparable.
 
-**Required evidence**
+**Required evidence (current corpus)**
 
-- AAPL FY2021 cash-flow statement p. 31; FY2025 cash-flow statement p. 30.
-- MSFT FY2021 p. 59; FY2025 pp. 42 and 52.
-- NVDA FY2021 pp. 36 and 50; FY2025 pp. 42 and 55.
-- AMZN FY2021 p. 27; FY2025 p. 27.
-- GOOGL FY2021 p. 52; FY2025 pp. 32 and 51.
+| Required fact group | Accession | Chunk index (alternatives) |
+|---|---|---|
+| AAPL FY2021: Revenue and operating income; use the column for this fiscal year | `0000320193-21-000105` | `73` |
+| AAPL FY2021: Operating cash flow and cash capex; retain net-of-incentives/intangible definitions | `0000320193-21-000105` | `77` |
+| AAPL FY2025: Revenue and operating income; use the column for this fiscal year | `0000320193-25-000079` | `76` |
+| AAPL FY2025: Operating cash flow and cash capex; retain net-of-incentives/intangible definitions | `0000320193-25-000079` | `80` |
+| MSFT FY2021: Revenue and operating income; use the column for this fiscal year | `0001564590-21-039151` | `141` |
+| MSFT FY2021: Operating cash flow and cash capex; retain net-of-incentives/intangible definitions | `0001564590-21-039151` | `144` |
+| MSFT FY2025: Revenue and operating income; use the column for this fiscal year | `0000950170-25-100235` | `99` |
+| MSFT FY2025: Operating cash flow and cash capex; retain net-of-incentives/intangible definitions | `0000950170-25-100235` | `102` |
+| NVDA FY2021: Revenue and operating income; use the column for this fiscal year | `0001045810-21-000010` | `99` |
+| NVDA FY2021: Operating cash flow and cash capex; retain net-of-incentives/intangible definitions | `0001045810-21-000010` | `103` |
+| NVDA FY2025: Revenue and operating income; use the column for this fiscal year | `0001045810-25-000023` | `125` |
+| NVDA FY2025: Operating cash flow and cash capex; retain net-of-incentives/intangible definitions | `0001045810-25-000023` | `129` |
+| AMZN FY2021: Revenue and operating income; use the column for this fiscal year | `0001018724-22-000005` | `75` |
+| AMZN FY2021: Operating cash flow and cash capex; retain net-of-incentives/intangible definitions | `0001018724-22-000005` | `59` |
+| AMZN FY2025: Revenue and operating income; use the column for this fiscal year | `0001018724-26-000004` | `77` |
+| AMZN FY2025: Operating cash flow and cash capex; retain net-of-incentives/intangible definitions | `0001018724-26-000004` | `65` |
+| GOOGL FY2021: Revenue and operating income; use the column for this fiscal year | `0001652044-22-000019` | `98` |
+| GOOGL FY2021: Operating cash flow and cash capex; retain net-of-incentives/intangible definitions | `0001652044-22-000019` | `101` |
+| GOOGL FY2025: Revenue and operating income; use the column for this fiscal year | `0001652044-26-000018` | `102` |
+| GOOGL FY2025: Operating cash flow and cash capex; retain net-of-incentives/intangible definitions | `0001652044-26-000018` | `105` |
 
 **Critical failure**: using EBITDA, reported net income, or total investing cash
 flow in place of the stated formula.
@@ -248,12 +307,17 @@ obligations and $14.3B of other non-inventory purchase obligations, including
 $10.9B of multi-year cloud service agreements. Microsoft also disclosed $32.1B
 committed for construction, primarily datacenters.
 
-**Required evidence**
+**Required evidence (current corpus)**
 
-- MSFT FY2025 10-K pp. 52 and 68-69.
-- GOOGL FY2025 10-K pp. 32 and 51.
-- AMZN FY2023 10-K p. 27 and FY2025 10-K pp. 27 and 35.
-- NVDA FY2025 10-K pp. 55 and 69-72.
+| Required fact group | Accession | Chunk index (alternatives) |
+|---|---|---|
+| MSFT FY2025: Cash capex and operating cash flow (2023 comparatives where present) | `0000950170-25-100235` | `102` |
+| GOOGL FY2025: Cash capex and operating cash flow (2023 comparatives where present) | `0001652044-26-000018` | `105` |
+| AMZN FY2025: Cash capex and operating cash flow (2023 comparatives where present) | `0001018724-26-000004` | `65` |
+| NVDA FY2025: Cash capex and operating cash flow (2023 comparatives where present) | `0001045810-25-000023` | `129` |
+| AMZN FY2023: 2023 cash capex net of sales and incentives | `0001018724-24-000008` | `63` |
+| NVDA FY2025: Supply and non-inventory/cloud commitments; cancellable/reschedulable amounts are not cash capex | `0001045810-25-000023` | `171` |
+| MSFT FY2025: Construction commitments, primarily datacenters | `0000950170-25-100235` | `125` |
 
 **Critical failure**: concluding that NVIDIA has only $3.2B of capacity-related
 exposure or adding commitments directly to capex as if they were current-year
@@ -286,11 +350,18 @@ also changed its segment composition in FY2025 and recast only the presented
 prior periods, not its FY2021 filing. Microsoft's 2025 filing further states
 that scaling AI infrastructure pressured cloud gross margin.
 
-**Required evidence**
+**Required evidence (current corpus)**
 
-- AMZN FY2021 10-K p. 23 and FY2025 10-K pp. 24 and 26.
-- GOOGL FY2021 10-K pp. 32 and 37; FY2025 10-K pp. 33 and 35.
-- MSFT FY2021 10-K p. 93; FY2025 10-K pp. 36 and 38-39.
+| Required fact group | Accession | Chunk index (alternatives) |
+|---|---|---|
+| AMZN FY2021: Segment revenue and operating income; preserve segment scope and loss sign | `0001018724-22-000005` | `143` |
+| AMZN FY2025: Segment revenue and operating income; preserve segment scope and loss sign | `0001018724-26-000004` | `151` |
+| GOOGL FY2021: Segment revenue and operating income; preserve segment scope and loss sign | `0001652044-22-000019` | `176` |
+| GOOGL FY2025: Segment revenue and operating income; preserve segment scope and loss sign | `0001652044-26-000018` | `185` |
+| MSFT FY2021: Segment revenue and operating income; preserve segment scope and loss sign | `0001564590-21-039151` | `243` |
+| MSFT FY2025: Segment revenue and operating income; preserve segment scope and loss sign | `0000950170-25-100235` | `145` |
+| MSFT FY2025: Segment composition changed; presented prior periods recast | `0000950170-25-100235` | `71` |
+| MSFT FY2025: Microsoft Cloud gross-margin impact from AI infrastructure | `0000950170-25-100235` | `75` |
 
 **Critical failure**: labeling Microsoft Intelligent Cloud revenue as Azure
 revenue or omitting Google Cloud's 2021 loss sign.
@@ -326,12 +397,17 @@ The companies exclude or include short-duration and cancellable arrangements
 differently, the disclosed scopes differ, and backlog is not a forecast: usage,
 delivery, cancellations, contract duration, and timing affect recognition.
 
-**Required evidence**
+**Required evidence (current corpus)**
 
-- MSFT FY2025 10-K pp. 36 and 76 (RPO), plus Note 19 p. 89 for Microsoft Cloud
-  revenue.
-- AMZN FY2025 10-K pp. 24 and 50.
-- GOOGL FY2025 10-K pp. 33 and 59-60.
+| Required fact group | Accession | Chunk index (alternatives) |
+|---|---|---|
+| AMZN FY2025: Backlog scope, amount and recognition timing | `0001018724-26-000004` | `106` |
+| GOOGL FY2025: Backlog scope, amount and recognition timing | `0001652044-26-000018` | `121` |
+| MSFT FY2025: Backlog scope, amount and recognition timing | `0000950170-25-100235` | `136` |
+| AMZN FY2025: Revenue denominator and scope; Cloud and commercial RPO are not identical | `0001018724-26-000004` | `151` |
+| GOOGL FY2025: Revenue denominator and scope; Cloud and commercial RPO are not identical | `0001652044-26-000018` | `185` |
+| MSFT FY2025: Revenue denominator and scope; Cloud and commercial RPO are not identical | `0000950170-25-100235` | `99` |
+| MSFT FY2025: Revenue denominator and scope; Cloud and commercial RPO are not identical | `0000950170-25-100235` | `146` |
 
 **Critical failure**: asserting that all Alphabet backlog is Google Cloud or
 that backlog will become revenue in the next year.
@@ -359,15 +435,17 @@ be phrased precisely?
 
 Only **2022** had a combined non-AWS operating loss. AWS also offset the
 International segment's losses in 2021-2023, but North America was profitable
-in 2021 and 2023. Therefore “AWS funded all other businesses” is only literally
-supported for 2022 under this segment counterfactual. The subtraction is an
+in 2021 and 2023. In 2022, AWS operating profit offset the combined operating loss of the other
+segments. This does not establish that AWS funded every individual business. The subtraction is an
 analytical counterfactual, not a cash-transfer disclosure, and shared cost
 allocations could change without AWS.
 
-**Required evidence**
+**Required evidence (current corpus)**
 
-- AMZN FY2021 10-K p. 23; FY2022 p. 23; FY2023 p. 24; FY2024 p. 26; FY2025
-  p. 26.
+| Required fact group | Accession | Chunk index (alternatives) |
+|---|---|---|
+| AMZN FY2022: 2021-2022 AWS, North America, International and consolidated operating income | `0001018724-23-000004` | `147`, `54` |
+| AMZN FY2025: 2023-2025 AWS, North America, International and consolidated operating income | `0001018724-26-000004` | `151` |
 
 **Critical failure**: treating AWS's percentage of consolidated operating
 income as a revenue share or claiming the counterfactual is a reported measure.
@@ -407,10 +485,14 @@ bridge; improved product and Services category margins explain the rest. A
 different decomposition order can allocate interaction differently and should
 be disclosed.
 
-**Required evidence**
+**Required evidence (current corpus)**
 
-- AAPL FY2021 10-K pp. 20 and 22.
-- AAPL FY2025 10-K pp. 22-23.
+| Required fact group | Accession | Chunk index (alternatives) |
+|---|---|---|
+| AAPL FY2021: Product/Services revenue; total revenue | `0000320193-21-000105` | `73`, `55` |
+| AAPL FY2021: Product/Services gross profit and total gross profit | `0000320193-21-000105` | `60` |
+| AAPL FY2025: Product/Services revenue; total revenue | `0000320193-25-000079` | `76`, `59` |
+| AAPL FY2025: Product/Services gross profit and total gross profit | `0000320193-25-000079` | `61` |
 
 **Critical failure**: using Services revenue share as Services gross-profit
 share, or presenting the 2.5 pp decomposition as a company-reported figure.
@@ -448,10 +530,20 @@ China mainland and other Asian countries, relied on single/limited sources, and
 reported 2025 tariff pressure on product gross margin. Sales exposure and
 supply-chain/regulatory exposure are different risk channels.
 
-**Required evidence**
+**Required evidence (current corpus)**
 
-- AAPL FY2021 10-K pp. 7-9 and 21; FY2025 pp. 6-8, 11-14, 21, and 23.
-- NVDA FY2021 10-K pp. 20, 34, and 76-77; FY2025 pp. 36-37 and 78-79.
+| Required fact group | Accession | Chunk index (alternatives) |
+|---|---|---|
+| AAPL FY2021: Greater China and total revenue | `0000320193-21-000105` | `58` |
+| AAPL FY2025: Greater China and total revenue | `0000320193-25-000079` | `57` |
+| NVDA FY2021: China/Hong Kong billing exposure (23%) | `0001045810-21-000010` | `44` |
+| NVDA FY2021: Billing geography is not end-customer geography | `0001045810-21-000010` | `76` |
+| NVDA FY2025: China/Hong Kong billing revenue and total revenue | `0001045810-25-000023` | `192` |
+| NVDA FY2025: Singapore billing share versus shipments | `0001045810-25-000023` | `193` |
+| NVDA FY2025: China Data Center revenue and export controls | `0001045810-25-000023` | `90` |
+| AAPL FY2025: Asian manufacturing and single/limited sources | `0000320193-25-000079` | `22` |
+| AAPL FY2025: 2025 tariff pressure on product gross margin | `0000320193-25-000079` | `63` |
+| AAPL FY2025: Geographic allocation follows customer and retail-store location | `0000320193-25-000079` | `17` |
 
 **Critical failure**: treating NVIDIA billing location as final shipment or end
 customer location, or adding Singapore to China exposure without evidence.
@@ -488,10 +580,19 @@ customer concentration while also increasing forward supply commitments. The
 filing describes both shortage risk and excess/obsolescence risk; this is a
 two-sided operating leverage, not a one-way demand benefit.
 
-**Required evidence**
+**Required evidence (current corpus)**
 
-- NVDA FY2021 10-K pp. 34 and 76-77.
-- NVDA FY2025 10-K pp. 8, 16, 50, 69-72, and 78-80.
+| Required fact group | Accession | Chunk index (alternatives) |
+|---|---|---|
+| NVDA FY2021: Data Center and total revenue | `0001045810-21-000010` | `168` |
+| NVDA FY2021: No customer reached 10% | `0001045810-21-000010` | `76` |
+| NVDA FY2025: Data Center and total revenue | `0001045810-25-000023` | `195` |
+| NVDA FY2025: Direct customer shares and overlapping indirect customer | `0001045810-25-000023` | `103` |
+| NVDA FY2025: Inventory and supply/capacity obligations | `0001045810-25-000023` | `123` |
+| NVDA FY2025: Long-term supply/capacity prepayments | `0001045810-25-000023` | `164` |
+| NVDA FY2025: Current supply/capacity prepayments | `0001045810-25-000023` | `165` |
+| NVDA FY2025: Commitment scope, cancellation rights and cloud contracts | `0001045810-25-000023` | `171` |
+| NVDA FY2025: Foundry, memory, CoWoS and contract-manufacturer dependence | `0001045810-25-000023` | `16` |
 
 **Critical failure**: adding the indirect customer's estimated share to the
 direct-customer total, or claiming all $30.8B is non-cancellable.
@@ -527,10 +628,14 @@ allocations, and all other factors constant. Microsoft directly disclosed an
 operating-income impact; Alphabet disclosed reduced depreciation, which flows
 through operating costs, so the comparison should retain that wording.
 
-**Required evidence**
+**Required evidence (current corpus)**
 
-- MSFT FY2023 10-K, accession `0000950170-23-035122`, pp. 40-42 and 62.
-- GOOGL FY2023 10-K, accession `0001652044-24-000022`, pp. 33 and 38.
+| Required fact group | Accession | Chunk index (alternatives) |
+|---|---|---|
+| MSFT FY2023: 2022-2023 operating income | `0000950170-23-035122` | `111` |
+| MSFT FY2023: Useful-life change and effect on operating income | `0000950170-23-035122` | `79` |
+| GOOGL FY2023: 2022-2023 operating income | `0001652044-24-000022` | `106` |
+| GOOGL FY2023: Useful-life change and depreciation impact | `0001652044-24-000022` | `110` |
 
 **Critical failure**: treating the estimate changes as cash savings or adding
 the benefit to reported operating income rather than subtracting it for the
@@ -567,10 +672,14 @@ dominated by the tax item, not operating deterioration. The adjustment is an
 analytical add-back, not an Apple-provided non-GAAP measure, and ignores any
 second-order tax effects already embedded in “net.”
 
-**Required evidence**
+**Required evidence (current corpus)**
 
-- AAPL FY2024 10-K, accession `0000320193-24-000123`, pp. 24-25 and 29.
-- AAPL FY2025 10-K pp. 24 and 28.
+| Required fact group | Accession | Chunk index (alternatives) |
+|---|---|---|
+| AAPL FY2024: Revenue, operating income, pretax income, tax and net income | `0000320193-24-000123` | `71` |
+| AAPL FY2024: Net State Aid tax charge versus gross escrow settlement | `0000320193-24-000123` | `95` |
+| AAPL FY2025: FY2025 income statement and FY2024/FY2023 comparatives | `0000320193-25-000079` | `76` |
+| AAPL FY2025: 2025 effective tax rate (15.6%) | `0000320193-25-000079` | `66` |
 
 **Critical failure**: adding back the $15.8B cash obligation to net income or
 calling the tax charge an operating expense.
@@ -604,9 +713,12 @@ also fell sharply, and other non-operating items and taxes mattered. A net-incom
 add-back would require tax assumptions, so the defensible normalization is at
 pretax income.
 
-**Required evidence**
+**Required evidence (current corpus)**
 
-- AMZN FY2022 10-K, accession `0001018724-23-000004`, pp. 23, 26, and 65-66.
+| Required fact group | Accession | Chunk index (alternatives) |
+|---|---|---|
+| AMZN FY2022: 2021-2022 operating income, non-operating items and pretax income | `0001018724-23-000004` | `77` |
+| AMZN FY2022: Rivian valuation gain/loss and its non-operating treatment | `0001018724-23-000004` | `59`, `91` |
 
 **Critical failure**: saying Amazon's operating business lost $2.7B in 2022 or
 adding the pretax Rivian loss directly to after-tax net income without a caveat.
@@ -616,6 +728,8 @@ adding the pretax Rivian loss directly to after-tax net income without a caveat.
 ## DR-14 - How did AI disclosure evolve from opportunity to investable risk?
 
 **Question**
+
+Use the 10-K filings for Apple (AAPL), Microsoft (MSFT), NVIDIA (NVDA), Amazon (AMZN), and Alphabet (GOOGL).
 
 Compare each company's FY2021 and FY2025 10-K treatment of artificial
 intelligence. For each company, distinguish opportunity/product language from
@@ -640,15 +754,36 @@ product harms, new regulation, power/datacenter/supply constraints, large
 committed spending, and uncertain monetization became explicit. Apple is the
 clearest “absent to explicit” transition.
 
-**Required evidence**
+**Required evidence (current corpus)**
 
-- AAPL FY2021 (absence must be verified by complete-text search plus generic
-  technology-risk review) and FY2025 pp. 8 and 11-14.
-- MSFT FY2021 pp. 2, 27, and 30, plus the acquisition note; FY2025 pp. 16-23,
-  34-39, and 44.
-- NVDA FY2021 pp. 3-7 and FY2025 pp. 3-7, 16, 20, 24, and 36-38.
-- AMZN FY2021 pp. 13 and 18 and FY2025 pp. 6-16, 20, and 23.
-- GOOGL FY2021 pp. 3 and 10 and FY2025 pp. 3, 5, 8-16, and 27.
+| Required fact group | Accession | Chunk index (alternatives) |
+|---|---|---|
+| AAPL FY2021: Generic product/technology risks; absence of AI requires the recorded whole-filing scan | `0000320193-21-000105` | `25` |
+| AAPL FY2025: AI product harm, IP and regulatory risks | `0000320193-25-000079` | `24` |
+| AAPL FY2025: AI product harm, IP and regulatory risks | `0000320193-25-000079` | `26` |
+| AAPL FY2025: AI product harm, IP and regulatory risks | `0000320193-25-000079` | `35` |
+| MSFT FY2021: AI opportunity and already-present algorithm/bias risks | `0001564590-21-039151` | `5` |
+| MSFT FY2021: AI opportunity and already-present algorithm/bias risks | `0001564590-21-039151` | `69` |
+| MSFT FY2025: AI investment/return uncertainty, product harm, IP/regulation and margin cost | `0000950170-25-100235` | `30` |
+| MSFT FY2025: AI investment/return uncertainty, product harm, IP/regulation and margin cost | `0000950170-25-100235` | `31` |
+| MSFT FY2025: AI investment/return uncertainty, product harm, IP/regulation and margin cost | `0000950170-25-100235` | `43` |
+| MSFT FY2025: AI investment/return uncertainty, product harm, IP/regulation and margin cost | `0000950170-25-100235` | `75` |
+| NVDA FY2021: AI opportunity and privacy/use risk | `0001045810-21-000010` | `6` |
+| NVDA FY2021: AI opportunity and privacy/use risk | `0001045810-21-000010` | `51` |
+| NVDA FY2025: Demand uncertainty, capacity/supply commitments and export controls | `0001045810-25-000023` | `34` |
+| NVDA FY2025: Demand uncertainty, capacity/supply commitments and export controls | `0001045810-25-000023` | `37` |
+| NVDA FY2025: Demand uncertainty, capacity/supply commitments and export controls | `0001045810-25-000023` | `90` |
+| NVDA FY2025: Demand uncertainty, capacity/supply commitments and export controls | `0001045810-25-000023` | `171` |
+| AMZN FY2021: AI opportunity, shared technology and broad regulatory exposure | `0001018724-22-000005` | `29` |
+| AMZN FY2021: AI opportunity, shared technology and broad regulatory exposure | `0001018724-22-000005` | `41` |
+| AMZN FY2025: AI adoption/return uncertainty, IP and inability to isolate impacts | `0001018724-26-000004` | `14` |
+| AMZN FY2025: AI adoption/return uncertainty, IP and inability to isolate impacts | `0001018724-26-000004` | `19` |
+| AMZN FY2025: AI adoption/return uncertainty, IP and inability to isolate impacts | `0001018724-26-000004` | `54` |
+| GOOGL FY2021: Existing investment-return and ethical/legal AI risks | `0001652044-22-000019` | `19` |
+| GOOGL FY2021: Existing investment-return and ethical/legal AI risks | `0001652044-22-000019` | `20` |
+| GOOGL FY2025: AI investment returns, IP/competition and energy/capacity constraints | `0001652044-26-000018` | `16` |
+| GOOGL FY2025: AI investment returns, IP/competition and energy/capacity constraints | `0001652044-26-000018` | `19` |
+| GOOGL FY2025: AI investment returns, IP/competition and energy/capacity constraints | `0001652044-26-000018` | `22` |
 
 **Critical failure**: claiming none of the companies discussed AI in 2021, or
 equating an increase in mentions with proof of higher realized financial risk.
@@ -658,6 +793,8 @@ equating an increase in mentions with proof of higher realized financial risk.
 ## DR-15 - Do the filings prove which company earned the best return on generative AI?
 
 **Question**
+
+Use the 10-K filings for Apple (AAPL), Microsoft (MSFT), NVIDIA (NVDA), Amazon (AMZN), and Alphabet (GOOGL).
 
 Using only this corpus, identify which of the five companies earned the highest
 return on generative-AI investment by FY2025 and quantify how many basis points
@@ -694,13 +831,21 @@ identify a cross-company return metric or isolate causal margin effects. The
 system should offer the calculations it *can* support (for example DR-03 to
 DR-06) and clearly stop at the causal boundary.
 
-**Required evidence**
+**Required evidence (current corpus)**
 
-- MSFT FY2025 10-K pp. 34, 37-39, and 44.
-- AMZN FY2025 10-K pp. 6 and 23.
-- NVDA FY2025 10-K pp. 16 and 37-38.
-- GOOGL FY2025 10-K pp. 8-9 and 27.
-- AAPL FY2025 10-K pp. 8 and 22-24.
+| Required fact group | Accession | Chunk index (alternatives) |
+|---|---|---|
+| AAPL FY2025: AI risk and consolidated financial/cash-flow disclosures; these are not AI-only ROI | `0000320193-25-000079` | `24` |
+| AAPL FY2025: AI risk and consolidated financial/cash-flow disclosures; these are not AI-only ROI | `0000320193-25-000079` | `76` |
+| AAPL FY2025: AI risk and consolidated financial/cash-flow disclosures; these are not AI-only ROI | `0000320193-25-000079` | `80` |
+| MSFT FY2025: AI cloud gross-margin pressure and shared cash capex | `0000950170-25-100235` | `75` |
+| MSFT FY2025: AI cloud gross-margin pressure and shared cash capex | `0000950170-25-100235` | `102` |
+| AMZN FY2025: Returns may disappoint; AI effects cannot be isolated | `0001018724-26-000004` | `14` |
+| AMZN FY2025: Returns may disappoint; AI effects cannot be isolated | `0001018724-26-000004` | `54` |
+| NVDA FY2025: Generative-AI demand cannot be precisely estimated; supply/cloud commitments | `0001045810-25-000023` | `37` |
+| NVDA FY2025: Generative-AI demand cannot be precisely estimated; supply/cloud commitments | `0001045810-25-000023` | `171` |
+| GOOGL FY2025: AI returns not assured; consolidated capex is not an AI-only denominator | `0001652044-26-000018` | `16` |
+| GOOGL FY2025: AI returns not assured; consolidated capex is not an AI-only denominator | `0001652044-26-000018` | `105` |
 
 **Critical failure**: selecting a winner, computing AI ROI from total company
 capex, or attributing total margin change to AI because management mentioned AI

@@ -27,7 +27,7 @@ def include_object(
     del name, reflected
     table = object_ if type_ == "table" else getattr(object_, "table", None)
     model_table = compare_to if type_ == "table" else None
-    if getattr(table, "schema", None) not in {None, "public"}:
+    if getattr(table, "schema", None) not in {None, "public", "qa"}:
         return False
     if getattr(getattr(table, "info", None), "get", lambda *_: False)("external"):
         return False

@@ -13,7 +13,7 @@ flowchart LR
     Browser -->|email/password| Auth["Supabase Auth"]
     Browser -->|HTTPS + bearer token| API["Railway backend: FastAPI"]
     API -->|verify token| Auth
-    API -->|user JWT + RLS| DB[("Supabase Postgres")]
+    API -->|user JWT reads; server-only turn saves| DB[("Supabase Postgres")]
     API --> Agent["PydanticAI assistant"]
     Agent --> Retrieval["Hybrid retrieval tools"]
     Retrieval --> DB
@@ -47,16 +47,18 @@ keyword extraction and embeddings.
 | Persistence | Supabase query helpers, SQLAlchemy schema, Alembic | [database/](../backend/app/database/), [alembic/](../backend/app/alembic/) |
 | Ingestion | Parse, chunk, checkpoint, embed, upload and verify | [ingestion/README.md](../backend/ingestion/README.md) |
 
-The shipped browser calls FastAPI for product data and Supabase directly for auth.
-The API verifies tokens with `auth.get_user`, then uses the user's JWT for RLS-aware
-database reads and writes. An admin client distinguishes a nonexistent thread
-(404) from another user's thread (403). Ingestion uses privileged credentials.
+The browser calls FastAPI for product data and Supabase directly for auth.
+FastAPI verifies the bearer token with `auth.get_user`. Reads and owned-thread
+operations use the user's JWT and RLS. Only final turn persistence uses the
+server-only service-role client, after the assistant's grounding checks pass.
+The completion function receives the verified user ID and rechecks ownership
+while holding the thread lock. Browser users cannot execute this function or
+write saved messages/citations; they can still delete their whole chat.
 
-This is an application routing convention, not an exclusive database write boundary:
-the migrations grant authenticated users write access to their own chat records and
-execution of `complete_chat_turn`. The [audit](repository-audit.md) records the
-implications for server-validated provenance. Public signup restrictions also live
-in hosted Supabase settings; there is no application-level email allowlist.
+An admin client also distinguishes a missing thread (404) from another user's
+thread (403). Ingestion uses privileged credentials. Public signup restrictions
+live in hosted Supabase settings; there is no application-level email allowlist.
+See the [permission fix and rollout](security-fix-2026-09-06.md).
 
 ## One chat turn
 
@@ -137,13 +139,19 @@ deployment-wide Azure quota guarantee.
 | `message_citations` | Normalized links from assistant messages to source chunks |
 | `source_documents` | Filing metadata, checksum and canonical normalized Markdown |
 | `document_chunks` | Passage text, section/offsets, table geometry, vectors and full-text index |
+| `qa.datasets` / `qa.cases` | Private versioned gold questions, answers and evidence |
+| `qa.runs` / `qa.results` | Private QA configuration, answers, failures and evaluations |
 
-The schema has RLS, vector/GIN indexes, unique accession and message-position keys,
+The `qa` schema is unavailable to browser roles and `service_role`; only the operator
+database connection accesses it. Its gold data is outside the retrieval corpus.
+See the [QA run guide](../backend/evaluation/README.md).
+
+The application schema has RLS, vector/GIN indexes, unique accession and message-position keys,
 and a client-message idempotency index. `complete_chat_turn` locks the thread and
 rejects a stale expected position, preventing two completed turns from claiming
 the same positions. Cited chunks cannot be deleted while citations reference them.
 
-Alembic is the schema source of truth; the checked-in head is `20260823_0008`.
+Alembic is the schema source of truth; the checked-in head is `20260906_0011`.
 Autogenerate candidates require review, especially for RLS, grants, vector types,
 generated columns, functions and indexes. Use a direct or session database connection.
 

@@ -10,6 +10,10 @@ EXPECTED_TABLES = {
     "message_citations",
     "source_documents",
     "document_chunks",
+    "datasets",
+    "cases",
+    "runs",
+    "results",
 }
 
 

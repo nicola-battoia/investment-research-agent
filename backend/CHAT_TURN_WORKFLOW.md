@@ -156,11 +156,19 @@ remain model-policy and answer-evaluation responsibilities.
 
 ## 7. Commit, then deliver
 
-The orchestrator builds UI parts and calls `complete_chat_turn`, defined in
-[migration 0007](app/alembic/versions/20260821_0007_complete_chat_turn.py). The
-function locks the owned thread, checks the expected position, and atomically
-writes both messages, citation rows, assistant usage, timestamps and the
-first-question title.
+The orchestrator builds UI parts and calls `complete_chat_turn` with its
+server-only Supabase client and the user ID verified by the authentication layer.
+[Migration 0010](app/alembic/versions/20260906_0010_server_chat_completion.py)
+defines the function; [migration 0011](app/alembic/versions/20260906_0011_lock_chat_writes.py)
+removes the old user-callable signature and browser writes to saved messages and
+citations. The function locks the thread, rechecks its owner against `p_owner_id`,
+checks the expected even position, and atomically writes both messages, citations,
+usage, timestamps and the first-question title. Unique message/client IDs and
+citation foreign keys reject conflicting or invalid writes without partial saves.
+
+Citation retrieval/read/excerpt validation remains in the backend grounding layer
+before this call. The database function does not independently judge the answer.
+Reads, renaming and whole-chat deletion continue under the user's JWT and RLS.
 
 After the commit, SSE sends:
 

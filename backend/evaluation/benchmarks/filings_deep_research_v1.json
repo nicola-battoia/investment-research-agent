@@ -1,0 +1,2392 @@
+{
+  "name": "filings-deep-research",
+  "version": "2026-09-05-sec-sections-v2.2",
+  "corpus_fingerprint": "9380ee8965eefd9796248c40dc246269e75d1426853101a5f77ce5d60704a056",
+  "metadata": {
+    "corpus_documents": 27,
+    "corpus_chunks": 6373,
+    "parser": "sec_sections_v2",
+    "mapped_on": "2026-09-05",
+    "reference_answer_review": "financial inputs and selected evidence checked; independent human acceptance review pending",
+    "evidence_policy": "Groups are required facts, alternatives are equivalent passages. This initial mapping is not an exhaustive list of every valid passage. Recall is label coverage, not semantic answer accuracy.",
+    "source_markdown": "filings_deep_research_v1.md",
+    "revision_note": "v2.1 makes the five-company scope explicit in standalone questions. Initial v2 runs exposed missing Markdown context and are retained for audit; they are not comparable research-quality baselines for those five cases. v2.2 adds independently verified equivalent MD&A tables for DR-07 and DR-08; no reference answers or tolerances were changed to match model output."
+  },
+  "cases": [
+    {
+      "code": "DR-01",
+      "question": "Use the 10-K filings for Apple (AAPL), Microsoft (MSFT), NVIDIA (NVDA), Amazon (AMZN), and Alphabet (GOOGL). Across the five companies, calculate the incremental operating margin from fiscal 2021 to fiscal 2025, defined as `(2025 operating income - 2021 operating income) / (2025 revenue - 2021 revenue)`. Rank the companies, compare that result with the change in reported operating margin, and identify the most important reason not to interpret the ranking as a pure management-efficiency score.",
+      "gold_answer": "| Rank | Company | Revenue 2021 -> 2025 | Operating income 2021 -> 2025 | Incremental operating margin | Reported operating margin 2021 -> 2025 |\n|---:|---|---:|---:|---:|---:|\n| 1 | NVIDIA | $16.675B -> $130.497B | $4.532B -> $81.453B | **67.6%** | 27.2% -> 62.4% (+35.2 pp) |\n| 2 | Microsoft | $168.088B -> $281.724B | $69.916B -> $128.528B | **51.6%** | 41.6% -> 45.6% (+4.0 pp) |\n| 3 | Apple | $365.817B -> $416.161B | $108.949B -> $133.050B | **47.9%** | 29.8% -> 32.0% (+2.2 pp) |\n| 4 | Alphabet | $257.637B -> $402.836B | $78.714B -> $129.039B | **34.7%** | 30.6% -> 32.0% (+1.5 pp) |\n| 5 | Amazon | $469.822B -> $716.924B | $24.879B -> $79.975B | **22.3%** | 5.3% -> 11.2% (+5.9 pp) |\n\nNVIDIA ranks first by a wide margin. The interpretation cannot be \u201cbest\nmanagement\u201d from this calculation alone: business mix, cyclicality, pricing,\nfiscal calendars, acquisitions, accounting estimates, and each company's\nbusiness model differ materially. In particular, NVIDIA's shift toward Data\nCenter and Microsoft/Alphabet server useful-life changes affect the comparison.",
+      "evidence_groups": [
+        {
+          "id": "aapl-2021-1",
+          "description": "AAPL FY2021: Revenue and operating income; use the column for this fiscal year",
+          "alternatives": [
+            {
+              "accession_number": "0000320193-21-000105",
+              "chunk_index": 73,
+              "chunk_id": "34f7f508-d1e9-49ca-ab10-5e9520f25675",
+              "text_sha256": "881381450ee3b3b5571f7a20481dc75be9c1ca1dbde36dbb7dff7202779914e9",
+              "excerpt": "All financial statement schedules have been omitted, since the required information is not applicable or is not present in amounts sufficient to require submission of the schedule, or because the information required is included in the consolidated financial statements and accompanying notes.\n\nItem 8. Financial Statements and Supplementary Data\nApple Inc. | 2021 Form 10-K | 28\n\nApple Inc.\n\nItem 8. Financial Statements and Supplementary Data\n(In millions, except number of shar",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "aapl-2025-2",
+          "description": "AAPL FY2025: Revenue and operating income; use the column for this fiscal year",
+          "alternatives": [
+            {
+              "accession_number": "0000320193-25-000079",
+              "chunk_index": 76,
+              "chunk_id": "2e73242f-b895-46e7-a349-5cc262725b40",
+              "text_sha256": "6bf496999fabcb04b3ae02fda3743fe1131932b1ddaa013c5652ffe2a8a58306",
+              "excerpt": "All financial statement schedules have been omitted, since the required information is not applicable or is not present in amounts sufficient to require submission of the schedule, or because the information required is included in the consolidated financial statements and accompanying notes.\n\nItem 8. Financial Statements and Supplementary Data\nApple Inc. | 2025 Form 10-K | 28\n\nApple Inc.\n\nItem 8. Financial Statements and Supplementary Data\n(In millions, except number of shar",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "msft-2021-3",
+          "description": "MSFT FY2021: Revenue and operating income; use the column for this fiscal year",
+          "alternatives": [
+            {
+              "accession_number": "0001564590-21-039151",
+              "chunk_index": 141,
+              "chunk_id": "db499b81-e961-44dd-94bd-46c54fac5a25",
+              "text_sha256": "bb8cc49688646fdcb84b4d45a72c1174890afe4a05169019d8cc21c738a29d02",
+              "excerpt": "[TABLE]\n(In millions, except per share amounts)\nYear Ended June 30, | 2021 | 2020 | 2019\nRevenue:\nProduct | $ | 71,074 | $ | 68,041 | $ | 66,069\nService and other | 97,014 | 74,974 | 59,774\nTotal revenue | 168,088 | 143,015 | 125,843\nCost of revenue:\nProduct | 18,219 | 16,017 | 16,273\nService and other | 34,013 | 30,061 | 26,637\nTotal cost of revenue | 52,232 | 46,078 | 42,910\nGross margin | 115,856 | 96,937 | 82,933\nResearch and development | 20,716 | 19,269 | 16,876\nSales a",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "msft-2025-4",
+          "description": "MSFT FY2025: Revenue and operating income; use the column for this fiscal year",
+          "alternatives": [
+            {
+              "accession_number": "0000950170-25-100235",
+              "chunk_index": 99,
+              "chunk_id": "da04cdb2-4d10-49c4-894f-4a44d098140d",
+              "text_sha256": "1febfef1d19ae2329cf8a746d543986419d05c8815e64887cfbd6c47ffe2378d",
+              "excerpt": "[TABLE]\n(In millions, except per share amounts)\nYear Ended June 30, | 2025 | 2024 | 2023\nRevenue:\nProduct | $ | 63,946 | $ | 64,773 | $ | 64,699\nService and other | 217,778 | 180,349 | 147,216\nTotal revenue | 281,724 | 245,122 | 211,915\nCost of revenue:\nProduct | 13,501 | 15,272 | 17,804\nService and other | 74,330 | 58,842 | 48,059\nTotal cost of revenue | 87,831 | 74,114 | 65,863\nGross margin | 193,893 | 171,008 | 146,052\nResearch and development | 32,488 | 29,510 | 27,195\nSa",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "nvda-2021-5",
+          "description": "NVDA FY2021: Revenue and operating income; use the column for this fiscal year",
+          "alternatives": [
+            {
+              "accession_number": "0001045810-21-000010",
+              "chunk_index": 99,
+              "chunk_id": "6b3d488b-389c-48fe-a0c3-50ef8f9172e9",
+              "text_sha256": "30636e54aaacd3e066f3c8654778aa2846b8b04ec71bec3eccd7d47db5d94933",
+              "excerpt": "[TABLE]\nYear Ended\nJanuary 31, 2021 | January 26, 2020 | January 27, 2019\nRevenue | $ | 16,675 | $ | 10,918 | $ | 11,716\nCost of revenue | 6,279 | 4,150 | 4,545\nGross profit | 10,396 | 6,768 | 7,171\nOperating expenses\nResearch and development | 3,924 | 2,829 | 2,376\nSales, general and administrative | 1,940 | 1,093 | 991\nTotal operating expenses | 5,864 | 3,922 | 3,367\nIncome from operations | 4,532 | 2,846 | 3,804\nInterest income | 57 | 178 | 136\nInterest expense | (184) | (",
+              "section_title": "Item 15. Exhibits and Financial Statement Schedules"
+            }
+          ]
+        },
+        {
+          "id": "nvda-2025-6",
+          "description": "NVDA FY2025: Revenue and operating income; use the column for this fiscal year",
+          "alternatives": [
+            {
+              "accession_number": "0001045810-25-000023",
+              "chunk_index": 125,
+              "chunk_id": "40ed94e2-da18-44d3-97f3-d48a552610d4",
+              "text_sha256": "76dc7a6d58fef137cabe93e75b17e478c2f2a7b321f010c8c81264e923fdfe2d",
+              "excerpt": "[TABLE]\nYear Ended\nJan 26, 2025 | Jan 28, 2024 | Jan 29, 2023\nRevenue | $ | 130,497 | $ | 60,922 | $ | 26,974\nCost of revenue | 32,639 | 16,621 | 11,618\nGross profit | 97,858 | 44,301 | 15,356\nOperating expenses\nResearch and development | 12,914 | 8,675 | 7,339\nSales, general and administrative | 3,491 | 2,654 | 2,440\nAcquisition termination cost | \u2014 | \u2014 | 1,353\nTotal operating expenses | 16,405 | 11,329 | 11,132\nOperating income | 81,453 | 32,972 | 4,224\nInterest income | 1,",
+              "section_title": "Item 15. Exhibits and Financial Statement Schedules"
+            }
+          ]
+        },
+        {
+          "id": "amzn-2021-7",
+          "description": "AMZN FY2021: Revenue and operating income; use the column for this fiscal year",
+          "alternatives": [
+            {
+              "accession_number": "0001018724-22-000005",
+              "chunk_index": 75,
+              "chunk_id": "5721df7e-409e-4b04-a08a-13d5154b50c2",
+              "text_sha256": "81a762388d15126fba3c924a3926005ad9f69cec5286f2fc728889ced92b4abb",
+              "excerpt": "See accompanying notes to consolidated financial statements.\n\nAMAZON.COM, INC.\n\nItem 8. Financial Statements and Supplementary Data\n(in millions, except per share data)\n\n[TABLE]\nYear Ended December 31,\n2019 | 2020 | 2021\nNet product sales | $ | 160,408 | $ | 215,915 | $ | 241,787\nNet service sales | 120,114 | 170,149 | 228,035\nTotal net sales | 280,522 | 386,064 | 469,822\nOperating expenses:\nCost of sales | 165,536 | 233,307 | 272,344\nFulfillment | 40,232 | 58,517 | 75,111\nTe",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "amzn-2025-8",
+          "description": "AMZN FY2025: Revenue and operating income; use the column for this fiscal year",
+          "alternatives": [
+            {
+              "accession_number": "0001018724-26-000004",
+              "chunk_index": 77,
+              "chunk_id": "5cb78ae3-2747-4e66-87b1-bbd4e70c7ee9",
+              "text_sha256": "d73764ec16b4582760fe59b48d162e7512487a13fdd32f5261402920b45108be",
+              "excerpt": "See accompanying notes to consolidated financial statements.\n\nAMAZON.COM, INC.\n\nItem 8. Financial Statements and Supplementary Data\n(in millions, except per share data)\n\n[TABLE]\nYear Ended December 31,\n2023 | 2024 | 2025\nNet product sales | $ | 255,887 | $ | 272,311 | $ | 296,266\nNet service sales | 318,898 | 365,648 | 420,658\nTotal net sales | 574,785 | 637,959 | 716,924\nOperating expenses:\nCost of sales | 304,739 | 326,288 | 356,414\nFulfillment | 90,619 | 98,505 | 109,074\nT",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "googl-2021-9",
+          "description": "GOOGL FY2021: Revenue and operating income; use the column for this fiscal year",
+          "alternatives": [
+            {
+              "accession_number": "0001652044-22-000019",
+              "chunk_index": 98,
+              "chunk_id": "460dc34a-0007-40c8-8eb1-1bcc2da3842f",
+              "text_sha256": "f5b229692a166e49a03f8ffc367c07b73b82896a25ca2c41d0f810469ab488c3",
+              "excerpt": "See accompanying notes.\n\nAlphabet Inc.\n\nItem 8. Financial Statements and Supplementary Data\nCONSOLIDATED STATEMENTS OF INCOME\n\n[TABLE]\nYear Ended December 31,\n2019 | 2020 | 2021\nRevenues | $ | 161,857 | $ | 182,527 | $ | 257,637\nCosts and expenses:\nCost of revenues | 71,896 | 84,732 | 110,939\nResearch and development | 26,018 | 27,573 | 31,562\nSales and marketing | 18,464 | 17,946 | 22,912\nGeneral and administrative | 9,551 | 11,052 | 13,510\nEuropean Commission fines | 1,697 ",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "googl-2025-10",
+          "description": "GOOGL FY2025: Revenue and operating income; use the column for this fiscal year",
+          "alternatives": [
+            {
+              "accession_number": "0001652044-26-000018",
+              "chunk_index": 102,
+              "chunk_id": "42ea1182-86ee-49b1-b1c7-330d05f2b510",
+              "text_sha256": "f1d9e7659ca5e151b493e23326580c29dd51dd2b867601e83d0b815d79b1d08a",
+              "excerpt": "See accompanying notes.\n\n48.\n\nAlphabet Inc.\n\nItem 8. Financial Statements and Supplementary Data\nCONSOLIDATED STATEMENTS OF INCOME\n\n[TABLE]\nYear Ended December 31,\n2023 | 2024 | 2025\nRevenues | $ | 307,394 | $ | 350,018 | $ | 402,836\nCosts and expenses:\nCost of revenues | 133,332 | 146,306 | 162,535\nResearch and development | 45,427 | 49,326 | 61,087\nSales and marketing | 27,917 | 27,808 | 28,693\nGeneral and administrative | 16,425 | 14,188 | 21,482\nTotal costs and expenses |",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        }
+      ],
+      "rubric": {
+        "required_findings_points": 6,
+        "citation_points": 2,
+        "caveat_points": 1,
+        "interpretation_points": 1,
+        "pass_score": 8,
+        "critical_failure": "ranking by the change in ordinary operating margin rather than calculating incremental operating margin.",
+        "rounding": {
+          "usd_billions_absolute": 0.2,
+          "percentage_points_absolute": 0.2,
+          "relative_percent": 1
+        },
+        "human_review_required": true
+      }
+    },
+    {
+      "code": "DR-02",
+      "question": "Use the 10-K filings for Apple (AAPL), Microsoft (MSFT), NVIDIA (NVDA), Amazon (AMZN), and Alphabet (GOOGL). Calculate fiscal-year revenue per disclosed employee for all five companies in 2021 and 2025. Which company improved the most, and what disclosure differences prevent a literal productivity ranking?",
+      "gold_answer": "| Company | 2021 revenue / employees | 2025 revenue / employees | Change |\n|---|---:|---:|---:|\n| Apple | $365.817B / 154,000 = **$2.38M** | $416.161B / 166,000 = **$2.51M** | **+5.5%** |\n| Microsoft | $168.088B / 181,000 = **$0.93M** | $281.724B / 228,000 = **$1.24M** | **+33.1%** |\n| NVIDIA | $16.675B / 18,975 = **$0.88M** | $130.497B / 36,000 = **$3.62M** | **+312.5%** |\n| Amazon | $469.822B / 1,608,000 = **$0.29M** | $716.924B / 1,576,000 = **$0.45M** | **+55.7%** |\n| Alphabet | $257.637B / 156,500 = **$1.65M** | $402.836B / 190,820 = **$2.11M** | **+28.2%** |\n\nNVIDIA improved the most. This is a scale/output ratio, not a clean labor\nproductivity measure. Apple reports full-time equivalents; Microsoft reports\nfull-time employees; Amazon includes full-time and part-time employees and also\nuses contractors and temporary personnel; the other companies' workforce and\noutsourcing models differ. The figures are point-in-time headcounts divided by\nfull-year revenue, and mix and price changes can dominate labor productivity.",
+      "evidence_groups": [
+        {
+          "id": "aapl-2021-1",
+          "description": "AAPL FY2021: Revenue and operating income; use the column for this fiscal year",
+          "alternatives": [
+            {
+              "accession_number": "0000320193-21-000105",
+              "chunk_index": 73,
+              "chunk_id": "34f7f508-d1e9-49ca-ab10-5e9520f25675",
+              "text_sha256": "881381450ee3b3b5571f7a20481dc75be9c1ca1dbde36dbb7dff7202779914e9",
+              "excerpt": "All financial statement schedules have been omitted, since the required information is not applicable or is not present in amounts sufficient to require submission of the schedule, or because the information required is included in the consolidated financial statements and accompanying notes.\n\nItem 8. Financial Statements and Supplementary Data\nApple Inc. | 2021 Form 10-K | 28\n\nApple Inc.\n\nItem 8. Financial Statements and Supplementary Data\n(In millions, except number of shar",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "aapl-2021-2",
+          "description": "AAPL FY2021: Headcount and its definition; year-end rather than annual average",
+          "alternatives": [
+            {
+              "accession_number": "0000320193-21-000105",
+              "chunk_index": 11,
+              "chunk_id": "ce0b5740-ded2-435e-b4d4-6c88bcc0b36f",
+              "text_sha256": "9a4a3561e681b40527c56b00fb083fa74ec1987084541e5b8f8920eac1140f23",
+              "excerpt": "ure. As of September 25, 2021, the Company had approximately 154,000 full-time equivalent employees.\n\nWorkplace Practices and Policies\n\nThe Company is committed to providing a workplace free of harassment or discrimination based on race, color, religion, sex, sexual orientation, gender identity, national origin, disability, veteran status, caste or other legally protected characteristic. The Company is an equal opportunity employer committed to inclusion and diversity.\n\nCompe",
+              "section_title": "Item 1. Business"
+            }
+          ]
+        },
+        {
+          "id": "aapl-2025-3",
+          "description": "AAPL FY2025: Revenue and operating income; use the column for this fiscal year",
+          "alternatives": [
+            {
+              "accession_number": "0000320193-25-000079",
+              "chunk_index": 76,
+              "chunk_id": "2e73242f-b895-46e7-a349-5cc262725b40",
+              "text_sha256": "6bf496999fabcb04b3ae02fda3743fe1131932b1ddaa013c5652ffe2a8a58306",
+              "excerpt": "All financial statement schedules have been omitted, since the required information is not applicable or is not present in amounts sufficient to require submission of the schedule, or because the information required is included in the consolidated financial statements and accompanying notes.\n\nItem 8. Financial Statements and Supplementary Data\nApple Inc. | 2025 Form 10-K | 28\n\nApple Inc.\n\nItem 8. Financial Statements and Supplementary Data\n(In millions, except number of shar",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "aapl-2025-4",
+          "description": "AAPL FY2025: Headcount and its definition; year-end rather than annual average",
+          "alternatives": [
+            {
+              "accession_number": "0000320193-25-000079",
+              "chunk_index": 12,
+              "chunk_id": "8ced3189-15ef-478f-a2c2-35347f84424e",
+              "text_sha256": "efa010ce7ef955fda3da721d41576b0a5febecbcb8409f7c657d65b544a6b769",
+              "excerpt": "ion. As of September 27, 2025, the Company had approximately 166,000 full-time equivalent employees.\n\nThe Company believes that compensation should be competitive and equitable, and offers discretionary cash and equity awards to enable employees to share in the Company\u2019s success. The Company recognizes its people are most likely to thrive when they have the resources to meet their needs and the time and support to succeed in their professional and personal lives. In support o",
+              "section_title": "Item 1. Business"
+            }
+          ]
+        },
+        {
+          "id": "msft-2021-5",
+          "description": "MSFT FY2021: Revenue and operating income; use the column for this fiscal year",
+          "alternatives": [
+            {
+              "accession_number": "0001564590-21-039151",
+              "chunk_index": 141,
+              "chunk_id": "db499b81-e961-44dd-94bd-46c54fac5a25",
+              "text_sha256": "bb8cc49688646fdcb84b4d45a72c1174890afe4a05169019d8cc21c738a29d02",
+              "excerpt": "[TABLE]\n(In millions, except per share amounts)\nYear Ended June 30, | 2021 | 2020 | 2019\nRevenue:\nProduct | $ | 71,074 | $ | 68,041 | $ | 66,069\nService and other | 97,014 | 74,974 | 59,774\nTotal revenue | 168,088 | 143,015 | 125,843\nCost of revenue:\nProduct | 18,219 | 16,017 | 16,273\nService and other | 34,013 | 30,061 | 26,637\nTotal cost of revenue | 52,232 | 46,078 | 42,910\nGross margin | 115,856 | 96,937 | 82,933\nResearch and development | 20,716 | 19,269 | 16,876\nSales a",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "msft-2021-6",
+          "description": "MSFT FY2021: Headcount and its definition; year-end rather than annual average",
+          "alternatives": [
+            {
+              "accession_number": "0001564590-21-039151",
+              "chunk_index": 17,
+              "chunk_id": "f513132f-a0c7-42e0-a264-d4ab47282d31",
+              "text_sha256": "b8f9aee51d72f702c0fcc41a8ec7efaa4520e118fe6051b8e9d0f42da9290948",
+              "excerpt": " creating a respectful, rewarding, and inclusive work environment that enables our global employees to create products and services that further our mission to empower every person and every organization on the planet to achieve more.\n\nAs of June 30, 2021, we employed approximately 181,000 people on a full-time basis, 103,000 in the U.S. and 78,000 internationally. Of the total employed people, 67,000 were in operations, including manufacturing, distribution, product support,",
+              "section_title": "Item 1. Business"
+            }
+          ]
+        },
+        {
+          "id": "msft-2025-7",
+          "description": "MSFT FY2025: Revenue and operating income; use the column for this fiscal year",
+          "alternatives": [
+            {
+              "accession_number": "0000950170-25-100235",
+              "chunk_index": 99,
+              "chunk_id": "da04cdb2-4d10-49c4-894f-4a44d098140d",
+              "text_sha256": "1febfef1d19ae2329cf8a746d543986419d05c8815e64887cfbd6c47ffe2378d",
+              "excerpt": "[TABLE]\n(In millions, except per share amounts)\nYear Ended June 30, | 2025 | 2024 | 2023\nRevenue:\nProduct | $ | 63,946 | $ | 64,773 | $ | 64,699\nService and other | 217,778 | 180,349 | 147,216\nTotal revenue | 281,724 | 245,122 | 211,915\nCost of revenue:\nProduct | 13,501 | 15,272 | 17,804\nService and other | 74,330 | 58,842 | 48,059\nTotal cost of revenue | 87,831 | 74,114 | 65,863\nGross margin | 193,893 | 171,008 | 146,052\nResearch and development | 32,488 | 29,510 | 27,195\nSa",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "msft-2025-8",
+          "description": "MSFT FY2025: Headcount and its definition; year-end rather than annual average",
+          "alternatives": [
+            {
+              "accession_number": "0000950170-25-100235",
+              "chunk_index": 16,
+              "chunk_id": "c8859c65-0281-4ab5-9a66-50827e2208cb",
+              "text_sha256": "0f6143b80755dc7b7a2ef8efe54f911045fb5ba0e8851ba873eed21540062832",
+              "excerpt": "eople on a full-time basis, 125,000 in the U.S. and 103,000 internationally. Of the total employees, 89,000 were in operations, including product support and consulting services, datacenter operations, and manufacturing and distribution; 80,000 were in product research and development; 44,000 were in sales and marketing; and 15,000 were in general and administration. Certain employees are subject to collective bargaining agreements.\n\nWe design our programs to attract, reward,",
+              "section_title": "Item 1. Business"
+            }
+          ]
+        },
+        {
+          "id": "nvda-2021-9",
+          "description": "NVDA FY2021: Revenue and operating income; use the column for this fiscal year",
+          "alternatives": [
+            {
+              "accession_number": "0001045810-21-000010",
+              "chunk_index": 99,
+              "chunk_id": "6b3d488b-389c-48fe-a0c3-50ef8f9172e9",
+              "text_sha256": "30636e54aaacd3e066f3c8654778aa2846b8b04ec71bec3eccd7d47db5d94933",
+              "excerpt": "[TABLE]\nYear Ended\nJanuary 31, 2021 | January 26, 2020 | January 27, 2019\nRevenue | $ | 16,675 | $ | 10,918 | $ | 11,716\nCost of revenue | 6,279 | 4,150 | 4,545\nGross profit | 10,396 | 6,768 | 7,171\nOperating expenses\nResearch and development | 3,924 | 2,829 | 2,376\nSales, general and administrative | 1,940 | 1,093 | 991\nTotal operating expenses | 5,864 | 3,922 | 3,367\nIncome from operations | 4,532 | 2,846 | 3,804\nInterest income | 57 | 178 | 136\nInterest expense | (184) | (",
+              "section_title": "Item 15. Exhibits and Financial Statement Schedules"
+            }
+          ]
+        },
+        {
+          "id": "nvda-2021-10",
+          "description": "NVDA FY2021: Headcount and its definition; year-end rather than annual average",
+          "alternatives": [
+            {
+              "accession_number": "0001045810-21-000010",
+              "chunk_index": 21,
+              "chunk_id": "397ab2a3-5391-485c-b083-ad1233b121ac",
+              "text_sha256": "eace680582a52afbf0d6f7be7989d4d5a212ce06fc0d18a760bec71bdc2c6e78",
+              "excerpt": "r a discussion of these potential impacts.\n\nHuman Capital Management\n\nWe believe that our employees are our greatest assets, and they play a key role in creating long-term value for our stakeholders. As of January 31, 2021, we had 18,975 employees in 29 countries. 13,532 were engaged in research and development and 5,443 were engaged in sales, marketing, operations, and administrative positions.\n\nTo be competitive and execute our business strategy successfully, we must recrui",
+              "section_title": "Item 1. Business"
+            }
+          ]
+        },
+        {
+          "id": "nvda-2025-11",
+          "description": "NVDA FY2025: Revenue and operating income; use the column for this fiscal year",
+          "alternatives": [
+            {
+              "accession_number": "0001045810-25-000023",
+              "chunk_index": 125,
+              "chunk_id": "40ed94e2-da18-44d3-97f3-d48a552610d4",
+              "text_sha256": "76dc7a6d58fef137cabe93e75b17e478c2f2a7b321f010c8c81264e923fdfe2d",
+              "excerpt": "[TABLE]\nYear Ended\nJan 26, 2025 | Jan 28, 2024 | Jan 29, 2023\nRevenue | $ | 130,497 | $ | 60,922 | $ | 26,974\nCost of revenue | 32,639 | 16,621 | 11,618\nGross profit | 97,858 | 44,301 | 15,356\nOperating expenses\nResearch and development | 12,914 | 8,675 | 7,339\nSales, general and administrative | 3,491 | 2,654 | 2,440\nAcquisition termination cost | \u2014 | \u2014 | 1,353\nTotal operating expenses | 16,405 | 11,329 | 11,132\nOperating income | 81,453 | 32,972 | 4,224\nInterest income | 1,",
+              "section_title": "Item 15. Exhibits and Financial Statement Schedules"
+            }
+          ]
+        },
+        {
+          "id": "nvda-2025-12",
+          "description": "NVDA FY2025: Headcount and its definition; year-end rather than annual average",
+          "alternatives": [
+            {
+              "accession_number": "0001045810-25-000023",
+              "chunk_index": 23,
+              "chunk_id": "9ae36a83-de85-4a9f-9e92-0d1f0186a366",
+              "text_sha256": "196a40ac3570deba15fc147a9cc942038c0c2c6775392bbbbfdbcabedbb70921",
+              "excerpt": "lore mitigation and adaptation strategies.\n\nHuman Capital Management\n\nWe believe that our employees are our greatest assets, and they play a key role in creating long-term value for our stakeholders. As of the end of fiscal year 2025, we had approximately 36,000 employees in 38 countries; 27,100 were engaged in research and development and 8,900 were engaged in sales, marketing, operations, and administrative positions. The Compensation Committee of our Board of Directors ass",
+              "section_title": "Item 1. Business"
+            }
+          ]
+        },
+        {
+          "id": "amzn-2021-13",
+          "description": "AMZN FY2021: Revenue and operating income; use the column for this fiscal year",
+          "alternatives": [
+            {
+              "accession_number": "0001018724-22-000005",
+              "chunk_index": 75,
+              "chunk_id": "5721df7e-409e-4b04-a08a-13d5154b50c2",
+              "text_sha256": "81a762388d15126fba3c924a3926005ad9f69cec5286f2fc728889ced92b4abb",
+              "excerpt": "See accompanying notes to consolidated financial statements.\n\nAMAZON.COM, INC.\n\nItem 8. Financial Statements and Supplementary Data\n(in millions, except per share data)\n\n[TABLE]\nYear Ended December 31,\n2019 | 2020 | 2021\nNet product sales | $ | 160,408 | $ | 215,915 | $ | 241,787\nNet service sales | 120,114 | 170,149 | 228,035\nTotal net sales | 280,522 | 386,064 | 469,822\nOperating expenses:\nCost of sales | 165,536 | 233,307 | 272,344\nFulfillment | 40,232 | 58,517 | 75,111\nTe",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "amzn-2021-14",
+          "description": "AMZN FY2021: Headcount and its definition; year-end rather than annual average",
+          "alternatives": [
+            {
+              "accession_number": "0001018724-22-000005",
+              "chunk_index": 7,
+              "chunk_id": "3bcc22f2-dfab-460f-b98c-6ac94098ae36",
+              "text_sha256": "dad86a66c000252dbeca6919e5ad2f2d48a0064c179879b9725c445f1e3f1944",
+              "excerpt": "tent law, trade-secret protection, and confidentiality and/or license agreements with our employees, customers, partners, and others to protect our proprietary rights. We have registered, or applied for the registration of, a number of U.S. and international domain names, trademarks, service marks, and copyrights. Additionally, we have filed U.S. and international patent applications covering certain of our proprietary technology.\n\nSeasonality\n\nOur business is affected by sea",
+              "section_title": "Item 1. Business"
+            }
+          ]
+        },
+        {
+          "id": "amzn-2025-15",
+          "description": "AMZN FY2025: Revenue and operating income; use the column for this fiscal year",
+          "alternatives": [
+            {
+              "accession_number": "0001018724-26-000004",
+              "chunk_index": 77,
+              "chunk_id": "5cb78ae3-2747-4e66-87b1-bbd4e70c7ee9",
+              "text_sha256": "d73764ec16b4582760fe59b48d162e7512487a13fdd32f5261402920b45108be",
+              "excerpt": "See accompanying notes to consolidated financial statements.\n\nAMAZON.COM, INC.\n\nItem 8. Financial Statements and Supplementary Data\n(in millions, except per share data)\n\n[TABLE]\nYear Ended December 31,\n2023 | 2024 | 2025\nNet product sales | $ | 255,887 | $ | 272,311 | $ | 296,266\nNet service sales | 318,898 | 365,648 | 420,658\nTotal net sales | 574,785 | 637,959 | 716,924\nOperating expenses:\nCost of sales | 304,739 | 326,288 | 356,414\nFulfillment | 90,619 | 98,505 | 109,074\nT",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "amzn-2025-16",
+          "description": "AMZN FY2025: Headcount and its definition; year-end rather than annual average",
+          "alternatives": [
+            {
+              "accession_number": "0001018724-26-000004",
+              "chunk_index": 8,
+              "chunk_id": "a0a88b52-5d28-4863-8f49-6d110b6d003f",
+              "text_sha256": "52d3bb527c6e12d1c85c89e5e0041dc205697fcb51c35e2f776d54464b085a00",
+              "excerpt": "tent law, trade-secret protection, and confidentiality and/or license agreements with our employees, customers, partners, and others to protect our proprietary rights. We have registered, or applied for the registration of, a number of U.S. and international domain names, trademarks, service marks, and copyrights. Additionally, we have filed U.S. and international patent applications covering certain of our proprietary technology.\n\nSeasonality\n\nOur business is affected by sea",
+              "section_title": "Item 1. Business"
+            }
+          ]
+        },
+        {
+          "id": "googl-2021-17",
+          "description": "GOOGL FY2021: Revenue and operating income; use the column for this fiscal year",
+          "alternatives": [
+            {
+              "accession_number": "0001652044-22-000019",
+              "chunk_index": 98,
+              "chunk_id": "460dc34a-0007-40c8-8eb1-1bcc2da3842f",
+              "text_sha256": "f5b229692a166e49a03f8ffc367c07b73b82896a25ca2c41d0f810469ab488c3",
+              "excerpt": "See accompanying notes.\n\nAlphabet Inc.\n\nItem 8. Financial Statements and Supplementary Data\nCONSOLIDATED STATEMENTS OF INCOME\n\n[TABLE]\nYear Ended December 31,\n2019 | 2020 | 2021\nRevenues | $ | 161,857 | $ | 182,527 | $ | 257,637\nCosts and expenses:\nCost of revenues | 71,896 | 84,732 | 110,939\nResearch and development | 26,018 | 27,573 | 31,562\nSales and marketing | 18,464 | 17,946 | 22,912\nGeneral and administrative | 9,551 | 11,052 | 13,510\nEuropean Commission fines | 1,697 ",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "googl-2021-18",
+          "description": "GOOGL FY2021: Headcount and its definition; year-end rather than annual average",
+          "alternatives": [
+            {
+              "accession_number": "0001652044-22-000019",
+              "chunk_index": 14,
+              "chunk_id": "2dde4cfb-2c70-4758-92f6-3c614c4b45b6",
+              "text_sha256": "89bc0cfc6691583f949d09c4a7a9b0711f0da1353f1231c8dd20024b176cf23c",
+              "excerpt": "le are critical for our continued success, so we work hard to create an environment where employees can have fulfilling careers, and be happy, healthy, and productive. We offer industry-leading benefits and programs to take care of the diverse needs of our employees and their families, including opportunities for career growth and\n\ndevelopment, resources to support their financial health, and access to excellent healthcare choices. Our competitive compensation programs help u",
+              "section_title": "Item 1. Business"
+            }
+          ]
+        },
+        {
+          "id": "googl-2025-19",
+          "description": "GOOGL FY2025: Revenue and operating income; use the column for this fiscal year",
+          "alternatives": [
+            {
+              "accession_number": "0001652044-26-000018",
+              "chunk_index": 102,
+              "chunk_id": "42ea1182-86ee-49b1-b1c7-330d05f2b510",
+              "text_sha256": "f1d9e7659ca5e151b493e23326580c29dd51dd2b867601e83d0b815d79b1d08a",
+              "excerpt": "See accompanying notes.\n\n48.\n\nAlphabet Inc.\n\nItem 8. Financial Statements and Supplementary Data\nCONSOLIDATED STATEMENTS OF INCOME\n\n[TABLE]\nYear Ended December 31,\n2023 | 2024 | 2025\nRevenues | $ | 307,394 | $ | 350,018 | $ | 402,836\nCosts and expenses:\nCost of revenues | 133,332 | 146,306 | 162,535\nResearch and development | 45,427 | 49,326 | 61,087\nSales and marketing | 27,917 | 27,808 | 28,693\nGeneral and administrative | 16,425 | 14,188 | 21,482\nTotal costs and expenses |",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "googl-2025-20",
+          "description": "GOOGL FY2025: Headcount and its definition; year-end rather than annual average",
+          "alternatives": [
+            {
+              "accession_number": "0001652044-26-000018",
+              "chunk_index": 12,
+              "chunk_id": "5289a1db-34d1-4fc0-b3aa-1cc87153055d",
+              "text_sha256": "3aab4234df509794e9439e7d57201c4ff1eed9c7af926df7e6393e94a9e89407",
+              "excerpt": "Item 1. Business\n\nAs of December 31, 2025, Alphabet had 190,820 employees. We have work councils and statutory employee representation obligations in certain countries, and we are committed to supporting protected labor rights, maintaining an open culture, and listening to our employees.\n\nWhen appropriate we partner with outside companies on a contractual basis to provide a specialized service or to temporarily cover a short-term need. The employees of our suppliers and staff",
+              "section_title": "Item 1. Business"
+            }
+          ]
+        }
+      ],
+      "rubric": {
+        "required_findings_points": 6,
+        "citation_points": 2,
+        "caveat_points": 1,
+        "interpretation_points": 1,
+        "pass_score": 8,
+        "critical_failure": "calling Amazon's denominator \u201cfull-time employees\u201d or claiming the ratios prove relative employee quality.",
+        "rounding": {
+          "usd_billions_absolute": 0.2,
+          "percentage_points_absolute": 0.2,
+          "relative_percent": 1
+        },
+        "human_review_required": true
+      }
+    },
+    {
+      "code": "DR-03",
+      "question": "Use the 10-K filings for Apple (AAPL), Microsoft (MSFT), NVIDIA (NVDA), Amazon (AMZN), and Alphabet (GOOGL). For every company, calculate a filing-based cash free-cash-flow proxy for 2021 and 2025 as operating cash flow less cash purchases/additions of property and equipment (and intangible assets where NVIDIA combines them); use Amazon's net-of-sales-and-incentives measure. Divide by revenue. Rank 2025 and identify the largest improvement and deterioration.",
+      "gold_answer": "| Company | 2021 proxy FCF margin | 2025 proxy FCF margin | Change |\n|---|---:|---:|---:|\n| NVIDIA | ($5.822B - $1.128B) / $16.675B = **28.1%** | ($64.089B - $3.236B) / $130.497B = **46.6%** | **+18.5 pp** |\n| Microsoft | ($76.740B - $20.622B) / $168.088B = **33.4%** | ($136.162B - $64.551B) / $281.724B = **25.4%** | **-8.0 pp** |\n| Apple | ($104.038B - $11.085B) / $365.817B = **25.4%** | ($111.482B - $12.715B) / $416.161B = **23.7%** | **-1.7 pp** |\n| Alphabet | ($91.652B - $24.640B) / $257.637B = **26.0%** | ($164.713B - $91.447B) / $402.836B = **18.2%** | **-7.8 pp** |\n| Amazon | ($46.327B - $55.396B) / $469.822B = **-1.9%** | ($139.514B - $128.320B) / $716.924B = **1.6%** | **+3.5 pp** |\n\nThe 2025 rank is NVIDIA, Microsoft, Apple, Alphabet, Amazon. NVIDIA has the\nlargest improvement; Microsoft has the largest deterioration, narrowly more\nthan Alphabet. The metric is intentionally a proxy: Amazon uses purchases net\nof sales and incentives, NVIDIA combines intangible assets, and leases,\nfinancing obligations, acquisitions, and working-capital timing are not made\nfully comparable.",
+      "evidence_groups": [
+        {
+          "id": "aapl-2021-1",
+          "description": "AAPL FY2021: Revenue and operating income; use the column for this fiscal year",
+          "alternatives": [
+            {
+              "accession_number": "0000320193-21-000105",
+              "chunk_index": 73,
+              "chunk_id": "34f7f508-d1e9-49ca-ab10-5e9520f25675",
+              "text_sha256": "881381450ee3b3b5571f7a20481dc75be9c1ca1dbde36dbb7dff7202779914e9",
+              "excerpt": "All financial statement schedules have been omitted, since the required information is not applicable or is not present in amounts sufficient to require submission of the schedule, or because the information required is included in the consolidated financial statements and accompanying notes.\n\nItem 8. Financial Statements and Supplementary Data\nApple Inc. | 2021 Form 10-K | 28\n\nApple Inc.\n\nItem 8. Financial Statements and Supplementary Data\n(In millions, except number of shar",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "aapl-2021-2",
+          "description": "AAPL FY2021: Operating cash flow and cash capex; retain net-of-incentives/intangible definitions",
+          "alternatives": [
+            {
+              "accession_number": "0000320193-21-000105",
+              "chunk_index": 77,
+              "chunk_id": "032a6b13-1746-4b2b-a872-152c8d3a2d76",
+              "text_sha256": "9f67542062f40068d55e94dbea432e988361368cd9d5f0cb997466bd69fdabb3",
+              "excerpt": "[TABLE]\nYears ended\nSeptember 25, 2021 | September 26, 2020 | September 28, 2019\nCash, cash equivalents and restricted cash, beginning balances | $ | 39,789 | $ | 50,224 | $ | 25,913\nOperating activities:\nNet income | 94,680 | 57,411 | 55,256\nAdjustments to reconcile net income to cash generated by operating activities:\nDepreciation and amortization | 11,284 | 11,056 | 12,547\nShare-based compensation expense | 7,906 | 6,829 | 6,068\nDeferred income tax benefit | (4,774) | (215",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "aapl-2025-3",
+          "description": "AAPL FY2025: Revenue and operating income; use the column for this fiscal year",
+          "alternatives": [
+            {
+              "accession_number": "0000320193-25-000079",
+              "chunk_index": 76,
+              "chunk_id": "2e73242f-b895-46e7-a349-5cc262725b40",
+              "text_sha256": "6bf496999fabcb04b3ae02fda3743fe1131932b1ddaa013c5652ffe2a8a58306",
+              "excerpt": "All financial statement schedules have been omitted, since the required information is not applicable or is not present in amounts sufficient to require submission of the schedule, or because the information required is included in the consolidated financial statements and accompanying notes.\n\nItem 8. Financial Statements and Supplementary Data\nApple Inc. | 2025 Form 10-K | 28\n\nApple Inc.\n\nItem 8. Financial Statements and Supplementary Data\n(In millions, except number of shar",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "aapl-2025-4",
+          "description": "AAPL FY2025: Operating cash flow and cash capex; retain net-of-incentives/intangible definitions",
+          "alternatives": [
+            {
+              "accession_number": "0000320193-25-000079",
+              "chunk_index": 80,
+              "chunk_id": "b3f83a4c-f633-413f-af45-a8e167a12269",
+              "text_sha256": "9f3e3eef2d2d312aef963d4cd5e257a588f8559491894e6ccaa39b5608332555",
+              "excerpt": "[TABLE]\nYears ended\nSeptember 27, 2025 | September 28, 2024 | September 30, 2023\nCash, cash equivalents, and restricted cash and cash equivalents, beginning balances | $ | 29,943 | $ | 30,737 | $ | 24,977\nOperating activities:\nNet income | 112,010 | 93,736 | 96,995\nAdjustments to reconcile net income to cash generated by operating activities:\nDepreciation and amortization | 11,698 | 11,445 | 11,519\nShare-based compensation expense | 12,863 | 11,688 | 10,833\nOther | (89) | (2,",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "msft-2021-5",
+          "description": "MSFT FY2021: Revenue and operating income; use the column for this fiscal year",
+          "alternatives": [
+            {
+              "accession_number": "0001564590-21-039151",
+              "chunk_index": 141,
+              "chunk_id": "db499b81-e961-44dd-94bd-46c54fac5a25",
+              "text_sha256": "bb8cc49688646fdcb84b4d45a72c1174890afe4a05169019d8cc21c738a29d02",
+              "excerpt": "[TABLE]\n(In millions, except per share amounts)\nYear Ended June 30, | 2021 | 2020 | 2019\nRevenue:\nProduct | $ | 71,074 | $ | 68,041 | $ | 66,069\nService and other | 97,014 | 74,974 | 59,774\nTotal revenue | 168,088 | 143,015 | 125,843\nCost of revenue:\nProduct | 18,219 | 16,017 | 16,273\nService and other | 34,013 | 30,061 | 26,637\nTotal cost of revenue | 52,232 | 46,078 | 42,910\nGross margin | 115,856 | 96,937 | 82,933\nResearch and development | 20,716 | 19,269 | 16,876\nSales a",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "msft-2021-6",
+          "description": "MSFT FY2021: Operating cash flow and cash capex; retain net-of-incentives/intangible definitions",
+          "alternatives": [
+            {
+              "accession_number": "0001564590-21-039151",
+              "chunk_index": 144,
+              "chunk_id": "f1f8c7bd-8a16-47a1-8696-c30e3a5945f9",
+              "text_sha256": "f72f482907fb151f4e97cdd4a5c99ef746e1023bd4eea4716da58304b128c4b3",
+              "excerpt": "[TABLE]\n(In millions)\nYear Ended June 30, | 2021 | 2020 | 2019\nOperations\nNet income | $ | 61,271 | $ | 44,281 | $ | 39,240\nAdjustments to reconcile net income to net cash from operations:\nDepreciation, amortization, and other | 11,686 | 12,796 | 11,682\nStock-based compensation expense | 6,118 | 5,289 | 4,652\nNet recognized gains on investments and derivatives | (1,249 | ) | (219 | ) | (792 | )\nDeferred income taxes | (150 | ) | 11 | (6,463 | )\nChanges in operating assets and",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "msft-2025-7",
+          "description": "MSFT FY2025: Revenue and operating income; use the column for this fiscal year",
+          "alternatives": [
+            {
+              "accession_number": "0000950170-25-100235",
+              "chunk_index": 99,
+              "chunk_id": "da04cdb2-4d10-49c4-894f-4a44d098140d",
+              "text_sha256": "1febfef1d19ae2329cf8a746d543986419d05c8815e64887cfbd6c47ffe2378d",
+              "excerpt": "[TABLE]\n(In millions, except per share amounts)\nYear Ended June 30, | 2025 | 2024 | 2023\nRevenue:\nProduct | $ | 63,946 | $ | 64,773 | $ | 64,699\nService and other | 217,778 | 180,349 | 147,216\nTotal revenue | 281,724 | 245,122 | 211,915\nCost of revenue:\nProduct | 13,501 | 15,272 | 17,804\nService and other | 74,330 | 58,842 | 48,059\nTotal cost of revenue | 87,831 | 74,114 | 65,863\nGross margin | 193,893 | 171,008 | 146,052\nResearch and development | 32,488 | 29,510 | 27,195\nSa",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "msft-2025-8",
+          "description": "MSFT FY2025: Operating cash flow and cash capex; retain net-of-incentives/intangible definitions",
+          "alternatives": [
+            {
+              "accession_number": "0000950170-25-100235",
+              "chunk_index": 102,
+              "chunk_id": "de0650ed-b3de-4a7d-af87-4b7bdead19bb",
+              "text_sha256": "075f32336c1b52a15a9d4c0d8832641212b20ff7f8b79f7bf3dfdbb569715df5",
+              "excerpt": "[TABLE]\n(In millions)\nYear Ended June 30, | 2025 | 2024 | 2023\nOperations\nNet income | $ | 101,832 | $ | 88,136 | $ | 72,361\nAdjustments to reconcile net income to net cash from operations:\nDepreciation, amortization, and other | 34,153 | 22,287 | 13,861\nStock-based compensation expense | 11,974 | 10,734 | 9,611\nNet recognized losses on investments and derivatives | 609 | 305 | 196\nDeferred income taxes | (7,056 | ) | (4,738 | ) | (6,059 | )\nChanges in operating assets and li",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "nvda-2021-9",
+          "description": "NVDA FY2021: Revenue and operating income; use the column for this fiscal year",
+          "alternatives": [
+            {
+              "accession_number": "0001045810-21-000010",
+              "chunk_index": 99,
+              "chunk_id": "6b3d488b-389c-48fe-a0c3-50ef8f9172e9",
+              "text_sha256": "30636e54aaacd3e066f3c8654778aa2846b8b04ec71bec3eccd7d47db5d94933",
+              "excerpt": "[TABLE]\nYear Ended\nJanuary 31, 2021 | January 26, 2020 | January 27, 2019\nRevenue | $ | 16,675 | $ | 10,918 | $ | 11,716\nCost of revenue | 6,279 | 4,150 | 4,545\nGross profit | 10,396 | 6,768 | 7,171\nOperating expenses\nResearch and development | 3,924 | 2,829 | 2,376\nSales, general and administrative | 1,940 | 1,093 | 991\nTotal operating expenses | 5,864 | 3,922 | 3,367\nIncome from operations | 4,532 | 2,846 | 3,804\nInterest income | 57 | 178 | 136\nInterest expense | (184) | (",
+              "section_title": "Item 15. Exhibits and Financial Statement Schedules"
+            }
+          ]
+        },
+        {
+          "id": "nvda-2021-10",
+          "description": "NVDA FY2021: Operating cash flow and cash capex; retain net-of-incentives/intangible definitions",
+          "alternatives": [
+            {
+              "accession_number": "0001045810-21-000010",
+              "chunk_index": 103,
+              "chunk_id": "362938a6-093f-42a1-a3fc-fb3d5e57a2d9",
+              "text_sha256": "4dee67acdb5a7c0e1fc14fd0be8927e350d95923d4b55fda77de789682386203",
+              "excerpt": "See accompanying notes to the consolidated financial statements.\n\nItem 15. Exhibits and Financial Statement Schedules\n(In millions)\n\n[TABLE]\nYear Ended\nJanuary 31, 2021 | January 26, 2020 | January 27, 2019\nCash flows from operating activities:\nNet income | $ | 4,332 | $ | 2,796 | $ | 4,141\nAdjustments to reconcile net income to net cash provided by operating activities:\nStock-based compensation expense | 1,397 | 844 | 557\nDepreciation and amortization | 1,098 | 381 | 262\nDef",
+              "section_title": "Item 15. Exhibits and Financial Statement Schedules"
+            }
+          ]
+        },
+        {
+          "id": "nvda-2025-11",
+          "description": "NVDA FY2025: Revenue and operating income; use the column for this fiscal year",
+          "alternatives": [
+            {
+              "accession_number": "0001045810-25-000023",
+              "chunk_index": 125,
+              "chunk_id": "40ed94e2-da18-44d3-97f3-d48a552610d4",
+              "text_sha256": "76dc7a6d58fef137cabe93e75b17e478c2f2a7b321f010c8c81264e923fdfe2d",
+              "excerpt": "[TABLE]\nYear Ended\nJan 26, 2025 | Jan 28, 2024 | Jan 29, 2023\nRevenue | $ | 130,497 | $ | 60,922 | $ | 26,974\nCost of revenue | 32,639 | 16,621 | 11,618\nGross profit | 97,858 | 44,301 | 15,356\nOperating expenses\nResearch and development | 12,914 | 8,675 | 7,339\nSales, general and administrative | 3,491 | 2,654 | 2,440\nAcquisition termination cost | \u2014 | \u2014 | 1,353\nTotal operating expenses | 16,405 | 11,329 | 11,132\nOperating income | 81,453 | 32,972 | 4,224\nInterest income | 1,",
+              "section_title": "Item 15. Exhibits and Financial Statement Schedules"
+            }
+          ]
+        },
+        {
+          "id": "nvda-2025-12",
+          "description": "NVDA FY2025: Operating cash flow and cash capex; retain net-of-incentives/intangible definitions",
+          "alternatives": [
+            {
+              "accession_number": "0001045810-25-000023",
+              "chunk_index": 129,
+              "chunk_id": "32bc52c6-d773-46f2-8504-de8f549c48f6",
+              "text_sha256": "666a553f087644b24dacc40413efbc70b8b629146524dff3d7e2fb3d53a098c1",
+              "excerpt": "See accompanying Notes to the Consolidated Financial Statements.\n\nItem 15. Exhibits and Financial Statement Schedules\n(In millions)\n\n[TABLE]\nYear Ended\nJan 26, 2025 | Jan 28, 2024 | Jan 29, 2023\nCash flows from operating activities:\nNet income | $ | 72,880 | $ | 29,760 | $ | 4,368\nAdjustments to reconcile net income to net cash provided by operating activities:\nStock-based compensation expense | 4,737 | 3,549 | 2,709\nDepreciation and amortization | 1,864 | 1,508 | 1,544\nDefer",
+              "section_title": "Item 15. Exhibits and Financial Statement Schedules"
+            }
+          ]
+        },
+        {
+          "id": "amzn-2021-13",
+          "description": "AMZN FY2021: Revenue and operating income; use the column for this fiscal year",
+          "alternatives": [
+            {
+              "accession_number": "0001018724-22-000005",
+              "chunk_index": 75,
+              "chunk_id": "5721df7e-409e-4b04-a08a-13d5154b50c2",
+              "text_sha256": "81a762388d15126fba3c924a3926005ad9f69cec5286f2fc728889ced92b4abb",
+              "excerpt": "See accompanying notes to consolidated financial statements.\n\nAMAZON.COM, INC.\n\nItem 8. Financial Statements and Supplementary Data\n(in millions, except per share data)\n\n[TABLE]\nYear Ended December 31,\n2019 | 2020 | 2021\nNet product sales | $ | 160,408 | $ | 215,915 | $ | 241,787\nNet service sales | 120,114 | 170,149 | 228,035\nTotal net sales | 280,522 | 386,064 | 469,822\nOperating expenses:\nCost of sales | 165,536 | 233,307 | 272,344\nFulfillment | 40,232 | 58,517 | 75,111\nTe",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "amzn-2021-14",
+          "description": "AMZN FY2021: Operating cash flow and cash capex; retain net-of-incentives/intangible definitions",
+          "alternatives": [
+            {
+              "accession_number": "0001018724-22-000005",
+              "chunk_index": 59,
+              "chunk_id": "f510aab1-cf48-48c8-9ca5-9bc34b6a4a70",
+              "text_sha256": "84ab4c84701e378949167f032a61b3a5d3f42a4da8f8683b23fa4c2ffdcb7bda",
+              "excerpt": "[TABLE]\nYear Ended December 31,\n2020 | 2021\nNet cash provided by (used in) operating activities | $ | 66,064 | $ | 46,327\nPurchases of property and equipment, net of proceeds from sales and incentives | (35,044) | (55,396)\nFree cash flow | $ | 31,020 | $ | (9,069)\nNet cash provided by (used in) investing activities | $ | (59,611) | $ | (58,154)\nNet cash provided by (used in) financing activities | $ | (1,104) | $ | 6,291",
+              "section_title": "Item 7. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operations"
+            }
+          ]
+        },
+        {
+          "id": "amzn-2025-15",
+          "description": "AMZN FY2025: Revenue and operating income; use the column for this fiscal year",
+          "alternatives": [
+            {
+              "accession_number": "0001018724-26-000004",
+              "chunk_index": 77,
+              "chunk_id": "5cb78ae3-2747-4e66-87b1-bbd4e70c7ee9",
+              "text_sha256": "d73764ec16b4582760fe59b48d162e7512487a13fdd32f5261402920b45108be",
+              "excerpt": "See accompanying notes to consolidated financial statements.\n\nAMAZON.COM, INC.\n\nItem 8. Financial Statements and Supplementary Data\n(in millions, except per share data)\n\n[TABLE]\nYear Ended December 31,\n2023 | 2024 | 2025\nNet product sales | $ | 255,887 | $ | 272,311 | $ | 296,266\nNet service sales | 318,898 | 365,648 | 420,658\nTotal net sales | 574,785 | 637,959 | 716,924\nOperating expenses:\nCost of sales | 304,739 | 326,288 | 356,414\nFulfillment | 90,619 | 98,505 | 109,074\nT",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "amzn-2025-16",
+          "description": "AMZN FY2025: Operating cash flow and cash capex; retain net-of-incentives/intangible definitions",
+          "alternatives": [
+            {
+              "accession_number": "0001018724-26-000004",
+              "chunk_index": 65,
+              "chunk_id": "f8405b62-e0ac-40aa-bf0c-8f58385bb197",
+              "text_sha256": "1db0f15ee542e8aba83d94b5969a98e23dc3b86faa2102b030838cdfda1b85bd",
+              "excerpt": "Our financial focus is on long-term, sustainable growth in free cash flow. We provide a free cash flow measure because we believe it provides additional perspective on the impact of acquiring property and equipment with cash. Free cash flow is cash flow from operations reduced by \u201cPurchases of property and equipment, net of proceeds from sales and incentives.\u201d The following is a reconciliation of free cash flow to the most comparable GAAP cash flow measure, \u201cNet cash provided",
+              "section_title": "Item 7. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operations"
+            }
+          ]
+        },
+        {
+          "id": "googl-2021-17",
+          "description": "GOOGL FY2021: Revenue and operating income; use the column for this fiscal year",
+          "alternatives": [
+            {
+              "accession_number": "0001652044-22-000019",
+              "chunk_index": 98,
+              "chunk_id": "460dc34a-0007-40c8-8eb1-1bcc2da3842f",
+              "text_sha256": "f5b229692a166e49a03f8ffc367c07b73b82896a25ca2c41d0f810469ab488c3",
+              "excerpt": "See accompanying notes.\n\nAlphabet Inc.\n\nItem 8. Financial Statements and Supplementary Data\nCONSOLIDATED STATEMENTS OF INCOME\n\n[TABLE]\nYear Ended December 31,\n2019 | 2020 | 2021\nRevenues | $ | 161,857 | $ | 182,527 | $ | 257,637\nCosts and expenses:\nCost of revenues | 71,896 | 84,732 | 110,939\nResearch and development | 26,018 | 27,573 | 31,562\nSales and marketing | 18,464 | 17,946 | 22,912\nGeneral and administrative | 9,551 | 11,052 | 13,510\nEuropean Commission fines | 1,697 ",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "googl-2021-18",
+          "description": "GOOGL FY2021: Operating cash flow and cash capex; retain net-of-incentives/intangible definitions",
+          "alternatives": [
+            {
+              "accession_number": "0001652044-22-000019",
+              "chunk_index": 101,
+              "chunk_id": "ed443caf-2794-4dba-a4ba-9288fce70f20",
+              "text_sha256": "214f93b41e7303cf26cfbd6204f3dafc3c31d1680368dddcabbe5e1cd54d1f87",
+              "excerpt": "See accompanying notes.\n\nAlphabet Inc.\n\nItem 8. Financial Statements and Supplementary Data\nCONSOLIDATED STATEMENTS OF CASH FLOWS\n\n[TABLE]\nYear Ended December 31,\n2019 | 2020 | 2021\nOperating activities\nNet income | $ | 34,343 | $ | 40,269 | $ | 76,033\nAdjustments:\nDepreciation and impairment of property and equipment | 10,856 | 12,905 | 11,555\nAmortization and impairment of intangible assets | 925 | 792 | 886\nStock-based compensation expense | 10,794 | 12,991 | 15,376\nDeferr",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "googl-2025-19",
+          "description": "GOOGL FY2025: Revenue and operating income; use the column for this fiscal year",
+          "alternatives": [
+            {
+              "accession_number": "0001652044-26-000018",
+              "chunk_index": 102,
+              "chunk_id": "42ea1182-86ee-49b1-b1c7-330d05f2b510",
+              "text_sha256": "f1d9e7659ca5e151b493e23326580c29dd51dd2b867601e83d0b815d79b1d08a",
+              "excerpt": "See accompanying notes.\n\n48.\n\nAlphabet Inc.\n\nItem 8. Financial Statements and Supplementary Data\nCONSOLIDATED STATEMENTS OF INCOME\n\n[TABLE]\nYear Ended December 31,\n2023 | 2024 | 2025\nRevenues | $ | 307,394 | $ | 350,018 | $ | 402,836\nCosts and expenses:\nCost of revenues | 133,332 | 146,306 | 162,535\nResearch and development | 45,427 | 49,326 | 61,087\nSales and marketing | 27,917 | 27,808 | 28,693\nGeneral and administrative | 16,425 | 14,188 | 21,482\nTotal costs and expenses |",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "googl-2025-20",
+          "description": "GOOGL FY2025: Operating cash flow and cash capex; retain net-of-incentives/intangible definitions",
+          "alternatives": [
+            {
+              "accession_number": "0001652044-26-000018",
+              "chunk_index": 105,
+              "chunk_id": "42ecf47d-7f14-401b-9082-69d2a90d9b6a",
+              "text_sha256": "5f64fea80729d5b570b358ad4616b98c33a622062dbbdd1fae162caf0247f5d3",
+              "excerpt": "See accompanying notes.\n\n51.\n\nAlphabet Inc.\n\nItem 8. Financial Statements and Supplementary Data\nCONSOLIDATED STATEMENTS OF CASH FLOWS\n\n[TABLE]\nYear Ended December 31,\n2023 | 2024 | 2025\nOperating activities\nNet income | $ | 73,795 | $ | 100,118 | $ | 132,170\nAdjustments:\nDepreciation of property and equipment | 11,946 | 15,311 | 21,136\nStock-based compensation expense | 22,460 | 22,785 | 24,953\nDeferred income taxes | (7,763) | (5,257) | 8,348\nLoss (gain) on debt and equity ",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        }
+      ],
+      "rubric": {
+        "required_findings_points": 6,
+        "citation_points": 2,
+        "caveat_points": 1,
+        "interpretation_points": 1,
+        "pass_score": 8,
+        "critical_failure": "using EBITDA, reported net income, or total investing cash flow in place of the stated formula.",
+        "rounding": {
+          "usd_billions_absolute": 0.2,
+          "percentage_points_absolute": 0.2,
+          "relative_percent": 1
+        },
+        "human_review_required": true
+      }
+    },
+    {
+      "code": "DR-04",
+      "question": "Compare the change in cash capital spending from 2023 to 2025 for Microsoft, Alphabet, Amazon, and NVIDIA. Also calculate 2025 cash capex as a percentage of operating cash flow. Does NVIDIA's low percentage mean it has little capacity or infrastructure exposure?",
+      "gold_answer": "| Company | 2023 -> 2025 cash capex proxy | Growth | 2025 capex / operating cash flow |\n|---|---:|---:|---:|\n| Alphabet | $32.251B -> $91.447B | **+183.5%** | **55.5%** |\n| Amazon | $48.133B -> $128.320B, net | **+166.6%** | **92.0%** |\n| Microsoft | $28.107B -> $64.551B | **+129.7%** | **47.4%** |\n| NVIDIA | $1.833B -> $3.236B, including intangibles | **+76.5%** | **5.0%** |\n\nAlphabet grew fastest on this percentage measure, while Amazon consumed the\nlargest share of 2025 operating cash flow. NVIDIA's 5% does **not** mean low\ncapacity exposure. Its fabless/outsourced model shifts exposure into inventory,\nprepayments, supplier capacity commitments, and cloud contracts. At FY2025 end,\nNVIDIA disclosed $30.8B of inventory purchase and long-term supply/capacity\nobligations and $14.3B of other non-inventory purchase obligations, including\n$10.9B of multi-year cloud service agreements. Microsoft also disclosed $32.1B\ncommitted for construction, primarily datacenters.",
+      "evidence_groups": [
+        {
+          "id": "msft-2025-1",
+          "description": "MSFT FY2025: Cash capex and operating cash flow (2023 comparatives where present)",
+          "alternatives": [
+            {
+              "accession_number": "0000950170-25-100235",
+              "chunk_index": 102,
+              "chunk_id": "de0650ed-b3de-4a7d-af87-4b7bdead19bb",
+              "text_sha256": "075f32336c1b52a15a9d4c0d8832641212b20ff7f8b79f7bf3dfdbb569715df5",
+              "excerpt": "[TABLE]\n(In millions)\nYear Ended June 30, | 2025 | 2024 | 2023\nOperations\nNet income | $ | 101,832 | $ | 88,136 | $ | 72,361\nAdjustments to reconcile net income to net cash from operations:\nDepreciation, amortization, and other | 34,153 | 22,287 | 13,861\nStock-based compensation expense | 11,974 | 10,734 | 9,611\nNet recognized losses on investments and derivatives | 609 | 305 | 196\nDeferred income taxes | (7,056 | ) | (4,738 | ) | (6,059 | )\nChanges in operating assets and li",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "googl-2025-2",
+          "description": "GOOGL FY2025: Cash capex and operating cash flow (2023 comparatives where present)",
+          "alternatives": [
+            {
+              "accession_number": "0001652044-26-000018",
+              "chunk_index": 105,
+              "chunk_id": "42ecf47d-7f14-401b-9082-69d2a90d9b6a",
+              "text_sha256": "5f64fea80729d5b570b358ad4616b98c33a622062dbbdd1fae162caf0247f5d3",
+              "excerpt": "See accompanying notes.\n\n51.\n\nAlphabet Inc.\n\nItem 8. Financial Statements and Supplementary Data\nCONSOLIDATED STATEMENTS OF CASH FLOWS\n\n[TABLE]\nYear Ended December 31,\n2023 | 2024 | 2025\nOperating activities\nNet income | $ | 73,795 | $ | 100,118 | $ | 132,170\nAdjustments:\nDepreciation of property and equipment | 11,946 | 15,311 | 21,136\nStock-based compensation expense | 22,460 | 22,785 | 24,953\nDeferred income taxes | (7,763) | (5,257) | 8,348\nLoss (gain) on debt and equity ",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "amzn-2025-3",
+          "description": "AMZN FY2025: Cash capex and operating cash flow (2023 comparatives where present)",
+          "alternatives": [
+            {
+              "accession_number": "0001018724-26-000004",
+              "chunk_index": 65,
+              "chunk_id": "f8405b62-e0ac-40aa-bf0c-8f58385bb197",
+              "text_sha256": "1db0f15ee542e8aba83d94b5969a98e23dc3b86faa2102b030838cdfda1b85bd",
+              "excerpt": "Our financial focus is on long-term, sustainable growth in free cash flow. We provide a free cash flow measure because we believe it provides additional perspective on the impact of acquiring property and equipment with cash. Free cash flow is cash flow from operations reduced by \u201cPurchases of property and equipment, net of proceeds from sales and incentives.\u201d The following is a reconciliation of free cash flow to the most comparable GAAP cash flow measure, \u201cNet cash provided",
+              "section_title": "Item 7. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operations"
+            }
+          ]
+        },
+        {
+          "id": "nvda-2025-4",
+          "description": "NVDA FY2025: Cash capex and operating cash flow (2023 comparatives where present)",
+          "alternatives": [
+            {
+              "accession_number": "0001045810-25-000023",
+              "chunk_index": 129,
+              "chunk_id": "32bc52c6-d773-46f2-8504-de8f549c48f6",
+              "text_sha256": "666a553f087644b24dacc40413efbc70b8b629146524dff3d7e2fb3d53a098c1",
+              "excerpt": "See accompanying Notes to the Consolidated Financial Statements.\n\nItem 15. Exhibits and Financial Statement Schedules\n(In millions)\n\n[TABLE]\nYear Ended\nJan 26, 2025 | Jan 28, 2024 | Jan 29, 2023\nCash flows from operating activities:\nNet income | $ | 72,880 | $ | 29,760 | $ | 4,368\nAdjustments to reconcile net income to net cash provided by operating activities:\nStock-based compensation expense | 4,737 | 3,549 | 2,709\nDepreciation and amortization | 1,864 | 1,508 | 1,544\nDefer",
+              "section_title": "Item 15. Exhibits and Financial Statement Schedules"
+            }
+          ]
+        },
+        {
+          "id": "amzn-2023-5",
+          "description": "AMZN FY2023: 2023 cash capex net of sales and incentives",
+          "alternatives": [
+            {
+              "accession_number": "0001018724-24-000008",
+              "chunk_index": 63,
+              "chunk_id": "6a85f71f-e5f8-44e1-a2ad-fbd3dd024bb6",
+              "text_sha256": "87d38e68ee580d257cf9a6db42aafc2c5626466f63cdb4b8c4d49124d71e9d68",
+              "excerpt": "chases of property and equipment, net of proceeds from sales and incentives | (58,321) | (48,133)\nFree cash flow | $ | (11,569) | $ | 36,813\nNet cash provided by (used in) investing activities | $ | (37,601) | $ | (49,833)\nNet cash provided by (used in) financing activities | $ | 9,718 | $ | (15,879)",
+              "section_title": "Item 7. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operations"
+            }
+          ]
+        },
+        {
+          "id": "nvda-2025-6",
+          "description": "NVDA FY2025: Supply and non-inventory/cloud commitments; cancellable/reschedulable amounts are not cash capex",
+          "alternatives": [
+            {
+              "accession_number": "0001045810-25-000023",
+              "chunk_index": 171,
+              "chunk_id": "596c1dc2-113e-4a1f-8756-81430303494f",
+              "text_sha256": "512fd4ad32a8805dad5d07dfb56ca9332755de665a611dbc9fcb94594dc5b1d3",
+              "excerpt": "ad outstanding inventory purchase and long-term supply and capacity obligations totaling $30.8 billion, an increase from the prior year led by commitments, capacity and components for new product introductions, including our new Blackwell architecture. We enter into agreements with contract manufacturers that allow them to procure inventory based upon our defined criteria, and in certain instances, these agreements are cancellable, able to be rescheduled, or adjustable for ou",
+              "section_title": "Item 15. Exhibits and Financial Statement Schedules"
+            }
+          ]
+        },
+        {
+          "id": "msft-2025-7",
+          "description": "MSFT FY2025: Construction commitments, primarily datacenters",
+          "alternatives": [
+            {
+              "accession_number": "0000950170-25-100235",
+              "chunk_index": 125,
+              "chunk_id": "aab797bb-718e-4f56-97b1-bc920382c98a",
+              "text_sha256": "2a66e2bb3dbda548938fdfa7231e369015d6220e3cc250ef2781cf6a538b403a",
+              "excerpt": "on, $4.3 billion, and $3.8 billion, respectively. As of June 30, 2025, we have committed $32.1 billion for the construction of new buildings, building improvements, and leasehold improvements, primarily related to datacenters.\n\nNOTE 7 \u2014 BUSINESS COMBINATIONS Activision Blizzard, Inc.On October 13, 2023, we completed our acquisition of Activision Blizzard, Inc. (\u201cActivision Blizzard\u201d) for a total purchase price of $75.4 billion, consisting primarily of cash. Activision Blizzar",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        }
+      ],
+      "rubric": {
+        "required_findings_points": 6,
+        "citation_points": 2,
+        "caveat_points": 1,
+        "interpretation_points": 1,
+        "pass_score": 8,
+        "critical_failure": "concluding that NVIDIA has only $3.2B of capacity-related exposure or adding commitments directly to capex as if they were current-year cash payments.",
+        "rounding": {
+          "usd_billions_absolute": 0.2,
+          "percentage_points_absolute": 0.2,
+          "relative_percent": 1
+        },
+        "human_review_required": true
+      }
+    },
+    {
+      "code": "DR-05",
+      "question": "Compare 2021 and 2025 segment operating margins for AWS, Google Cloud, and Microsoft Intelligent Cloud. Which improved most, which remained highest, and why is this not an apples-to-apples ranking of public-cloud profitability?",
+      "gold_answer": "| Disclosure | 2021 revenue / operating income / margin | 2025 revenue / operating income / margin | Margin change |\n|---|---:|---:|---:|\n| AWS | $62.202B / $18.532B / **29.8%** | $128.725B / $45.606B / **35.4%** | **+5.6 pp** |\n| Google Cloud | $19.206B / **-$3.099B** / **-16.1%** | $58.705B / $13.910B / **23.7%** | **+39.8 pp** |\n| Microsoft Intelligent Cloud | $60.080B / $26.126B / **43.5%** | $106.265B / $44.589B / **42.0%** | **-1.5 pp** |\n\nGoogle Cloud improved most and crossed from loss to profit. Microsoft\nIntelligent Cloud remained highest by reported segment margin, but its margin\nslipped. This is not a pure Azure-versus-AWS-versus-GCP comparison: Intelligent\nCloud includes server products and enterprise services in addition to Azure;\nGoogle Cloud includes Workspace; AWS has its own allocation policy. Microsoft\nalso changed its segment composition in FY2025 and recast only the presented\nprior periods, not its FY2021 filing. Microsoft's 2025 filing further states\nthat scaling AI infrastructure pressured cloud gross margin.",
+      "evidence_groups": [
+        {
+          "id": "amzn-2021-1",
+          "description": "AMZN FY2021: Segment revenue and operating income; preserve segment scope and loss sign",
+          "alternatives": [
+            {
+              "accession_number": "0001018724-22-000005",
+              "chunk_index": 143,
+              "chunk_id": "c5ee5fe0-c734-4279-b498-846fe2c5a19e",
+              "text_sha256": "be69610334db53090f1239eea96ff073a330fcd4649817181fdd33950936db72",
+              "excerpt": "[TABLE]\nYear Ended December 31,\n2019 | 2020 | 2021\nNorth America\nNet sales | $ | 170,773 | $ | 236,282 | $ | 279,833\nOperating expenses | 163,740 | 227,631 | 272,562\nOperating income | $ | 7,033 | $ | 8,651 | $ | 7,271\nInternational\nNet sales | $ | 74,723 | $ | 104,412 | $ | 127,787\nOperating expenses | 76,416 | 103,695 | 128,711\nOperating income (loss) | $ | (1,693) | $ | 717 | $ | (924)\nAWS\nNet sales | $ | 35,026 | $ | 45,370 | $ | 62,202\nOperating expenses | 25,825 | 31,83",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "amzn-2025-2",
+          "description": "AMZN FY2025: Segment revenue and operating income; preserve segment scope and loss sign",
+          "alternatives": [
+            {
+              "accession_number": "0001018724-26-000004",
+              "chunk_index": 151,
+              "chunk_id": "110fe987-cd60-4084-a60d-b04bcbf9a6ea",
+              "text_sha256": "d650e9d8fe7fd24aac08624fc59430b40fbca10de1117ac9e4788d12e9f2d8f3",
+              "excerpt": "The AWS segment consists of amounts earned from global sales of compute, storage, database, and other services for start-ups, enterprises, government agencies, and academic institutions.\n\nInformation on reportable segments and reconciliation to consolidated net income is as follows (in millions):\n\n[TABLE]\nYear Ended December 31,\n2023 | 2024 | 2025\nNorth America\nNet sales | $ | 352,828 | $ | 387,497 | $ | 426,305\nOperating expenses | 337,951 | 362,530 | 396,686\nOperating incom",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "googl-2021-3",
+          "description": "GOOGL FY2021: Segment revenue and operating income; preserve segment scope and loss sign",
+          "alternatives": [
+            {
+              "accession_number": "0001652044-22-000019",
+              "chunk_index": 176,
+              "chunk_id": "de2708ff-aa46-4ecb-b83a-b97578195368",
+              "text_sha256": "b4aa34bd09cf79f2c269e73f55f0c41759511361d015639271cb2822f04cea37",
+              "excerpt": "[TABLE]\nYear Ended December 31,\n2019 | 2020 | 2021\nRevenues:\nGoogle Services | $ | 151,825 | $ | 168,635 | $ | 237,529\nGoogle Cloud | 8,918 | 13,059 | 19,206\nOther Bets | 659 | 657 | 753\nHedging gains (losses) | 455 | 176 | 149\nTotal revenues | $ | 161,857 | $ | 182,527 | $ | 257,637\nOperating income (loss):\nGoogle Services | $ | 48,999 | $ | 54,606 | $ | 91,855\nGoogle Cloud | (4,645) | (5,607) | (3,099)\nOther Bets | (4,824) | (4,476) | (5,281)\nCorporate costs, unallocated(1)",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "googl-2025-4",
+          "description": "GOOGL FY2025: Segment revenue and operating income; preserve segment scope and loss sign",
+          "alternatives": [
+            {
+              "accession_number": "0001652044-26-000018",
+              "chunk_index": 185,
+              "chunk_id": "39e61885-520d-47d9-8344-f902b6331690",
+              "text_sha256": "bd556a0a3cbf2688f7afd009e446faef10b8a61616d6ebf26510b4ce4354d089",
+              "excerpt": "[TABLE]\nYear Ended December 31,\n2023 | 2024 | 2025\nRevenues:\nGoogle Services | $ | 272,543 | $ | 304,930 | $ | 342,721\nGoogle Cloud | 33,088 | 43,229 | 58,705\nOther Bets | 1,527 | 1,648 | 1,537\nHedging gains (losses) | 236 | 211 | (127)\nTotal revenues | $ | 307,394 | $ | 350,018 | $ | 402,836\nOperating income (loss):\nGoogle Services | $ | 95,858 | $ | 121,263 | $ | 139,404\nGoogle Cloud | 1,716 | 6,112 | 13,910\nOther Bets | (4,095) | (4,444) | (7,515)\nAlphabet-level activities",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "msft-2021-5",
+          "description": "MSFT FY2021: Segment revenue and operating income; preserve segment scope and loss sign",
+          "alternatives": [
+            {
+              "accession_number": "0001564590-21-039151",
+              "chunk_index": 243,
+              "chunk_id": "a11aa0cf-8ae0-4839-80ee-bb100c0dc954",
+              "text_sha256": "bc92856c1003d9f422be931daef905bb99ebaa9a36ff0efb22b8efee2c77a6f7",
+              "excerpt": "[TABLE]\n(In millions)\nYear Ended June 30, | 2021 | 2020 | 2019\nRevenue\nProductivity and Business Processes | $ | 53,915 | $ | 46,398 | $ | 41,160\nIntelligent Cloud | 60,080 | 48,366 | 38,985\nMore Personal Computing | 54,093 | 48,251 | 45,698\nTotal | $ | 168,088 | $ | 143,015 | $ | 125,843\nOperating Income\nProductivity and Business Processes | $ | 24,351 | $ | 18,724 | $ | 16,219\nIntelligent Cloud | 26,126 | 18,324 | 13,920\nMore Personal Computing | 19,439 | 15,911 | 12,820\nTo",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "msft-2025-6",
+          "description": "MSFT FY2025: Segment revenue and operating income; preserve segment scope and loss sign",
+          "alternatives": [
+            {
+              "accession_number": "0000950170-25-100235",
+              "chunk_index": 145,
+              "chunk_id": "7f1bbc04-c23f-4270-a79f-7dfc87f149cf",
+              "text_sha256": "b760723e39876f5df4b1d3327d535c66999e99eff4b85290ee550d492c9928d2",
+              "excerpt": "Segment revenue, cost of revenue, operating expenses, and operating income were as follows during the periods presented:\n\n(In millions)\n\nYear Ended June 30,\n\nProductivity and Business Processes\n\nRevenue\n\n120,810\n\n106,820\n\n94,151\n\nCost of revenue\n\n22,422\n\n19,611\n\n17,202\n\nOperating expenses\n\n28,615\n\n27,548\n\n26,875\n\nOperating Income\n\n69,773\n\n59,661\n\n50,074\n\nIntelligent Cloud\n\nRevenue\n\n106,265\n\n87,464\n\n72,944\n\nCost of revenue\n\n40,171\n\n29,611\n\n24,109\n\nOperating expenses\n\n21,505\n\n2",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "msft-2025-7",
+          "description": "MSFT FY2025: Segment composition changed; presented prior periods recast",
+          "alternatives": [
+            {
+              "accession_number": "0000950170-25-100235",
+              "chunk_index": 71,
+              "chunk_id": "79f8c730-02a5-4a7d-a046-8d43938b5bcb",
+              "text_sha256": "330e4acf526bf7ca662ef534d8b1a0c7aa0b96f24ad364d42e611d9da5fa204d",
+              "excerpt": "ing performance reflects these segment changes. Prior period segment information has been recast to conform to the way we internally manage and monitor our business during fiscal year 2025.\n\nAdditional information on our reportable segments is contained in Note 18 \u2013 Segment Information and Geographic Data of the Notes to Financial Statements (Part II, Item 8 of this Form 10-K).\n\nMetrics",
+              "section_title": "Item 7. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operations"
+            }
+          ]
+        },
+        {
+          "id": "msft-2025-8",
+          "description": "MSFT FY2025: Microsoft Cloud gross-margin impact from AI infrastructure",
+          "alternatives": [
+            {
+              "accession_number": "0000950170-25-100235",
+              "chunk_index": 75,
+              "chunk_id": "4901b524-a78e-4a9f-a75b-969d9917fc3e",
+              "text_sha256": "b41f191684131e5de562c49763e3ff290beecbc2cbd931bb710b7d5ac7b3554a",
+              "excerpt": "in part by More Personal Computing.\n\nMicrosoft Cloud gross margin percentage decreased to 69% driven by the impact of scaling our AI infrastructure, offset in part by efficiency gains in Azure.\n\nOperating expenses increased $3.8 billion or 6% driven by investments in cloud and AI engineering and Gaming, including the impact of the Activision Blizzard acquisition.\n\nOperating income increased $19.1 billion or 17% with growth across each of our segments.",
+              "section_title": "Item 7. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operations"
+            }
+          ]
+        }
+      ],
+      "rubric": {
+        "required_findings_points": 6,
+        "citation_points": 2,
+        "caveat_points": 1,
+        "interpretation_points": 1,
+        "pass_score": 8,
+        "critical_failure": "labeling Microsoft Intelligent Cloud revenue as Azure revenue or omitting Google Cloud's 2021 loss sign.",
+        "rounding": {
+          "usd_billions_absolute": 0.2,
+          "percentage_points_absolute": 0.2,
+          "relative_percent": 1
+        },
+        "human_review_required": true
+      }
+    },
+    {
+      "code": "DR-06",
+      "question": "Using the FY2025 filings, compare remaining performance obligations or backlog for Microsoft, Amazon, and Alphabet. Normalize the disclosed balances to a relevant revenue denominator, discuss recognition timing, and explain why the ratios cannot be treated as directly comparable \u201cgrowth coverage.\u201d",
+      "gold_answer": "- Amazon disclosed approximately **$244B**, primarily AWS, versus FY2025 AWS\n  sales of $128.725B: about **1.90x**. Its weighted-average remaining contract\n  life was **4.1 years**.\n- Alphabet disclosed **$242.8B**, primarily Google Cloud, versus Google Cloud\n  revenue of $58.705B: **up to about 4.14x** if all backlog were Cloud. It is an\n  upper-bound proxy because the filing says \u201cprimarily,\u201d not entirely, Cloud.\n  Just over **50%** is expected to be recognized over the next 24 months.\n- Microsoft disclosed **$375B** total-company RPO, of which **$368B** was\n  commercial. Total RPO / total revenue is about **1.33x**. A commonly tempting\n  commercial-RPO / Microsoft-Cloud-revenue ratio is **2.18x** ($368B / $168.9B),\n  but those scopes do not match exactly. Microsoft expects about **40%** of total\n  RPO over the next 12 months.\n\nAlphabet has the largest indicative ratio, but a strict rank is not supportable.\nThe companies exclude or include short-duration and cancellable arrangements\ndifferently, the disclosed scopes differ, and backlog is not a forecast: usage,\ndelivery, cancellations, contract duration, and timing affect recognition.",
+      "evidence_groups": [
+        {
+          "id": "amzn-2025-1",
+          "description": "AMZN FY2025: Backlog scope, amount and recognition timing",
+          "alternatives": [
+            {
+              "accession_number": "0001018724-26-000004",
+              "chunk_index": 106,
+              "chunk_id": "f4ebe1bc-6bcd-4909-9e5e-75a6d910da77",
+              "text_sha256": "ff1b1292ff68d7c4bdae82cdf131ae94f7d4a6dbb463fe59e8eaf1c9c0003efc",
+              "excerpt": "inal terms that exceed one year, those commitments not yet recognized were approximately $244 billion as of December 31, 2025. The weighted average remaining life of our long-term contracts is 4.1 years. The amount and timing of revenue recognition will be driven by customer usage and our performance in accordance with contractual obligations, which can extend beyond the original contractual duration and commitment.\n\nOther Long-Term Liabilities",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "googl-2025-2",
+          "description": "GOOGL FY2025: Backlog scope, amount and recognition timing",
+          "alternatives": [
+            {
+              "accession_number": "0001652044-26-000018",
+              "chunk_index": 121,
+              "chunk_id": "65ee9ee6-df57-478b-a6b3-32f4f7b5f9cd",
+              "text_sha256": "350da06b995a20edc2c5c2a06f980ad045656ac75f579db7cb7fd7c37b4644c9",
+              "excerpt": " and Latin America (\"Other Americas\").\n\nRevenue Backlog\n\nAs of December 31, 2025, we had $242.8 billion of remaining performance obligations (\u201crevenue backlog\"), primarily related to Google Cloud. Revenue backlog represents commitments in customer contracts that have not yet been recognized as revenue. We expect to recognize just over 50% of the revenue backlog as revenues over the next 24 months with the remainder to be recognized thereafter. The estimated revenue backlog an",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "msft-2025-3",
+          "description": "MSFT FY2025: Backlog scope, amount and recognition timing",
+          "alternatives": [
+            {
+              "accession_number": "0000950170-25-100235",
+              "chunk_index": 136,
+              "chunk_id": "f5501557-2f42-47e0-a184-f96c366ea0bc",
+              "text_sha256": "22af432a0dd2e2cad3a2442ca8043ed3a74aeeb58b10d808e2fb979567ed0755",
+              "excerpt": "venue and amounts that will be invoiced and recognized as revenue in future periods, was $375 billion as of June 30, 2025, of which $368 billion is related to the commercial portion of revenue. We expect to recognize approximately 40% of our total company remaining performance obligation revenue over the next 12 months and the remainder thereafter.\n\nNOTE 13 \u2014 LEASES We have operating and finance leases for datacenters, corporate offices, research and development facilities, M",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "amzn-2025-4",
+          "description": "AMZN FY2025: Revenue denominator and scope; Cloud and commercial RPO are not identical",
+          "alternatives": [
+            {
+              "accession_number": "0001018724-26-000004",
+              "chunk_index": 151,
+              "chunk_id": "110fe987-cd60-4084-a60d-b04bcbf9a6ea",
+              "text_sha256": "d650e9d8fe7fd24aac08624fc59430b40fbca10de1117ac9e4788d12e9f2d8f3",
+              "excerpt": "The AWS segment consists of amounts earned from global sales of compute, storage, database, and other services for start-ups, enterprises, government agencies, and academic institutions.\n\nInformation on reportable segments and reconciliation to consolidated net income is as follows (in millions):\n\n[TABLE]\nYear Ended December 31,\n2023 | 2024 | 2025\nNorth America\nNet sales | $ | 352,828 | $ | 387,497 | $ | 426,305\nOperating expenses | 337,951 | 362,530 | 396,686\nOperating incom",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "googl-2025-5",
+          "description": "GOOGL FY2025: Revenue denominator and scope; Cloud and commercial RPO are not identical",
+          "alternatives": [
+            {
+              "accession_number": "0001652044-26-000018",
+              "chunk_index": 185,
+              "chunk_id": "39e61885-520d-47d9-8344-f902b6331690",
+              "text_sha256": "bd556a0a3cbf2688f7afd009e446faef10b8a61616d6ebf26510b4ce4354d089",
+              "excerpt": "[TABLE]\nYear Ended December 31,\n2023 | 2024 | 2025\nRevenues:\nGoogle Services | $ | 272,543 | $ | 304,930 | $ | 342,721\nGoogle Cloud | 33,088 | 43,229 | 58,705\nOther Bets | 1,527 | 1,648 | 1,537\nHedging gains (losses) | 236 | 211 | (127)\nTotal revenues | $ | 307,394 | $ | 350,018 | $ | 402,836\nOperating income (loss):\nGoogle Services | $ | 95,858 | $ | 121,263 | $ | 139,404\nGoogle Cloud | 1,716 | 6,112 | 13,910\nOther Bets | (4,095) | (4,444) | (7,515)\nAlphabet-level activities",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "msft-2025-6",
+          "description": "MSFT FY2025: Revenue denominator and scope; Cloud and commercial RPO are not identical",
+          "alternatives": [
+            {
+              "accession_number": "0000950170-25-100235",
+              "chunk_index": 99,
+              "chunk_id": "da04cdb2-4d10-49c4-894f-4a44d098140d",
+              "text_sha256": "1febfef1d19ae2329cf8a746d543986419d05c8815e64887cfbd6c47ffe2378d",
+              "excerpt": "[TABLE]\n(In millions, except per share amounts)\nYear Ended June 30, | 2025 | 2024 | 2023\nRevenue:\nProduct | $ | 63,946 | $ | 64,773 | $ | 64,699\nService and other | 217,778 | 180,349 | 147,216\nTotal revenue | 281,724 | 245,122 | 211,915\nCost of revenue:\nProduct | 13,501 | 15,272 | 17,804\nService and other | 74,330 | 58,842 | 48,059\nTotal cost of revenue | 87,831 | 74,114 | 65,863\nGross margin | 193,893 | 171,008 | 146,052\nResearch and development | 32,488 | 29,510 | 27,195\nSa",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "msft-2025-7",
+          "description": "MSFT FY2025: Revenue denominator and scope; Cloud and commercial RPO are not identical",
+          "alternatives": [
+            {
+              "accession_number": "0000950170-25-100235",
+              "chunk_index": 146,
+              "chunk_id": "ffe4d2a2-b37a-40bc-a438-7acfa1d3f4fc",
+              "text_sha256": "1182f4b3b5429f0e95e7a72c6aa63b6b0d8b3ccc977a8f7baeb35ca1ba0008bc",
+              "excerpt": "87,767\n\n76,969\n\n66,949\n\nGaming\n\n23,455\n\n21,503\n\n15,466\n\nLinkedIn\n\n17,812\n\n16,372\n\n14,989\n\nWindows and Devices\n\n17,314\n\n17,026\n\n17,147\n\nSearch and news advertising\n\n13,878\n\n12,306\n\n12,125\n\nDynamics products and cloud services\n\n7,827\n\n6,831\n\n5,796\n\nEnterprise and partner services\n\n7,760\n\n7,594\n\n7,900\n\nMicrosoft 365 Consumer products and cloud services\n\n7,404\n\n6,648\n\n6,417\n\nOther\n\nTotal\n\n281,724\n\n245,122\n\n211,915\n\nOur Microsoft Cloud revenue, which includes Microsoft 365 Commerc",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        }
+      ],
+      "rubric": {
+        "required_findings_points": 6,
+        "citation_points": 2,
+        "caveat_points": 1,
+        "interpretation_points": 1,
+        "pass_score": 8,
+        "critical_failure": "asserting that all Alphabet backlog is Google Cloud or that backlog will become revenue in the next year.",
+        "rounding": {
+          "usd_billions_absolute": 0.2,
+          "percentage_points_absolute": 0.2,
+          "relative_percent": 1
+        },
+        "human_review_required": true
+      }
+    },
+    {
+      "code": "DR-07",
+      "question": "For each fiscal year 2021-2025, subtract AWS operating income from Amazon's consolidated operating income. In which years would the remaining segments have reported a combined operating loss? How should \u201cAWS funded the rest of Amazon\u201d be phrased precisely?",
+      "gold_answer": "| Fiscal year | Consolidated operating income | AWS operating income | Consolidated less AWS | AWS / consolidated |\n|---:|---:|---:|---:|---:|\n| 2021 | $24.879B | $18.532B | **+$6.347B** | 74.5% |\n| 2022 | $12.248B | $22.841B | **-$10.593B** | 186.5% |\n| 2023 | $36.852B | $24.631B | **+$12.221B** | 66.8% |\n| 2024 | $68.593B | $39.834B | **+$28.759B** | 58.1% |\n| 2025 | $79.975B | $45.606B | **+$34.369B** | 57.0% |\n\nOnly **2022** had a combined non-AWS operating loss. AWS also offset the\nInternational segment's losses in 2021-2023, but North America was profitable\nin 2021 and 2023. In 2022, AWS operating profit offset the combined operating loss of the other\nsegments. This does not establish that AWS funded every individual business. The subtraction is an\nanalytical counterfactual, not a cash-transfer disclosure, and shared cost\nallocations could change without AWS.",
+      "evidence_groups": [
+        {
+          "id": "amzn-2022-1",
+          "description": "AMZN FY2022: 2021-2022 AWS, North America, International and consolidated operating income",
+          "alternatives": [
+            {
+              "accession_number": "0001018724-23-000004",
+              "chunk_index": 147,
+              "chunk_id": "dda0d510-ca17-48d2-9c5d-457013ba27ee",
+              "text_sha256": "7809793e5982c842ec80ec1904f71713fa409f850f28e2bf8a25ec8989d7c028",
+              "excerpt": "[TABLE]\nYear Ended December 31,\n2020 | 2021 | 2022\nNorth America\nNet sales | $ | 236,282 | $ | 279,833 | $ | 315,880\nOperating expenses | 227,631 | 272,562 | 318,727\nOperating income (loss) | $ | 8,651 | $ | 7,271 | $ | (2,847)\nInternational\nNet sales | $ | 104,412 | $ | 127,787 | $ | 118,007\nOperating expenses | 103,695 | 128,711 | 125,753\nOperating income (loss) | $ | 717 | $ | (924) | $ | (7,746)\nAWS\nNet sales | $ | 45,370 | $ | 62,202 | $ | 80,096\nOperating expenses | 31,",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            },
+            {
+              "accession_number": "0001018724-23-000004",
+              "chunk_index": 54,
+              "chunk_id": "e8d30c67-358f-42c3-8b45-46312c14dd9a",
+              "text_sha256": "17452ac402f9b2af35ef8f46cd9bf32adaae39d6e314c89d07306ea759b54d87",
+              "excerpt": "Item 7. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operations\n\n[TABLE]\nYear Ended December 31,\n2021 | 2022\nOperating Income (Loss)\nNorth America | $ | 7,271 | $ | (2,847)\nInternational | (924) | (7,746)\nAWS | 18,532 | 22,841\nConsolidated | $ | 24,879 | $ | 12,248\n\nItem 7. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operations\n\nOperating income was $24.9 billion and $12.2 billion for 2021 and 2022. We believe that ",
+              "section_title": "Item 7. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operations"
+            }
+          ]
+        },
+        {
+          "id": "amzn-2025-2",
+          "description": "AMZN FY2025: 2023-2025 AWS, North America, International and consolidated operating income",
+          "alternatives": [
+            {
+              "accession_number": "0001018724-26-000004",
+              "chunk_index": 151,
+              "chunk_id": "110fe987-cd60-4084-a60d-b04bcbf9a6ea",
+              "text_sha256": "d650e9d8fe7fd24aac08624fc59430b40fbca10de1117ac9e4788d12e9f2d8f3",
+              "excerpt": "The AWS segment consists of amounts earned from global sales of compute, storage, database, and other services for start-ups, enterprises, government agencies, and academic institutions.\n\nInformation on reportable segments and reconciliation to consolidated net income is as follows (in millions):\n\n[TABLE]\nYear Ended December 31,\n2023 | 2024 | 2025\nNorth America\nNet sales | $ | 352,828 | $ | 387,497 | $ | 426,305\nOperating expenses | 337,951 | 362,530 | 396,686\nOperating incom",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        }
+      ],
+      "rubric": {
+        "required_findings_points": 6,
+        "citation_points": 2,
+        "caveat_points": 1,
+        "interpretation_points": 1,
+        "pass_score": 8,
+        "critical_failure": "treating AWS's percentage of consolidated operating income as a revenue share or claiming the counterfactual is a reported measure.",
+        "rounding": {
+          "usd_billions_absolute": 0.2,
+          "percentage_points_absolute": 0.2,
+          "relative_percent": 1
+        },
+        "human_review_required": true
+      }
+    },
+    {
+      "code": "DR-08",
+      "question": "From 2021 to 2025, quantify Apple's Services share of revenue and gross profit, the share of incremental revenue and gross profit contributed by Services, and a two-step gross-margin bridge that holds 2021 product and Services margins constant at the 2025 revenue mix. What does the bridge imply?",
+      "gold_answer": "- Services revenue rose from **$68.425B to $109.158B**. Its revenue share rose\n  from **18.7% to 26.2%** (+7.5 pp).\n- Services gross profit rose from **$47.710B to $82.314B**. Its share of total\n  gross profit rose from **31.2% to 42.2%** (+11.0 pp).\n- Total revenue rose $50.344B; Services supplied **$40.733B, or 80.9%**, of the\n  increase.\n- Total gross profit rose $42.365B; Services supplied **$34.604B, or 81.7%**, of\n  the increase.\n- Reported total gross margin rose from **41.8% to 46.9%** (+5.1 pp).\n- Applying the filing-rounded 2021 category margins (Products 35.3%, Services\n  69.7%) to 2025 category revenue produces an indicative **44.3%** total margin.\n  On this sequential bridge, mix contributes about **2.5 pp** and\n  category-margin improvement contributes the remaining **2.6 pp**. Using the\n  exact category dollar values before rounding produces 44.4%, 2.6 pp, and 2.5\n  pp, respectively; either version is acceptable if the arithmetic is shown.\n\nThe answer is not simply \u201cServices caused all margin expansion.\u201d Services drove\nmost incremental gross profit and about half of this order-dependent margin\nbridge; improved product and Services category margins explain the rest. A\ndifferent decomposition order can allocate interaction differently and should\nbe disclosed.",
+      "evidence_groups": [
+        {
+          "id": "aapl-2021-1",
+          "description": "AAPL FY2021: Product/Services revenue; total revenue",
+          "alternatives": [
+            {
+              "accession_number": "0000320193-21-000105",
+              "chunk_index": 73,
+              "chunk_id": "34f7f508-d1e9-49ca-ab10-5e9520f25675",
+              "text_sha256": "881381450ee3b3b5571f7a20481dc75be9c1ca1dbde36dbb7dff7202779914e9",
+              "excerpt": "All financial statement schedules have been omitted, since the required information is not applicable or is not present in amounts sufficient to require submission of the schedule, or because the information required is included in the consolidated financial statements and accompanying notes.\n\nItem 8. Financial Statements and Supplementary Data\nApple Inc. | 2021 Form 10-K | 28\n\nApple Inc.\n\nItem 8. Financial Statements and Supplementary Data\n(In millions, except number of shar",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            },
+            {
+              "accession_number": "0000320193-21-000105",
+              "chunk_index": 55,
+              "chunk_id": "e7c721d3-f547-4ce6-beb3-04f4b1bf2b9c",
+              "text_sha256": "5b5817a70423e03d70a071638effe4b2a93e0a3fba7c48cee39ee5074aefc80d",
+              "excerpt": "Item 7. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operations\nApple Inc. | 2021 Form 10-K | 20\n\nProducts and Services Performance\n\nThe following table shows net sales by category for 2021, 2020 and 2019 (dollars in millions):\n\n[TABLE]\n2021 | Change | 2020 | Change | 2019\nNet sales by category:\niPhone (1) | $ | 191,973 | 39 | % | $ | 137,781 | (3) | % | $ | 142,381\nMac (1) | 35,190 | 23 | % | 28,622 | 11 | % | 25,740\niPad (1) | 31,862 | 34 | % |",
+              "section_title": "Item 7. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operations"
+            }
+          ]
+        },
+        {
+          "id": "aapl-2021-2",
+          "description": "AAPL FY2021: Product/Services gross profit and total gross profit",
+          "alternatives": [
+            {
+              "accession_number": "0000320193-21-000105",
+              "chunk_index": 60,
+              "chunk_id": "75a7b9fd-7e56-489e-910a-02619f8e48a9",
+              "text_sha256": "cc3b4de9c88a822a91e3ab6d7ba3b4c56f49cb8ee61073351396d3738d1ab095",
+              "excerpt": "Gross Margin\n\nProducts and Services gross margin and gross margin percentage for 2021, 2020 and 2019 were as follows (dollars in millions):\n\n[TABLE]\n2021 | 2020 | 2019\nGross margin:\nProducts | $ | 105,126 | $ | 69,461 | $ | 68,887\nServices | 47,710 | 35,495 | 29,505\nTotal gross margin | $ | 152,836 | $ | 104,956 | $ | 98,392",
+              "section_title": "Item 7. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operations"
+            }
+          ]
+        },
+        {
+          "id": "aapl-2025-3",
+          "description": "AAPL FY2025: Product/Services revenue; total revenue",
+          "alternatives": [
+            {
+              "accession_number": "0000320193-25-000079",
+              "chunk_index": 76,
+              "chunk_id": "2e73242f-b895-46e7-a349-5cc262725b40",
+              "text_sha256": "6bf496999fabcb04b3ae02fda3743fe1131932b1ddaa013c5652ffe2a8a58306",
+              "excerpt": "All financial statement schedules have been omitted, since the required information is not applicable or is not present in amounts sufficient to require submission of the schedule, or because the information required is included in the consolidated financial statements and accompanying notes.\n\nItem 8. Financial Statements and Supplementary Data\nApple Inc. | 2025 Form 10-K | 28\n\nApple Inc.\n\nItem 8. Financial Statements and Supplementary Data\n(In millions, except number of shar",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            },
+            {
+              "accession_number": "0000320193-25-000079",
+              "chunk_index": 59,
+              "chunk_id": "ecbcb1be-2ab4-49c0-aa96-620d91fa1608",
+              "text_sha256": "9f9c43f7659a6a21970b2ebda47a304048562ed5318485ef5e04b162742b7bca",
+              "excerpt": "Item 7. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operations\nApple Inc. | 2025 Form 10-K | 22\n\nProducts and Services Performance\n\nThe following table shows net sales by category for 2025, 2024 and 2023 (dollars in millions):\n\n[TABLE]\n2025 | Change | 2024 | Change | 2023\niPhone | $ | 209,586 | 4 | % | $ | 201,183 | \u2014 | % | $ | 200,583\nMac | 33,708 | 12 | % | 29,984 | 2 | % | 29,357\niPad | 28,023 | 5 | % | 26,694 | (6) | % | 28,300\nWearables, Ho",
+              "section_title": "Item 7. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operations"
+            }
+          ]
+        },
+        {
+          "id": "aapl-2025-4",
+          "description": "AAPL FY2025: Product/Services gross profit and total gross profit",
+          "alternatives": [
+            {
+              "accession_number": "0000320193-25-000079",
+              "chunk_index": 61,
+              "chunk_id": "9e3dcf96-4e20-4d83-80e4-0e7ee0ddfd11",
+              "text_sha256": "6ee5c5b5d4151070f5d674e74cf0a64d5fb1b2cf3a621759260220641418acf7",
+              "excerpt": "Gross Margin\n\nProducts and Services gross margin and gross margin percentage for 2025, 2024 and 2023 were as follows (dollars in millions):\n\n[TABLE]\n2025 | 2024 | 2023\nGross margin:\nProducts | $ | 112,887 | $ | 109,633 | $ | 108,803\nServices | 82,314 | 71,050 | 60,345\nTotal gross margin | $ | 195,201 | $ | 180,683 | $ | 169,148",
+              "section_title": "Item 7. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operations"
+            }
+          ]
+        }
+      ],
+      "rubric": {
+        "required_findings_points": 6,
+        "citation_points": 2,
+        "caveat_points": 1,
+        "interpretation_points": 1,
+        "pass_score": 8,
+        "critical_failure": "using Services revenue share as Services gross-profit share, or presenting the 2.5 pp decomposition as a company-reported figure.",
+        "rounding": {
+          "usd_billions_absolute": 0.2,
+          "percentage_points_absolute": 0.2,
+          "relative_percent": 1
+        },
+        "human_review_required": true
+      }
+    },
+    {
+      "code": "DR-09",
+      "question": "Compare Apple's Greater China revenue exposure and NVIDIA's China/Hong Kong billing exposure in 2021 and 2025. Can the percentages be used to conclude that Apple was more exposed than NVIDIA in 2025, or that China-related risk fell in proportion to reported revenue?",
+      "gold_answer": "- Apple Greater China revenue was **$68.366B / $365.817B = 18.7%** in 2021 and\n  **$64.377B / $416.161B = 15.5%** in 2025, a 3.2 pp decline.\n- NVIDIA reported China including Hong Kong at **23% of revenue** in 2021 and\n  **$17.108B / $130.497B = 13.1%** in 2025, a roughly 9.9 pp decline in the\n  reported billing-location proxy.\n\nA literal end-market ranking is not supportable. Apple generally assigns\ngeographic segment sales using customer/retail-store location. NVIDIA assigns\ngeography by billing location even if the indirect customer is elsewhere. In\n2025, Singapore was 18% of NVIDIA revenue by billing location, but shipments to\nSingapore were less than 2%, illustrating the distortion.\n\nRisk also did not necessarily fall with revenue share. NVIDIA said China Data\nCenter revenue remained well below pre-export-control levels and described the\nrisk of effective exclusion from parts of China and other markets. Apple still\nhad a significant majority of manufacturing through outsourcing partners in\nChina mainland and other Asian countries, relied on single/limited sources, and\nreported 2025 tariff pressure on product gross margin. Sales exposure and\nsupply-chain/regulatory exposure are different risk channels.",
+      "evidence_groups": [
+        {
+          "id": "aapl-2021-1",
+          "description": "AAPL FY2021: Greater China and total revenue",
+          "alternatives": [
+            {
+              "accession_number": "0000320193-21-000105",
+              "chunk_index": 58,
+              "chunk_id": "87fd2f73-d0ce-4bc9-86e6-8afa5bb21508",
+              "text_sha256": "7a5b85ad3c3a4eb02ec59acd55fc1f47c82e130436804a3d11e76e435d2254e9",
+              "excerpt": "[TABLE]\n2021 | Change | 2020 | Change | 2019\nNet sales by reportable segment:\nAmericas | $ | 153,306 | 23 | % | $ | 124,556 | 7 | % | $ | 116,914\nEurope | 89,307 | 30 | % | 68,640 | 14 | % | 60,288\nGreater China | 68,366 | 70 | % | 40,308 | (8) | % | 43,678\nJapan | 28,482 | 33 | % | 21,418 | \u2014 | % | 21,506\nRest of Asia Pacific | 26,356 | 35 | % | 19,593 | 10 | % | 17,788\nTotal net sales | $ | 365,817 | 33 | % | $ | 274,515 | 6 | % | $ | 260,174",
+              "section_title": "Item 7. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operations"
+            }
+          ]
+        },
+        {
+          "id": "aapl-2025-2",
+          "description": "AAPL FY2025: Greater China and total revenue",
+          "alternatives": [
+            {
+              "accession_number": "0000320193-25-000079",
+              "chunk_index": 57,
+              "chunk_id": "cbcd38df-8c18-4e5e-8527-7e5a3eef7619",
+              "text_sha256": "c859f207c51493601287132767f8d1dd2662bd8b3e04284cb33675daced55753",
+              "excerpt": "[TABLE]\n2025 | Change | 2024 | Change | 2023\nAmericas | $ | 178,353 | 7 | % | $ | 167,045 | 3 | % | $ | 162,560\nEurope | 111,032 | 10 | % | 101,328 | 7 | % | 94,294\nGreater China | 64,377 | (4) | % | 66,952 | (8) | % | 72,559\nJapan | 28,703 | 15 | % | 25,052 | 3 | % | 24,257\nRest of Asia Pacific | 33,696 | 10 | % | 30,658 | 4 | % | 29,615\nTotal net sales | $ | 416,161 | 6 | % | $ | 391,035 | 2 | % | $ | 383,285",
+              "section_title": "Item 7. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operations"
+            }
+          ]
+        },
+        {
+          "id": "nvda-2021-3",
+          "description": "NVDA FY2021: China/Hong Kong billing exposure (23%)",
+          "alternatives": [
+            {
+              "accession_number": "0001045810-21-000010",
+              "chunk_index": 44,
+              "chunk_id": "ba80a6ec-5c3d-41a6-9add-cb5c8facd0b7",
+              "text_sha256": "23ec98f1fda1fa1f13e8744ee24e0023ebc44218bbc89e01af0f7e6d92b35bd7",
+              "excerpt": "We could also be restricted from selling our products or providing our technology and services due to U.S. trade restrictions. The loss of any of our large customers, a significant reduction in purchases by them, or our inability to sell to a customer due to U.S. trade restrictions would likely harm our financial condition and results of operations, and any difficulties in collecting accounts receivable could harm our operating results and financial condition.\n\nWe maintain an",
+              "section_title": "Item 1A. Risk Factors"
+            }
+          ]
+        },
+        {
+          "id": "nvda-2021-4",
+          "description": "NVDA FY2021: Billing geography is not end-customer geography",
+          "alternatives": [
+            {
+              "accession_number": "0001045810-21-000010",
+              "chunk_index": 76,
+              "chunk_id": "7472af21-ef73-44db-8f40-59a86de66e20",
+              "text_sha256": "e50863797e2c2305af6d0bd15aa30844286ac99b861684a53273f9cf3269266e",
+              "excerpt": "Graphics - Graphics segment revenue increased by 29% in fiscal year 2021 compared to fiscal year 2020, reflecting growth in GeForce GPUs and game console SOCs, partially offset by lower sales of Quadro/NVIDIA RTX workstations.\n\nCompute & Networking - Compute & Networking segment revenue increased by 109% in fiscal year 2021 compared to fiscal year 2020, reflecting the addition of Mellanox acquired on April 27, 2020 and the continued ramp of NVIDIA Ampere GPU architecture syst",
+              "section_title": "Item 7. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operations"
+            }
+          ]
+        },
+        {
+          "id": "nvda-2025-5",
+          "description": "NVDA FY2025: China/Hong Kong billing revenue and total revenue",
+          "alternatives": [
+            {
+              "accession_number": "0001045810-25-000023",
+              "chunk_index": 192,
+              "chunk_id": "2d144ef3-4632-4977-9225-c3306df7d5c9",
+              "text_sha256": "4783b6f710b0d2eaad34a987f803a8883d26541f53c8db4f60ab46f78e37d12c",
+              "excerpt": "Revenue by geographic area is based upon the billing location of the customer. The end customer and shipping location may be different from our customer\u2019s billing location.\n\n[TABLE]\nYear Ended\nJan 26, 2025 | Jan 28, 2024 | Jan 29, 2023\nGeographic Revenue based upon Customer Billing Location: | (In millions)\nUnited States | $ | 61,257 | $ | 26,966 | $ | 8,292\nSingapore (1) | 23,684 | 6,831 | 2,288\nTaiwan | 20,573 | 13,405 | 6,986\nChina (including Hong Kong) | 17,108 | 10,306 |",
+              "section_title": "Item 15. Exhibits and Financial Statement Schedules"
+            }
+          ]
+        },
+        {
+          "id": "nvda-2025-6",
+          "description": "NVDA FY2025: Singapore billing share versus shipments",
+          "alternatives": [
+            {
+              "accession_number": "0001045810-25-000023",
+              "chunk_index": 193,
+              "chunk_id": "ffc2013f-d9e5-4030-80e1-d68d10c72a14",
+              "text_sha256": "9bd10f18be6e31a7bb2a4080a9d8560010bdc7b4c9ce189a486f262fa37a792a",
+              "excerpt": "(1) Singapore represented 18% of fiscal year 2025 total revenue based upon customer billing location. Customers use Singapore to centralize invoicing while our products are almost always shipped elsewhere. Shipments to Singapore were less than 2% of fiscal year 2025 total revenue.\n\nRevenue from sales to customers outside of the United States accounted for 53%, 56%, and 69% of total revenue for fiscal years 2025, 2024, and 2023, respectively. The increase in revenue to the Uni",
+              "section_title": "Item 15. Exhibits and Financial Statement Schedules"
+            }
+          ]
+        },
+        {
+          "id": "nvda-2025-7",
+          "description": "NVDA FY2025: China Data Center revenue and export controls",
+          "alternatives": [
+            {
+              "accession_number": "0001045810-25-000023",
+              "chunk_index": 90,
+              "chunk_id": "2267285e-62b5-49f9-9ac7-016bd173637e",
+              "text_sha256": "c8dc3f13c17a3c83bc125ad48b646783af90ad6097851cd2ce1bec8e37e5530e",
+              "excerpt": "We expanded our Data Center product portfolio to offer new solutions, including those for which the USG does not require a license or advance notice before each shipment. We ramped new products designed specifically for China that do not require an export control license. Our Data Center revenue in China grew in fiscal year 2025. As a percentage of total Data Center revenue, it remains well below levels seen prior to the onset of export controls in October 2023. The market in",
+              "section_title": "Item 7. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operations"
+            }
+          ]
+        },
+        {
+          "id": "aapl-2025-8",
+          "description": "AAPL FY2025: Asian manufacturing and single/limited sources",
+          "alternatives": [
+            {
+              "accession_number": "0000320193-25-000079",
+              "chunk_index": 22,
+              "chunk_id": "e38aa088-a509-4345-9aee-1af1081fbc86",
+              "text_sha256": "37b5ca69d6b1cccf6272c15cd6fc766116d17e454d286f67245c4d93ee7797c4",
+              "excerpt": "A significant majority of the Company\u2019s manufacturing is performed in whole or in part by outsourcing partners located primarily in China mainland, India, Japan, South Korea, Taiwan and Vietnam, in addition to sourcing from partners and facilities located in the U.S. The Company relies on single-source partners in the U.S., Asia and Europe to supply and manufacture many components, and on partners primarily located in Asia, for final assembly of substantially all of the Compa",
+              "section_title": "Item 1A. Risk Factors"
+            }
+          ]
+        },
+        {
+          "id": "aapl-2025-9",
+          "description": "AAPL FY2025: 2025 tariff pressure on product gross margin",
+          "alternatives": [
+            {
+              "accession_number": "0000320193-25-000079",
+              "chunk_index": 63,
+              "chunk_id": "f1636925-950a-41e3-99a6-c8ed654ffdae",
+              "text_sha256": "25004c9b766cfa0a2640b2495cdc5c9eb5db6fe024f67f7dd15438564cd1554d",
+              "excerpt": "Products Gross Margin\n\nProducts gross margin increased during 2025 compared to 2024 primarily due to favorable costs and a different mix of products, partially offset by tariff costs.\n\nProducts gross margin percentage decreased during 2025 compared to 2024 primarily due to a different mix of products and tariff costs, partially offset by other favorable costs.\n\nServices Gross Margin\n\nServices gross margin increased during 2025 compared to 2024 primarily due to higher Services",
+              "section_title": "Item 7. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operations"
+            }
+          ]
+        },
+        {
+          "id": "aapl-2025-10",
+          "description": "AAPL FY2025: Geographic allocation follows customer and retail-store location",
+          "alternatives": [
+            {
+              "accession_number": "0000320193-25-000079",
+              "chunk_index": 17,
+              "chunk_id": "faecc466-a07b-4097-9ed2-527e04a1abd2",
+              "text_sha256": "3c0a8814df6afc1912c073e9e3a0617af5426696a8d9a7870dc1ea7de4d69084",
+              "excerpt": "ritical business operations of the Company\u2019s suppliers and contract manufacturers, are in locations that are prone to earthquakes and other natural disasters. Global climate change is resulting in certain types of natural disasters and extreme weather occurring more frequently or with more intense effects. In addition, the Company\u2019s and its suppliers\u2019 operations, retail stores and facilities are subject to the risk of interruption by fire, power shortages, nuclear power plant",
+              "section_title": "Item 1A. Risk Factors"
+            }
+          ]
+        }
+      ],
+      "rubric": {
+        "required_findings_points": 6,
+        "citation_points": 2,
+        "caveat_points": 1,
+        "interpretation_points": 1,
+        "pass_score": 8,
+        "critical_failure": "treating NVIDIA billing location as final shipment or end customer location, or adding Singapore to China exposure without evidence.",
+        "rounding": {
+          "usd_billions_absolute": 0.2,
+          "percentage_points_absolute": 0.2,
+          "relative_percent": 1
+        },
+        "human_review_required": true
+      }
+    },
+    {
+      "code": "DR-10",
+      "question": "Assess NVIDIA's change in business-line, customer, and supply concentration from 2021 to 2025. Quantify each dimension and explain whether the filings support a claim that explosive growth also reduced concentration risk.",
+      "gold_answer": "- Data Center revenue rose from **$6.696B (40.2% of $16.675B)** in 2021 to\n  **$115.186B (88.3% of $130.497B)** in 2025. The four-year CAGR was about\n  **103.7%**, but revenue became much more concentrated in one end market.\n- No customer represented 10% or more of FY2021 revenue. In FY2025, three direct\n  customers represented **12%, 11%, and 11%**, or at least 34% combined. One\n  indirect customer was also estimated at 10% or more, but it bought through\n  multiple parties including Direct Customer B, so it must **not** be added to\n  34% as though non-overlapping.\n- At FY2025 end NVIDIA had **$10.1B inventory**, **$30.8B** of inventory purchase\n  and long-term supply/capacity obligations (about **3.0x** inventory), **$5.0B**\n  of current plus long-term prepaid supply/capacity balances, and $14.3B of\n  other purchase obligations including $10.9B of cloud agreements.\n- The supply chain remained mainly concentrated in Asia-Pacific and depended on\n  foundries, memory suppliers, CoWoS packaging, and contract manufacturers.\n\nGrowth did not reduce concentration risk. It increased end-market and disclosed\ncustomer concentration while also increasing forward supply commitments. The\nfiling describes both shortage risk and excess/obsolescence risk; this is a\ntwo-sided operating leverage, not a one-way demand benefit.",
+      "evidence_groups": [
+        {
+          "id": "nvda-2021-1",
+          "description": "NVDA FY2021: Data Center and total revenue",
+          "alternatives": [
+            {
+              "accession_number": "0001045810-21-000010",
+              "chunk_index": 168,
+              "chunk_id": "0e80dac1-29d4-499e-809e-a89f06e0aedb",
+              "text_sha256": "98aa0fbdf286218885525612b8fca4ed24923098ad734d26e432697d7e692cb4",
+              "excerpt": "The following table summarizes information pertaining to our revenue by each of the specialized markets we serve:\n\n[TABLE]\nYear Ended\nJanuary 31, 2021 | January 26, 2020 | January 27, 2019\nRevenue: | (In millions)\nGaming | $ | 7,759 | $ | 5,518 | $ | 6,246\nProfessional Visualization | 1,053 | 1,212 | 1,130\nData Center | 6,696 | 2,983 | 2,932\nAutomotive | 536 | 700 | 641\nOEM & Other | 631 | 505 | 767\nTotal revenue | $ | 16,675 | $ | 10,918 | $ | 11,716",
+              "section_title": "Item 15. Exhibits and Financial Statement Schedules"
+            }
+          ]
+        },
+        {
+          "id": "nvda-2021-2",
+          "description": "NVDA FY2021: No customer reached 10%",
+          "alternatives": [
+            {
+              "accession_number": "0001045810-21-000010",
+              "chunk_index": 76,
+              "chunk_id": "7472af21-ef73-44db-8f40-59a86de66e20",
+              "text_sha256": "e50863797e2c2305af6d0bd15aa30844286ac99b861684a53273f9cf3269266e",
+              "excerpt": "Graphics - Graphics segment revenue increased by 29% in fiscal year 2021 compared to fiscal year 2020, reflecting growth in GeForce GPUs and game console SOCs, partially offset by lower sales of Quadro/NVIDIA RTX workstations.\n\nCompute & Networking - Compute & Networking segment revenue increased by 109% in fiscal year 2021 compared to fiscal year 2020, reflecting the addition of Mellanox acquired on April 27, 2020 and the continued ramp of NVIDIA Ampere GPU architecture syst",
+              "section_title": "Item 7. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operations"
+            }
+          ]
+        },
+        {
+          "id": "nvda-2025-3",
+          "description": "NVDA FY2025: Data Center and total revenue",
+          "alternatives": [
+            {
+              "accession_number": "0001045810-25-000023",
+              "chunk_index": 195,
+              "chunk_id": "3b460f21-0c3b-4027-bae4-bbdd8a9ec5b0",
+              "text_sha256": "463dea4b1be213f8fed3167d31630b5e44d363ac22b26733c9fb04b0f79b9041",
+              "excerpt": "* Less than 10% of total revenue.\n\nNo customer represented 10% or more of total revenue for fiscal year 2023.\n\nThe following table summarizes revenue by specialized markets:\n\n[TABLE]\nYear Ended\nJan 26, 2025 | Jan 28, 2024 | Jan 29, 2023\nRevenue by End Market: | (In millions)\nData Center | $ | 115,186 | $ | 47,525 | $ | 15,005\nCompute | 102,196 | 38,950 | 11,317\nNetworking | 12,990 | 8,575 | 3,688\nGaming | 11,350 | 10,447 | 9,067\nProfessional Visualization | 1,878 | 1,553 | 1,",
+              "section_title": "Item 15. Exhibits and Financial Statement Schedules"
+            }
+          ]
+        },
+        {
+          "id": "nvda-2025-4",
+          "description": "NVDA FY2025: Direct customer shares and overlapping indirect customer",
+          "alternatives": [
+            {
+              "accession_number": "0001045810-25-000023",
+              "chunk_index": 103,
+              "chunk_id": "d337df90-ce65-4eef-8f0f-0291d3ee47ec",
+              "text_sha256": "c7da8f1017761f505ed1dd9d44a000dd2bd4cb5fde61656c388ca863ddcddacf",
+              "excerpt": "[TABLE]\nYear Ended\nJan 26, 2025 | Jan 28, 2024\nDirect Customer A | 12 | % | *\nDirect Customer B | 11 | % | 13 | %\nDirect Customer C | 11 | % | *\n\nItem 7. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operations\n\n* Less than 10% of total revenue.\n\nNo customer represented 10% or more of total revenue for fiscal year 2023.\n\nIndirect Customers \u2013 Indirect customer revenue is an estimation based upon multiple factors including customer purchase order in",
+              "section_title": "Item 7. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operations"
+            }
+          ]
+        },
+        {
+          "id": "nvda-2025-5",
+          "description": "NVDA FY2025: Inventory and supply/capacity obligations",
+          "alternatives": [
+            {
+              "accession_number": "0001045810-25-000023",
+              "chunk_index": 123,
+              "chunk_id": "263e558a-a12f-42a9-84b7-08f1c6377b7d",
+              "text_sha256": "eb1799b8075a5d21cdca76d11e2e0e91e9e1c87f7107844a362feb7767abc129",
+              "excerpt": "The critical audit matter communicated below is a matter arising from the current period audit of the consolidated financial statements that was communicated or required to be communicated to the audit committee and that (i) relates to accounts or disclosures that are material to the consolidated financial statements and (ii) involved our especially challenging, subjective, or complex judgments. The communication of critical audit matters does not alter in any way our opinion",
+              "section_title": "Item 15. Exhibits and Financial Statement Schedules"
+            }
+          ]
+        },
+        {
+          "id": "nvda-2025-6",
+          "description": "NVDA FY2025: Long-term supply/capacity prepayments",
+          "alternatives": [
+            {
+              "accession_number": "0001045810-25-000023",
+              "chunk_index": 164,
+              "chunk_id": "bffdee34-b4ff-4c0f-b4bd-0bc5e990684b",
+              "text_sha256": "d189dbdbe39bd2714677bb449c69f5d984021fd584b0018cb13defba512bcd9d",
+              "excerpt": "(A)Land is a non-depreciable asset.\n\n(B)The estimated useful lives of our buildings are up to thirty years. Leasehold improvements and finance leases are amortized based on the lesser of either the asset\u2019s estimated useful life or the expected remaining lease term.\n\n(C)Construction in process represents assets that are not available for their intended use as of the balance sheet date.\n\nItem 15. Exhibits and Financial Statement Schedules\n(Continued)\n\nDepreciation expense for f",
+              "section_title": "Item 15. Exhibits and Financial Statement Schedules"
+            }
+          ]
+        },
+        {
+          "id": "nvda-2025-7",
+          "description": "NVDA FY2025: Current supply/capacity prepayments",
+          "alternatives": [
+            {
+              "accession_number": "0001045810-25-000023",
+              "chunk_index": 165,
+              "chunk_id": "1802a35b-b908-4c8f-95a4-1926162f00bf",
+              "text_sha256": "95b87dc41622f4c8148f26f9e6c4d94d4cad9d6fbb2c0c09f2682c6fb6c62b7f",
+              "excerpt": "(1)Prepaid supply and capacity agreements of $3.3 billion and $2.5 billion were included in Prepaid expenses and other current assets as of January 26, 2025 and January 28, 2024, respectively.\n\n[TABLE]\nJan 26, 2025 | Jan 28, 2024\nAccrued and Other Current Liabilities: | (In millions)\nCustomer program accruals | $ | 4,880 | $ | 2,081\nExcess inventory purchase obligations (1) | 2,095 | 1,655\nProduct warranty and return provisions | 1,373 | 415\nTaxes payable | 881 | 296\nAccrued ",
+              "section_title": "Item 15. Exhibits and Financial Statement Schedules"
+            }
+          ]
+        },
+        {
+          "id": "nvda-2025-8",
+          "description": "NVDA FY2025: Commitment scope, cancellation rights and cloud contracts",
+          "alternatives": [
+            {
+              "accession_number": "0001045810-25-000023",
+              "chunk_index": 171,
+              "chunk_id": "596c1dc2-113e-4a1f-8756-81430303494f",
+              "text_sha256": "512fd4ad32a8805dad5d07dfb56ca9332755de665a611dbc9fcb94594dc5b1d3",
+              "excerpt": "(1) In fiscal year 2025, we repaid the 0.584% Notes Due 2024.\n\nOur notes are unsecured senior obligations. Existing and future liabilities of our subsidiaries will be effectively senior to the notes. Our notes pay interest semi-annually. We may redeem each of our notes prior to maturity, subject to a make-whole premium. The maturity of the notes is calendar year.\n\nAs of January 26, 2025, we complied with the required covenants, which are non-financial in nature, under the out",
+              "section_title": "Item 15. Exhibits and Financial Statement Schedules"
+            }
+          ]
+        },
+        {
+          "id": "nvda-2025-9",
+          "description": "NVDA FY2025: Foundry, memory, CoWoS and contract-manufacturer dependence",
+          "alternatives": [
+            {
+              "accession_number": "0001045810-25-000023",
+              "chunk_index": 16,
+              "chunk_id": "3160fac2-fbe9-42f1-bcd2-c876bd1fa47c",
+              "text_sha256": "0a5eb27f596363ef138a35248d0617d41e7ca0c911cb8b9c24ee536b78d314a9",
+              "excerpt": "Our computing platforms serve a diverse set of markets such as data centers, gaming, professional visualization, and automotive. Our desktop gaming products typically see stronger revenue in the second half of our fiscal year. Historical seasonality trends may not repeat.\n\nManufacturing\n\nWe utilize a fabless and contracting manufacturing strategy, whereby we employ and partner with key suppliers for all phases of the manufacturing process, including wafer fabrication, assembl",
+              "section_title": "Item 1. Business"
+            }
+          ]
+        }
+      ],
+      "rubric": {
+        "required_findings_points": 6,
+        "citation_points": 2,
+        "caveat_points": 1,
+        "interpretation_points": 1,
+        "pass_score": 8,
+        "critical_failure": "adding the indirect customer's estimated share to the direct-customer total, or claiming all $30.8B is non-cancellable.",
+        "rounding": {
+          "usd_billions_absolute": 0.2,
+          "percentage_points_absolute": 0.2,
+          "relative_percent": 1
+        },
+        "human_review_required": true
+      }
+    },
+    {
+      "code": "DR-11",
+      "question": "Microsoft and Alphabet both lengthened server/network-equipment useful lives in 2023. Quantify the disclosed operating-income/depreciation benefit as a share of each company's year-over-year operating-income increase. What would operating income growth have been without the disclosed benefit, as a simple analytical bridge?",
+      "gold_answer": "- Microsoft increased server and network equipment lives from four to six years.\n  It disclosed a **$3.7B** FY2023 operating-income benefit. Operating income rose\n  from $83.383B to $88.523B, a $5.140B increase; the estimate change equals\n  **72.0%** of that increase. Subtracting the disclosed benefit gives $84.823B,\n  or about **1.7%** growth instead of reported 6.2%.\n- Alphabet changed servers and certain network equipment to six years. It\n  disclosed a **$3.9B reduction in depreciation** in 2023. Operating income rose\n  from $74.842B to $84.293B, a $9.451B increase; the benefit equals **41.3%** of\n  that increase. Subtracting it gives $80.393B, or about **7.4%** growth instead\n  of reported 12.6%.\n\nThese are prospective GAAP estimate changes, not improprieties, and the simple\nbridge is not a full pro-forma restatement. It holds taxes, asset additions,\nallocations, and all other factors constant. Microsoft directly disclosed an\noperating-income impact; Alphabet disclosed reduced depreciation, which flows\nthrough operating costs, so the comparison should retain that wording.",
+      "evidence_groups": [
+        {
+          "id": "msft-2023-1",
+          "description": "MSFT FY2023: 2022-2023 operating income",
+          "alternatives": [
+            {
+              "accession_number": "0000950170-23-035122",
+              "chunk_index": 111,
+              "chunk_id": "fa7106e9-b716-4f20-b807-a81b0f0ac5d1",
+              "text_sha256": "d2609b706abbe5b1ec3e66d1e11ee7a990f52b971e388ae57ad6203d54c832a9",
+              "excerpt": "9 | 21,825 | 20,117\nGeneral and administrative | 7,575 | 5,900 | 5,107\nOperating income | 88,523 | 83,383 | 69,916\nOther income, net | 788 | 333 | 1,186\nIncome before income taxes | 89,311 | 83,716 | 71,102\nProvision for income taxes | 16,950 | 10,978 | 9,831\nNet income | $ | 72,361 | $ | 72,738 | $ | 61,271\nEarnings per share:\nBasic | $ | 9.72 | $ | 9.70 | $ | 8.12\nDiluted | $ | 9.68 | $ | 9.65 | $ | 8.05\nWeighted average shares outstanding:\nBasic | 7,446 | 7,496 | 7,547\nDil",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "msft-2023-2",
+          "description": "MSFT FY2023: Useful-life change and effect on operating income",
+          "alternatives": [
+            {
+              "accession_number": "0000950170-23-035122",
+              "chunk_index": 79,
+              "chunk_id": "604a939d-9f55-4eff-aab6-ba4c9d02d798",
+              "text_sha256": "897acf23f208440c230465305206797b516cd6043e604e15496a849af3273d9e",
+              "excerpt": "t of this change in estimate for fiscal year 2023 was an increase in operating income of $3.7 billion and net income of $3.0 billion, or $0.40 per both basic and diluted share.\n\nReportable Segments\n\nWe report our financial performance based on the following segments: Productivity and Business Processes, Intelligent Cloud, and More Personal Computing. The segment amounts included in MD&A are presented on a basis consistent with our internal management reporting. We have recast",
+              "section_title": "Item 7. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operations"
+            }
+          ]
+        },
+        {
+          "id": "googl-2023-3",
+          "description": "GOOGL FY2023: 2022-2023 operating income",
+          "alternatives": [
+            {
+              "accession_number": "0001652044-24-000022",
+              "chunk_index": 106,
+              "chunk_id": "f23f6601-8989-4098-9ab6-a52d2a3abf1e",
+              "text_sha256": "f4d6e7b047e667b149331d6515d977c05dbadb017835ccba16a58c16161b54f3",
+              "excerpt": "sts and expenses | 178,923 | 207,994 | 223,101\nIncome from operations | 78,714 | 74,842 | 84,293\nOther income (expense), net | 12,020 | (3,514) | 1,424\nIncome before income taxes | 90,734 | 71,328 | 85,717\nProvision for income taxes | 14,701 | 11,356 | 11,922\nNet income | $ | 76,033 | $ | 59,972 | $ | 73,795\nBasic net income per share of Class A, Class B, and Class C stock | $ | 5.69 | $ | 4.59 | $ | 5.84\nDiluted net income per share of Class A, Class B, and Class C stock | $",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "googl-2023-4",
+          "description": "GOOGL FY2023: Useful-life change and depreciation impact",
+          "alternatives": [
+            {
+              "accession_number": "0001652044-24-000022",
+              "chunk_index": 110,
+              "chunk_id": "183fce1e-56f2-4984-b484-4b5aab8442cd",
+              "text_sha256": "4971327c918e8e259cb43a36b08ef29562e7c9c2f33c0e3aa31dca3aa18b1846",
+              "excerpt": ", 2023, the effect of this change in estimate was a reduction in depreciation expense of $3.9 billion and an increase in net income of $3.0 billion, or $0.24 per basic and $0.24 per diluted share, for the year ended December 31, 2023.\n\nRevenue Recognition",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        }
+      ],
+      "rubric": {
+        "required_findings_points": 6,
+        "citation_points": 2,
+        "caveat_points": 1,
+        "interpretation_points": 1,
+        "pass_score": 8,
+        "critical_failure": "treating the estimate changes as cash savings or adding the benefit to reported operating income rather than subtracting it for the analytical bridge.",
+        "rounding": {
+          "usd_billions_absolute": 0.2,
+          "percentage_points_absolute": 0.2,
+          "relative_percent": 1
+        },
+        "human_review_required": true
+      }
+    },
+    {
+      "code": "DR-12",
+      "question": "Apple's FY2024 revenue and operating income rose, but net income fell. Reconcile the apparent contradiction using the State Aid Decision. Calculate an illustrative net income and effective tax rate excluding the disclosed one-time net tax charge, and compare the adjusted net income with 2023.",
+      "gold_answer": "- FY2024 revenue rose to **$391.035B** from $383.285B and operating income rose\n  to **$123.216B** from $114.301B, but net income fell to **$93.736B** from\n  $96.995B.\n- Apple disclosed a **$10.2B one-time net income-tax charge** related to the\n  State Aid Decision. Adding it back produces illustrative adjusted FY2024 net\n  income of **$103.936B**, about **7.2% above** 2023 instead of 3.4% below.\n- Reported FY2024 pretax income was $123.485B and tax provision was $29.749B.\n  Excluding $10.2B gives an illustrative tax provision of $19.549B and rate of\n  **15.8%**, versus reported **24.1%** and FY2025's **15.6%**.\n- Apple also disclosed a **EUR14.2B / $15.8B cash obligation** to Ireland, with\n  settlement funds held in escrow. That cash obligation must not be confused\n  with the $10.2B current-period accounting charge.\n\nThe filing supports the conclusion that the reported net-income decline was\ndominated by the tax item, not operating deterioration. The adjustment is an\nanalytical add-back, not an Apple-provided non-GAAP measure, and ignores any\nsecond-order tax effects already embedded in \u201cnet.\u201d",
+      "evidence_groups": [
+        {
+          "id": "aapl-2024-1",
+          "description": "AAPL FY2024: Revenue, operating income, pretax income, tax and net income",
+          "alternatives": [
+            {
+              "accession_number": "0000320193-24-000123",
+              "chunk_index": 71,
+              "chunk_id": "8a753ae2-c97d-43c6-9970-117131dac22c",
+              "text_sha256": "2777126987864ee1ae9a10b213effce768576edf0be32d110b31544f15613c58",
+              "excerpt": " 113,736 | 119,103\nProvision for income taxes | 29,749 | 16,741 | 19,300\nNet income | $ | 93,736 | $ | 96,995 | $ | 99,803\nEarnings per share:\nBasic | $ | 6.11 | $ | 6.16 | $ | 6.15\nDiluted | $ | 6.08 | $ | 6.13 | $ | 6.11\nShares used in computing earnings per share:\nBasic | 15,343,783 | 15,744,231 | 16,215,963\nDiluted | 15,408,095 | 15,812,547 | 16,325,819",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "aapl-2024-2",
+          "description": "AAPL FY2024: Net State Aid tax charge versus gross escrow settlement",
+          "alternatives": [
+            {
+              "accession_number": "0000320193-24-000123",
+              "chunk_index": 95,
+              "chunk_id": "589b99e7-f75d-4862-b6d9-90a7bf5fcfd0",
+              "text_sha256": "b5187bbc1b4731abd3bfeadd4a808968b98a2e359c5a01b5e40610eaf577a8c7",
+              "excerpt": ", during the fourth quarter of 2024 the Company recorded a one-time income tax charge of $10.2 billion, net, which represents $15.8 billion payable to Ireland via release of the escrow, partially offset by a U.S. foreign tax credit of $4.8 billion and a decrease in unrecognized tax benefits of $823 million.\n\nProvision for Income Taxes and Effective Tax Rate\n\nThe provision for income taxes for 2024, 2023 and 2022, consisted of the following (in millions):",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "aapl-2025-3",
+          "description": "AAPL FY2025: FY2025 income statement and FY2024/FY2023 comparatives",
+          "alternatives": [
+            {
+              "accession_number": "0000320193-25-000079",
+              "chunk_index": 76,
+              "chunk_id": "2e73242f-b895-46e7-a349-5cc262725b40",
+              "text_sha256": "6bf496999fabcb04b3ae02fda3743fe1131932b1ddaa013c5652ffe2a8a58306",
+              "excerpt": "07,003 | $ | 294,866 | $ | 298,085\nServices | 109,158 | 96,169 | 85,200\nTotal net sales | 416,161 | 391,035 | 383,285\nCost of sales:\nProducts | 194,116 | 185,233 | 189,282\nServices | 26,844 | 25,119 | 24,855\nTotal cost of sales | 220,960 | 210,352 | 214,137\nGross margin | 195,201 | 180,683 | 169,148\nOperating expenses:\nResearch and development | 34,550 | 31,370 | 29,915\nSelling, general and administrative | 27,601 | 26,097 | 24,932\nTotal operating expenses | 62,151 | 57,467 |",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "aapl-2025-4",
+          "description": "AAPL FY2025: 2025 effective tax rate (15.6%)",
+          "alternatives": [
+            {
+              "accession_number": "0000320193-25-000079",
+              "chunk_index": 66,
+              "chunk_id": "4928ce44-374d-4296-a57c-3dd48c67ce60",
+              "text_sha256": "23b8331f55b9f1302b5b090f4b36fe6a5df85ed43695de2430612c868cf095c3",
+              "excerpt": "23\nProvision for income taxes | $ | 20,719 | $ | 29,749 | $ | 16,741\nEffective tax rate | 15.6 | % | 24.1 | % | 14.7 | %\nStatutory federal income tax rate | 21 | % | 21 | % | 21 | %",
+              "section_title": "Item 7. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operations"
+            }
+          ]
+        }
+      ],
+      "rubric": {
+        "required_findings_points": 6,
+        "citation_points": 2,
+        "caveat_points": 1,
+        "interpretation_points": 1,
+        "pass_score": 8,
+        "critical_failure": "adding back the $15.8B cash obligation to net income or calling the tax charge an operating expense.",
+        "rounding": {
+          "usd_billions_absolute": 0.2,
+          "percentage_points_absolute": 0.2,
+          "relative_percent": 1
+        },
+        "human_review_required": true
+      }
+    },
+    {
+      "code": "DR-13",
+      "question": "Amazon swung from $33.364B net income in 2021 to a $2.722B net loss in 2022. Reconcile the swing using operating income, total non-operating income/expense, and the Rivian fair-value changes. Calculate pretax income excluding the Rivian gain/loss. Did Rivian explain all of the deterioration?",
+      "gold_answer": "- Operating income fell from **$24.879B to $12.248B**, a **$12.631B** decline.\n- Total non-operating result moved from **+$13.272B to -$18.184B**, a\n  **$31.456B** adverse swing.\n- Within that, Rivian moved from an **$11.8B valuation gain** to a **$12.7B\n  valuation loss**, a **$24.5B** adverse swing, or about 78% of the non-operating\n  swing.\n- Reported pretax income was $24.879B + $13.272B = **$38.151B** in 2021 and\n  $12.248B - $18.184B = **-$5.936B** in 2022.\n- Excluding only Rivian gives illustrative pretax income of **$26.351B** in 2021\n  and **$6.764B** in 2022 - still a **$19.587B decline**.\n\nRivian explains much, but not all, of the reversal. Underlying operating income\nalso fell sharply, and other non-operating items and taxes mattered. A net-income\nadd-back would require tax assumptions, so the defensible normalization is at\npretax income.",
+      "evidence_groups": [
+        {
+          "id": "amzn-2022-1",
+          "description": "AMZN FY2022: 2021-2022 operating income, non-operating items and pretax income",
+          "alternatives": [
+            {
+              "accession_number": "0001018724-23-000004",
+              "chunk_index": 77,
+              "chunk_id": "ac2da0aa-f9b3-40d2-9c3c-c3bdbb617cf2",
+              "text_sha256": "588bad9ef0b43a3e708f4579e504484c91d8118d89c3be660cb11831edbc44e7",
+              "excerpt": " net | 2,371 | 14,633 | (16,806)\nTotal non-operating income (expense) | 1,279 | 13,272 | (18,184)\nIncome (loss) before income taxes | 24,178 | 38,151 | (5,936)\nBenefit (provision) for income taxes | (2,863) | (4,791) | 3,217\nEquity-method investment activity, net of tax | 16 | 4 | (3)\nNet income (loss) | $ | 21,331 | $ | 33,364 | $ | (2,722)\nBasic earnings per share | $ | 2.13 | $ | 3.30 | $ | (0.27)\nDiluted earnings per share | $ | 2.09 | $ | 3.24 | $ | (0.27)\nWeighted-avera",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "amzn-2022-2",
+          "description": "AMZN FY2022: Rivian valuation gain/loss and its non-operating treatment",
+          "alternatives": [
+            {
+              "accession_number": "0001018724-23-000004",
+              "chunk_index": 59,
+              "chunk_id": "354b1035-7df9-4ceb-8723-cfcf6516d553",
+              "text_sha256": "8b6b8b71e173a4f4054f97d41ee030b6af20f1a641aeabb4810d3aa8559e7a2b",
+              "excerpt": "xpense), net in 2021 and 2022 is a marketable equity securities valuation gain (loss) of $11.8 billion and $(12.7) billion from our equity investment in Rivian.\n\nIncome Taxes",
+              "section_title": "Item 7. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operations"
+            },
+            {
+              "accession_number": "0001018724-23-000004",
+              "chunk_index": 91,
+              "chunk_id": "a5efe962-1ee9-40a6-ad16-fa6047a1d89d",
+              "text_sha256": "9ac1b16de777d5320ecd374b4f46b8e68c414f25fd1b4453814c2d988f83afe0",
+              "excerpt": "xpense), net in 2021 and 2022 is a marketable equity securities valuation gain (loss) of $11.8 billion and $(12.7) billion from our equity investment in Rivian Automotive, Inc. (\u201cRivian\u201d). Our investment in Rivian\u2019s preferred stock was accounted for at cost, with adjustments for observable changes in prices or impairments, prior to Rivian\u2019s initial public offering in November 2021, which resulted in the conversion of our preferred stock to Class A common stock. As of December",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        }
+      ],
+      "rubric": {
+        "required_findings_points": 6,
+        "citation_points": 2,
+        "caveat_points": 1,
+        "interpretation_points": 1,
+        "pass_score": 8,
+        "critical_failure": "saying Amazon's operating business lost $2.7B in 2022 or adding the pretax Rivian loss directly to after-tax net income without a caveat.",
+        "rounding": {
+          "usd_billions_absolute": 0.2,
+          "percentage_points_absolute": 0.2,
+          "relative_percent": 1
+        },
+        "human_review_required": true
+      }
+    },
+    {
+      "code": "DR-14",
+      "question": "Use the 10-K filings for Apple (AAPL), Microsoft (MSFT), NVIDIA (NVDA), Amazon (AMZN), and Alphabet (GOOGL). Compare each company's FY2021 and FY2025 10-K treatment of artificial intelligence. For each company, distinguish opportunity/product language from explicit downside language in four categories: product/content harm, regulation/IP, infrastructure/capacity cost, and monetization/demand/return uncertainty. What changed across the corpus?",
+      "gold_answer": "| Company | FY2021 baseline | Material FY2025 change |\n|---|---|---|\n| Apple | No explicit AI reference in the filing text; technology, product-safety, IP, regulation, infrastructure, and return risks were generic rather than AI-specific. | Explicitly links AI features to harmful/inaccurate experiences and safety, IP/licensing, changing laws, and competitive execution. It does not disclose an AI-specific revenue, infrastructure cost, or return. |\n| Microsoft | AI appeared as an Azure/product capability and acquisition rationale. The filing already warned that flawed algorithms, biased or insufficient datasets, and controversial uses could hurt adoption, create liability, and damage its brand; it also said AI regulation could increase cost or restrict opportunity. Infrastructure and investment-return risks were framed mainly at the broader cloud level. | Product-harm and regulatory language becomes generative-AI-specific and adds IP/data risks. The major financial change is explicit large-scale AI infrastructure/capacity cost and the risk that AI investments do not produce sufficient demand or returns. FY2025 cloud gross margin was pressured by scaling AI infrastructure. |\n| NVIDIA | AI was already the core Data Center demand thesis and product opportunity. The filing had privacy/use and general adoption risks, but not a generative-AI monetization or capacity-commitment framework. | The risk shifts toward customer ability to fund AI infrastructure, forecast volatility, export controls and regulation, annual product transitions, supply/capacity commitments, and inability to quantify generative-AI demand precisely. Product/content harm remains less central than for software platforms. |\n| Amazon | AI/ML appeared in AWS offerings, shared technology spending, and broad regulatory lists; spending could not be cleanly allocated to AI, but the filing did not give a distinct AI return framework. | AI becomes a named competitive, talent, infrastructure-spending, legal/reputational, adoption, and return risk; Amazon says benefits from newer AI/automation activities may not meet expectations and impacts can be difficult to isolate and quantify. |\n| Alphabet | AI research and product improvement were prominent opportunities. The filing already said AI/ML products created ethical, technological, legal, and regulatory challenges, and its broader new-venture disclosure warned that investments might not earn an adequate return. Infrastructure risk was discussed mainly at the cloud/company level. | All four categories become specifically tied to modern AI: harmful or inaccurate output and discrimination, IP/privacy, AI regulation, very large AI infrastructure investment, capacity and energy constraints, competition and user-behavior change, and uncertain commercial returns. |\n\nThe corpus-wide change is not that AI first appeared in 2025. Microsoft,\nNVIDIA, Amazon, and Alphabet already discussed AI in 2021. What changed was the\nspecificity and financial materiality of downside disclosure: generative-AI\nproduct harms, new regulation, power/datacenter/supply constraints, large\ncommitted spending, and uncertain monetization became explicit. Apple is the\nclearest \u201cabsent to explicit\u201d transition.",
+      "evidence_groups": [
+        {
+          "id": "aapl-2021-1",
+          "description": "AAPL FY2021: Generic product/technology risks; absence of AI requires the recorded whole-filing scan",
+          "alternatives": [
+            {
+              "accession_number": "0000320193-21-000105",
+              "chunk_index": 25,
+              "chunk_id": "5d6abe3c-80b0-4aa4-8c68-a99f3dbb2287",
+              "text_sha256": "0ac0ec40580ca03b1515e61e1dc1b96b15a1197b53820d9f1dcee2c34e0a7388",
+              "excerpt": "The Company\u2019s products and services may be affected from time to time by design and manufacturing defects that could materially adversely affect the Company\u2019s business and result in harm to the Company\u2019s reputation.\n\nThe Company offers complex hardware and software products and services that can be affected by design and manufacturing defects. Sophisticated operating system software and applications, such as those offered by the Company, often have issues that can unexpectedl",
+              "section_title": "Item 1A. Risk Factors"
+            }
+          ]
+        },
+        {
+          "id": "aapl-2025-2",
+          "description": "AAPL FY2025: AI product harm, IP and regulatory risks",
+          "alternatives": [
+            {
+              "accession_number": "0000320193-25-000079",
+              "chunk_index": 24,
+              "chunk_id": "d1e5b090-bb73-4e2a-9917-dd614c9b7d7d",
+              "text_sha256": "90f5047caa97f99277a15d8e5f14cbbacd76f6fa67432d300391948918cf05e3",
+              "excerpt": "The Company\u2019s products and services may be affected from time to time by design and manufacturing defects that could materially adversely affect the Company\u2019s business and result in harm to the Company\u2019s reputation.\n\nThe Company offers complex hardware and software products and services that can be affected by design and manufacturing defects. Sophisticated operating system software and applications, such as those offered by the Company, often have issues that can unexpectedl",
+              "section_title": "Item 1A. Risk Factors"
+            }
+          ]
+        },
+        {
+          "id": "aapl-2025-3",
+          "description": "AAPL FY2025: AI product harm, IP and regulatory risks",
+          "alternatives": [
+            {
+              "accession_number": "0000320193-25-000079",
+              "chunk_index": 26,
+              "chunk_id": "b4481f97-9b30-4009-9534-a4e3a5ef562e",
+              "text_sha256": "1de8083a61b4eae69f8b6e840a6c77d3e0757ea5e8d4521ddf7e821925a19953",
+              "excerpt": "The Company\u2019s products and services include technology or intellectual property that must be licensed from third parties. In addition, because of technological changes in the industries in which the Company currently competes or in the future may compete, current extensive intellectual property coverage and the rapid rate of new intellectual property rights generation, the Company\u2019s products and services may be alleged to infringe existing intellectual property rights of othe",
+              "section_title": "Item 1A. Risk Factors"
+            }
+          ]
+        },
+        {
+          "id": "aapl-2025-4",
+          "description": "AAPL FY2025: AI product harm, IP and regulatory risks",
+          "alternatives": [
+            {
+              "accession_number": "0000320193-25-000079",
+              "chunk_index": 35,
+              "chunk_id": "88006c31-7c22-4bec-8ae4-1a1b5619cecd",
+              "text_sha256": "4e5a6740f470c83b945905bbddec11a909b5e79f32f1a88ee5affcbcbbf1908e",
+              "excerpt": "Compliance with these laws and regulations is onerous and expensive. New and changing laws, regulations, executive orders, directives, and enforcement priorities can adversely affect the Company\u2019s business by increasing the Company\u2019s costs, limiting the Company\u2019s ability to offer a product, service or feature to customers, imposing changes to the design of the Company\u2019s products and services, impacting customer demand for the Company\u2019s products and services, and requiring cha",
+              "section_title": "Item 1A. Risk Factors"
+            }
+          ]
+        },
+        {
+          "id": "msft-2021-5",
+          "description": "MSFT FY2021: AI opportunity and already-present algorithm/bias risks",
+          "alternatives": [
+            {
+              "accession_number": "0001564590-21-039151",
+              "chunk_index": 5,
+              "chunk_id": "f27edcbd-e2cf-4e3d-977f-a58ff608e43c",
+              "text_sha256": "ec272690824d679d2e213a7f4d24e8654c036374bc20c2fe27edc26bf810557f",
+              "excerpt": "Microsoft is a technology company whose mission is to empower every person and every organization on the planet to achieve more. We strive to create local opportunity, growth, and impact in every country around the world. Our platforms and tools help drive small business productivity, large business competitiveness, and public-sector efficiency. They also support new startups, improve educational and health outcomes, and empower human ingenuity.\n\nWe bring technology and produ",
+              "section_title": "Item 1. Business"
+            }
+          ]
+        },
+        {
+          "id": "msft-2021-6",
+          "description": "MSFT FY2021: AI opportunity and already-present algorithm/bias risks",
+          "alternatives": [
+            {
+              "accession_number": "0001564590-21-039151",
+              "chunk_index": 69,
+              "chunk_id": "00940cf8-4d30-4de6-ab4d-0e4df3ba75ea",
+              "text_sha256": "0ac43b0138581baf3a94ed7d5924ff582fe9ea84dbdfc9878519a4b17c8292b0",
+              "excerpt": "Issues in the use of AI in our offerings may result in reputational harm or liability. We are building AI into many of our offerings and we expect this element of our business to grow. We envision a future in which AI operating in our devices, applications, and the cloud helps our customers be more productive in their work and personal lives. As with many disruptive innovations, AI presents risks and challenges that could affect its adoption, and therefore our business. AI al",
+              "section_title": "Item 1A. Risk Factors"
+            }
+          ]
+        },
+        {
+          "id": "msft-2025-7",
+          "description": "MSFT FY2025: AI investment/return uncertainty, product harm, IP/regulation and margin cost",
+          "alternatives": [
+            {
+              "accession_number": "0000950170-25-100235",
+              "chunk_index": 30,
+              "chunk_id": "2972ed25-c4b0-4bba-94b2-72b9c6b8fec5",
+              "text_sha256": "4bf633496cb3a821b0cfe0be2725d60e9228ccbf230a35093251b9f97a6c910e",
+              "excerpt": "We are investing in artificial intelligence (\u201cAI\u201d) across the entire company and infusing generative AI capabilities into our consumer and commercial offerings. AI technology and services are a highly competitive and rapidly evolving market, and new competitors continue to enter the market. We will bear significant development and operational costs to build and support the AI models, services, platforms, and infrastructure necessary to meet the needs of our customers. To comp",
+              "section_title": "Item 1A. Risk Factors"
+            }
+          ]
+        },
+        {
+          "id": "msft-2025-8",
+          "description": "MSFT FY2025: AI investment/return uncertainty, product harm, IP/regulation and margin cost",
+          "alternatives": [
+            {
+              "accession_number": "0000950170-25-100235",
+              "chunk_index": 31,
+              "chunk_id": "79e027a6-83e3-4037-ab65-6a6192b85d10",
+              "text_sha256": "c3e66ed1259d416429e6d547b4ad45e5a5a049d5d5efc45b84e7503e109d59f0",
+              "excerpt": "Continuing to enhance the attractiveness of our cloud platforms to third-party developers.\n\nEnsuring our cloud-based services meet the reliability expectations and specific requirements of our customers and maintain the security of their data as well as help them meet their own compliance needs.\n\nMaking our suite of cloud-based services platform-agnostic, available on a wide range of devices and ecosystems, including those of our competitors.\n\nIt is uncertain whether our stra",
+              "section_title": "Item 1A. Risk Factors"
+            }
+          ]
+        },
+        {
+          "id": "msft-2025-9",
+          "description": "MSFT FY2025: AI investment/return uncertainty, product harm, IP/regulation and margin cost",
+          "alternatives": [
+            {
+              "accession_number": "0000950170-25-100235",
+              "chunk_index": 43,
+              "chunk_id": "3a833065-a04a-4bb7-939e-3efd6290ea64",
+              "text_sha256": "21d6d24a1217831cfd63ba31c7cb9e073d731b800c3ea1cb5d02f4c503ce209b",
+              "excerpt": "Issues in the development, deployment, and use of AI may result in reputational or competitive harm or liability. We are building AI into many of our offerings, including our productivity services, and we are also making AI available for our customers to use in solutions that they build. This AI may be developed by Microsoft or others, including our strategic partner, OpenAI. We expect these elements of our business to grow. We envision a future in which AI operating in devic",
+              "section_title": "Item 1A. Risk Factors"
+            }
+          ]
+        },
+        {
+          "id": "msft-2025-10",
+          "description": "MSFT FY2025: AI investment/return uncertainty, product harm, IP/regulation and margin cost",
+          "alternatives": [
+            {
+              "accession_number": "0000950170-25-100235",
+              "chunk_index": 75,
+              "chunk_id": "4901b524-a78e-4a9f-a75b-969d9917fc3e",
+              "text_sha256": "b41f191684131e5de562c49763e3ff290beecbc2cbd931bb710b7d5ac7b3554a",
+              "excerpt": "Revenue increased $36.6 billion or 15% with growth across each of our segments. Intelligent Cloud revenue increased driven by Azure. Productivity and Business Processes revenue increased driven by Microsoft 365 Commercial cloud. More Personal Computing revenue increased driven by Gaming and Search and news advertising.\n\nCost of revenue increased $13.7 billion or 19% driven by growth in Microsoft Cloud.\n\nGross margin increased $22.9 billion or 13% with growth across each of ou",
+              "section_title": "Item 7. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operations"
+            }
+          ]
+        },
+        {
+          "id": "nvda-2021-11",
+          "description": "NVDA FY2021: AI opportunity and privacy/use risk",
+          "alternatives": [
+            {
+              "accession_number": "0001045810-21-000010",
+              "chunk_index": 6,
+              "chunk_id": "1e7a6305-ec6e-48c5-8297-16e661a03cb3",
+              "text_sha256": "0e306ce25d0eddb03c8d26da3ef044b9b099cc083be8cf8577f8b81ed0162de3",
+              "excerpt": "Our Company\n\nNVIDIA pioneered accelerated computing to help solve the most challenging computational problems. Since our original focus on PC graphics, we have expanded to several other large and important computationally intensive fields. Fueled by the sustained demand for exceptional 3D graphics and the scale of the gaming market, NVIDIA has leveraged its GPU architecture to create platforms for scientific computing, artificial intelligence, or AI, data science, autonomous ",
+              "section_title": "Item 1. Business"
+            }
+          ]
+        },
+        {
+          "id": "nvda-2021-12",
+          "description": "NVDA FY2021: AI opportunity and privacy/use risk",
+          "alternatives": [
+            {
+              "accession_number": "0001045810-21-000010",
+              "chunk_index": 51,
+              "chunk_id": "0ef1bec4-7480-4d52-924c-44c20b7a0b63",
+              "text_sha256": "d914a46fed1544d4546b5c9c21b3fd760a16e783c596163a9200bcea07d3237c",
+              "excerpt": "Our success depends in part on protecting our intellectual property. To accomplish this, we rely primarily on a combination of patents, trademarks, trade secrets, employee and third-party nondisclosure agreements, licensing arrangements, and the laws of the countries in which we operate to protect our intellectual property in the United States and internationally. We may be required to spend significant resources to monitor and protect our intellectual property rights, and ev",
+              "section_title": "Item 1A. Risk Factors"
+            }
+          ]
+        },
+        {
+          "id": "nvda-2025-13",
+          "description": "NVDA FY2025: Demand uncertainty, capacity/supply commitments and export controls",
+          "alternatives": [
+            {
+              "accession_number": "0001045810-25-000023",
+              "chunk_index": 34,
+              "chunk_id": "344b0f58-de53-49a9-8ef9-024cacc6f0e7",
+              "text_sha256": "9170e04c44d7737acb20383c5b0e6384965c723fa174ea9536f0be65f0f1aefa",
+              "excerpt": "If we inaccurately estimate demand, or our customers change orders, as we have experienced in the past, we may not be able to reduce our supply commitments in time, at the same rate, or at all. Significant mismatches between supply and demand have varied across our market platforms, resulted in both product shortages and excess inventory, significantly harmed our financial results and could reoccur. If we underestimate demand, and our foundry partners and contract manufacture",
+              "section_title": "Item 1A. Risk Factors"
+            }
+          ]
+        },
+        {
+          "id": "nvda-2025-14",
+          "description": "NVDA FY2025: Demand uncertainty, capacity/supply commitments and export controls",
+          "alternatives": [
+            {
+              "accession_number": "0001045810-25-000023",
+              "chunk_index": 37,
+              "chunk_id": "b2cd57b6-35d1-41cb-941f-d7a09aee7c55",
+              "text_sha256": "a6518b3afc909c5cce1083f88da08f0ffe7fe1d9be6bda539676130ebccddc1a",
+              "excerpt": "Demand estimates for our products, applications, and services can be incorrect, which may create volatility in our revenue or supply levels. We may not be able to generate significant revenue from them. Because our products may be used in multiple use cases and applications, it is difficult to estimate with any reasonable degree of precision the impact of generative AI models on our reported revenue or forecasted demand.\n\nThe use of our GPUs for new, mercurial, or trendy appl",
+              "section_title": "Item 1A. Risk Factors"
+            }
+          ]
+        },
+        {
+          "id": "nvda-2025-15",
+          "description": "NVDA FY2025: Demand uncertainty, capacity/supply commitments and export controls",
+          "alternatives": [
+            {
+              "accession_number": "0001045810-25-000023",
+              "chunk_index": 90,
+              "chunk_id": "2267285e-62b5-49f9-9ac7-016bd173637e",
+              "text_sha256": "c8dc3f13c17a3c83bc125ad48b646783af90ad6097851cd2ce1bec8e37e5530e",
+              "excerpt": "We expanded our Data Center product portfolio to offer new solutions, including those for which the USG does not require a license or advance notice before each shipment. We ramped new products designed specifically for China that do not require an export control license. Our Data Center revenue in China grew in fiscal year 2025. As a percentage of total Data Center revenue, it remains well below levels seen prior to the onset of export controls in October 2023. The market in",
+              "section_title": "Item 7. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operations"
+            }
+          ]
+        },
+        {
+          "id": "nvda-2025-16",
+          "description": "NVDA FY2025: Demand uncertainty, capacity/supply commitments and export controls",
+          "alternatives": [
+            {
+              "accession_number": "0001045810-25-000023",
+              "chunk_index": 171,
+              "chunk_id": "596c1dc2-113e-4a1f-8756-81430303494f",
+              "text_sha256": "512fd4ad32a8805dad5d07dfb56ca9332755de665a611dbc9fcb94594dc5b1d3",
+              "excerpt": "(1) In fiscal year 2025, we repaid the 0.584% Notes Due 2024.\n\nOur notes are unsecured senior obligations. Existing and future liabilities of our subsidiaries will be effectively senior to the notes. Our notes pay interest semi-annually. We may redeem each of our notes prior to maturity, subject to a make-whole premium. The maturity of the notes is calendar year.\n\nAs of January 26, 2025, we complied with the required covenants, which are non-financial in nature, under the out",
+              "section_title": "Item 15. Exhibits and Financial Statement Schedules"
+            }
+          ]
+        },
+        {
+          "id": "amzn-2021-17",
+          "description": "AMZN FY2021: AI opportunity, shared technology and broad regulatory exposure",
+          "alternatives": [
+            {
+              "accession_number": "0001018724-22-000005",
+              "chunk_index": 29,
+              "chunk_id": "1aa0abe2-d60e-489e-8321-871fcdd4f5a4",
+              "text_sha256": "d18dc31237f3ee4c78d835f26f554d106a24bce6c5e75b403fa0520f8da22c6d",
+              "excerpt": "We are subject to general business regulations and laws, as well as regulations and laws specifically governing the Internet, physical, e-commerce, and omnichannel retail, digital content, web services, electronic devices, advertising, artificial intelligence technologies and services, and other products and services that we offer or sell. These regulations and laws cover taxation, privacy, data use, data protection, data security, network security, consumer protection, prici",
+              "section_title": "Item 1A. Risk Factors"
+            }
+          ]
+        },
+        {
+          "id": "amzn-2021-18",
+          "description": "AMZN FY2021: AI opportunity, shared technology and broad regulatory exposure",
+          "alternatives": [
+            {
+              "accession_number": "0001018724-22-000005",
+              "chunk_index": 41,
+              "chunk_id": "bf2973cd-f5d2-44d1-b65e-d922f1099945",
+              "text_sha256": "c6997c7258d4a9abb9277d36b0fbe658b7fb6d5aecc0c4c1ad65954b1aad32c2",
+              "excerpt": "We expect spending in technology and content will increase over time as we add computer scientists, designers, software and hardware engineers, and merchandising employees. Our technology and content investment and capital spending projects often support a variety of product and service offerings due to geographic expansion and the cross-functionality of our systems and operations. We seek to invest efficiently in several areas of technology and content, including AWS, and ex",
+              "section_title": "Item 7. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operations"
+            }
+          ]
+        },
+        {
+          "id": "amzn-2025-19",
+          "description": "AMZN FY2025: AI adoption/return uncertainty, IP and inability to isolate impacts",
+          "alternatives": [
+            {
+              "accession_number": "0001018724-26-000004",
+              "chunk_index": 14,
+              "chunk_id": "492446e2-4c3f-4972-b80e-9cdf57691117",
+              "text_sha256": "868f5617ff0ca925f56abe039e114af71c9586619227db006139f6711f7ea5cc",
+              "excerpt": "Competition continues to intensify, including with the development of new business models and the entry of new and well-funded competitors, and as our competitors enter into business combinations or alliances and established companies in other market segments expand to become competitive with our business. In addition, new and enhanced technologies, including search, web and infrastructure computing services, practical applications of artificial intelligence and machine learn",
+              "section_title": "Item 1A. Risk Factors"
+            }
+          ]
+        },
+        {
+          "id": "amzn-2025-20",
+          "description": "AMZN FY2025: AI adoption/return uncertainty, IP and inability to isolate impacts",
+          "alternatives": [
+            {
+              "accession_number": "0001018724-26-000004",
+              "chunk_index": 19,
+              "chunk_id": "5797b724-8db0-4a1b-b716-cc3f197aefa0",
+              "text_sha256": "434be94b02eca64637f4276940c29095213c54e443835736265ceae0a3867716",
+              "excerpt": "We regard our trademarks, service marks, copyrights, patents, trade dress, trade secrets, proprietary technology, and similar intellectual property as critical to our success, and we rely on trademark, copyright, and patent law, trade secret protection, and confidentiality and/or license agreements with our employees, customers, and others to protect our proprietary rights. Effective intellectual property protection is not available in every country in which our products and ",
+              "section_title": "Item 1A. Risk Factors"
+            }
+          ]
+        },
+        {
+          "id": "amzn-2025-21",
+          "description": "AMZN FY2025: AI adoption/return uncertainty, IP and inability to isolate impacts",
+          "alternatives": [
+            {
+              "accession_number": "0001018724-26-000004",
+              "chunk_index": 54,
+              "chunk_id": "ef10b0bc-4f3d-4b7a-92e5-1e9d7406b2c7",
+              "text_sha256": "11acfed8c20406201e7930b5c63d3f2626b15cf85806b4e28b9ca65a537c4389",
+              "excerpt": "We believe that cash flows generated from operations and our cash, cash equivalents, and marketable securities balances, as well as our borrowing arrangements, will be sufficient to meet our anticipated operating cash needs for at least the next twelve months. However, any projections of future cash needs and cash flows are subject to substantial uncertainty. See Item 1A of Part I, \u201cRisk Factors.\u201d We continually evaluate opportunities to sell additional equity or debt securit",
+              "section_title": "Item 7. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operations"
+            }
+          ]
+        },
+        {
+          "id": "googl-2021-22",
+          "description": "GOOGL FY2021: Existing investment-return and ethical/legal AI risks",
+          "alternatives": [
+            {
+              "accession_number": "0001652044-22-000019",
+              "chunk_index": 19,
+              "chunk_id": "10134633-e5e9-49af-90ff-543a1d0b7ff0",
+              "text_sha256": "b308ba161dd433d75bcdca39868bde0b75d3fc861bd250e9c84e4d4955212197",
+              "excerpt": "We have invested and expect to continue to invest in new businesses, products, services, and technologies. The investments that we are making across Google Services, Google Cloud, and Other Bets reflect our ongoing efforts to innovate and provide products and services that are useful to users, advertisers, publishers, customers, and content providers. Our investments in Google Services, Google Cloud, and Other Bets span a wide range of industries beyond online advertising. Su",
+              "section_title": "Item 1A. Risk Factors"
+            }
+          ]
+        },
+        {
+          "id": "googl-2021-23",
+          "description": "GOOGL FY2021: Existing investment-return and ethical/legal AI risks",
+          "alternatives": [
+            {
+              "accession_number": "0001652044-22-000019",
+              "chunk_index": 20,
+              "chunk_id": "3643e6b5-8e76-4f97-81ec-d9ae5f6faddc",
+              "text_sha256": "3dce54741f2f31bb21747cc26dd0c59d5ba969cb295ed7f4c91a6dc4b65c5b14",
+              "excerpt": "In addition, new and evolving products and services, including those that use AI and machine learning, raise ethical, technological, legal, regulatory, and other challenges, which may negatively affect our brands and demand for our products and services. Because all of these new ventures are inherently risky, no assurance can be given that such strategies and offerings will be successful and will not harm our reputation, financial condition, and operating results.\n\nOur revenu",
+              "section_title": "Item 1A. Risk Factors"
+            }
+          ]
+        },
+        {
+          "id": "googl-2025-24",
+          "description": "GOOGL FY2025: AI investment returns, IP/competition and energy/capacity constraints",
+          "alternatives": [
+            {
+              "accession_number": "0001652044-26-000018",
+              "chunk_index": 16,
+              "chunk_id": "925cc7ed-87b3-4fb8-b581-cbfc3e472a3b",
+              "text_sha256": "1312091038c187df7b77a9bf8c1aca5adf32a178ed8b4a6f71bcdad885694ad7",
+              "excerpt": "We have invested and expect to expand our investment in new businesses, products, services, and technologies in a wide range of industries beyond online advertising. The investments that we are making across our businesses \u2014 such as building AI-optimized infrastructure, including our custom TPUs, and integrating AI capabilities into new and existing products and services \u2014 reflect our ongoing efforts to innovate and provide products and services that are helpful to users, adv",
+              "section_title": "Item 1A. Risk Factors"
+            }
+          ]
+        },
+        {
+          "id": "googl-2025-25",
+          "description": "GOOGL FY2025: AI investment returns, IP/competition and energy/capacity constraints",
+          "alternatives": [
+            {
+              "accession_number": "0001652044-26-000018",
+              "chunk_index": 19,
+              "chunk_id": "c4543951-2555-4b71-80ec-5c4c41e94600",
+              "text_sha256": "eecef850d1872a67c9bf1e09c7a86418e1d587598f2e767172cf050ef2f3a1d0",
+              "excerpt": "We are developing frontier generative AI models and building AI capabilities into products and services across the company, tailoring them to the evolving preferences of our users and customers. AI technology and services are highly competitive, rapidly evolving, and require significant investment, including technical infrastructure, development, and operational costs. Our ability to deploy certain AI technologies critical for our products and services and for our business st",
+              "section_title": "Item 1A. Risk Factors"
+            }
+          ]
+        },
+        {
+          "id": "googl-2025-26",
+          "description": "GOOGL FY2025: AI investment returns, IP/competition and energy/capacity constraints",
+          "alternatives": [
+            {
+              "accession_number": "0001652044-26-000018",
+              "chunk_index": 22,
+              "chunk_id": "42df2421-e511-4e47-be2d-336c255d3f06",
+              "text_sha256": "6252aa5dcf76917a3059e6148e2b2f2585d99396eda47f98a921705c67089482",
+              "excerpt": "We rely on contract manufacturers to manufacture or assemble our devices as well as servers and networking equipment used in our technical infrastructure, certain components of which we may supply. We also rely on third parties to supply components and distribute our products and services. Our business could be harmed if we are not able to engage these companies with the necessary capabilities or capacity on reasonable terms, or if those we engage fail to meet their obligatio",
+              "section_title": "Item 1A. Risk Factors"
+            }
+          ]
+        }
+      ],
+      "rubric": {
+        "required_findings_points": 6,
+        "citation_points": 2,
+        "caveat_points": 1,
+        "interpretation_points": 1,
+        "pass_score": 8,
+        "critical_failure": "claiming none of the companies discussed AI in 2021, or equating an increase in mentions with proof of higher realized financial risk.",
+        "rounding": {
+          "usd_billions_absolute": 0.2,
+          "percentage_points_absolute": 0.2,
+          "relative_percent": 1
+        },
+        "human_review_required": true,
+        "whole_filing_checks": [
+          {
+            "ticker": "AAPL",
+            "fiscal_year": 2021,
+            "pattern": "\\bAI\\b|\\bartificial\\s+intelligence\\b|\\bmachine\\s+learning\\b",
+            "matches": 0,
+            "canonical_markdown_characters": 260855,
+            "canonical_markdown_sha256": "580ab19c5271ebcb978d55eb7e43b805b8bea3d3d49ebea7467132cd36e29586",
+            "matches_database_content_checksum": true,
+            "limitation": "Absence of these expressions in the canonical filing text; not proof about every semantic reference or omitted original HTML content."
+          }
+        ]
+      }
+    },
+    {
+      "code": "DR-15",
+      "question": "Use the 10-K filings for Apple (AAPL), Microsoft (MSFT), NVIDIA (NVDA), Amazon (AMZN), and Alphabet (GOOGL). Using only this corpus, identify which of the five companies earned the highest return on generative-AI investment by FY2025 and quantify how many basis points of its margin expansion were caused by generative AI.",
+      "gold_answer": "The requested ranking and causal basis-point calculation are **not supported by\nthe filings**. A correct answer should refuse to manufacture them, while still\nsummarizing the evidence that is available:\n\n- None of the five provides a consistent generative-AI investment denominator,\n  generative-AI revenue/profit numerator, or ROIC/ROI measure.\n- Consolidated capex and shared infrastructure support AI, cloud, internal\n  workloads, and other services; segment allocations and business models differ.\n- Microsoft gives a specific cost direction - Microsoft Cloud gross margin fell\n  to 69% partly because of scaling AI infrastructure, offset partly by Azure\n  efficiencies - but this does not disclose AI ROI or the causal effect on\n  consolidated operating margin.\n- Amazon says the effects of AI and other macro/technology factors are difficult\n  to predict, isolate, and quantify, and that intended benefits may not meet\n  expectations.\n- NVIDIA says it is difficult to estimate with reasonable precision the impact\n  of generative AI on reported revenue or forecast demand.\n- Alphabet says AI-related investments may not be commercially viable or earn\n  an adequate return, while its capex is shared across user, enterprise, and\n  internal research needs.\n- Apple's filings do not separately disclose AI investment or AI-driven revenue\n  and margin.\n\nThe strongest supported conclusion is that the filings show large AI-related\ninvestment, demand narratives, and some disclosed cost pressure, but do not\nidentify a cross-company return metric or isolate causal margin effects. The\nsystem should offer the calculations it *can* support (for example DR-03 to\nDR-06) and clearly stop at the causal boundary.",
+      "evidence_groups": [
+        {
+          "id": "aapl-2025-1",
+          "description": "AAPL FY2025: AI risk and consolidated financial/cash-flow disclosures; these are not AI-only ROI",
+          "alternatives": [
+            {
+              "accession_number": "0000320193-25-000079",
+              "chunk_index": 24,
+              "chunk_id": "d1e5b090-bb73-4e2a-9917-dd614c9b7d7d",
+              "text_sha256": "90f5047caa97f99277a15d8e5f14cbbacd76f6fa67432d300391948918cf05e3",
+              "excerpt": "The Company\u2019s products and services may be affected from time to time by design and manufacturing defects that could materially adversely affect the Company\u2019s business and result in harm to the Company\u2019s reputation.\n\nThe Company offers complex hardware and software products and services that can be affected by design and manufacturing defects. Sophisticated operating system software and applications, such as those offered by the Company, often have issues that can unexpectedl",
+              "section_title": "Item 1A. Risk Factors"
+            }
+          ]
+        },
+        {
+          "id": "aapl-2025-2",
+          "description": "AAPL FY2025: AI risk and consolidated financial/cash-flow disclosures; these are not AI-only ROI",
+          "alternatives": [
+            {
+              "accession_number": "0000320193-25-000079",
+              "chunk_index": 76,
+              "chunk_id": "2e73242f-b895-46e7-a349-5cc262725b40",
+              "text_sha256": "6bf496999fabcb04b3ae02fda3743fe1131932b1ddaa013c5652ffe2a8a58306",
+              "excerpt": "All financial statement schedules have been omitted, since the required information is not applicable or is not present in amounts sufficient to require submission of the schedule, or because the information required is included in the consolidated financial statements and accompanying notes.\n\nItem 8. Financial Statements and Supplementary Data\nApple Inc. | 2025 Form 10-K | 28\n\nApple Inc.\n\nItem 8. Financial Statements and Supplementary Data\n(In millions, except number of shar",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "aapl-2025-3",
+          "description": "AAPL FY2025: AI risk and consolidated financial/cash-flow disclosures; these are not AI-only ROI",
+          "alternatives": [
+            {
+              "accession_number": "0000320193-25-000079",
+              "chunk_index": 80,
+              "chunk_id": "b3f83a4c-f633-413f-af45-a8e167a12269",
+              "text_sha256": "9f3e3eef2d2d312aef963d4cd5e257a588f8559491894e6ccaa39b5608332555",
+              "excerpt": "[TABLE]\nYears ended\nSeptember 27, 2025 | September 28, 2024 | September 30, 2023\nCash, cash equivalents, and restricted cash and cash equivalents, beginning balances | $ | 29,943 | $ | 30,737 | $ | 24,977\nOperating activities:\nNet income | 112,010 | 93,736 | 96,995\nAdjustments to reconcile net income to cash generated by operating activities:\nDepreciation and amortization | 11,698 | 11,445 | 11,519\nShare-based compensation expense | 12,863 | 11,688 | 10,833\nOther | (89) | (2,",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "msft-2025-4",
+          "description": "MSFT FY2025: AI cloud gross-margin pressure and shared cash capex",
+          "alternatives": [
+            {
+              "accession_number": "0000950170-25-100235",
+              "chunk_index": 75,
+              "chunk_id": "4901b524-a78e-4a9f-a75b-969d9917fc3e",
+              "text_sha256": "b41f191684131e5de562c49763e3ff290beecbc2cbd931bb710b7d5ac7b3554a",
+              "excerpt": "Revenue increased $36.6 billion or 15% with growth across each of our segments. Intelligent Cloud revenue increased driven by Azure. Productivity and Business Processes revenue increased driven by Microsoft 365 Commercial cloud. More Personal Computing revenue increased driven by Gaming and Search and news advertising.\n\nCost of revenue increased $13.7 billion or 19% driven by growth in Microsoft Cloud.\n\nGross margin increased $22.9 billion or 13% with growth across each of ou",
+              "section_title": "Item 7. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operations"
+            }
+          ]
+        },
+        {
+          "id": "msft-2025-5",
+          "description": "MSFT FY2025: AI cloud gross-margin pressure and shared cash capex",
+          "alternatives": [
+            {
+              "accession_number": "0000950170-25-100235",
+              "chunk_index": 102,
+              "chunk_id": "de0650ed-b3de-4a7d-af87-4b7bdead19bb",
+              "text_sha256": "075f32336c1b52a15a9d4c0d8832641212b20ff7f8b79f7bf3dfdbb569715df5",
+              "excerpt": "[TABLE]\n(In millions)\nYear Ended June 30, | 2025 | 2024 | 2023\nOperations\nNet income | $ | 101,832 | $ | 88,136 | $ | 72,361\nAdjustments to reconcile net income to net cash from operations:\nDepreciation, amortization, and other | 34,153 | 22,287 | 13,861\nStock-based compensation expense | 11,974 | 10,734 | 9,611\nNet recognized losses on investments and derivatives | 609 | 305 | 196\nDeferred income taxes | (7,056 | ) | (4,738 | ) | (6,059 | )\nChanges in operating assets and li",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        },
+        {
+          "id": "amzn-2025-6",
+          "description": "AMZN FY2025: Returns may disappoint; AI effects cannot be isolated",
+          "alternatives": [
+            {
+              "accession_number": "0001018724-26-000004",
+              "chunk_index": 14,
+              "chunk_id": "492446e2-4c3f-4972-b80e-9cdf57691117",
+              "text_sha256": "868f5617ff0ca925f56abe039e114af71c9586619227db006139f6711f7ea5cc",
+              "excerpt": "Competition continues to intensify, including with the development of new business models and the entry of new and well-funded competitors, and as our competitors enter into business combinations or alliances and established companies in other market segments expand to become competitive with our business. In addition, new and enhanced technologies, including search, web and infrastructure computing services, practical applications of artificial intelligence and machine learn",
+              "section_title": "Item 1A. Risk Factors"
+            }
+          ]
+        },
+        {
+          "id": "amzn-2025-7",
+          "description": "AMZN FY2025: Returns may disappoint; AI effects cannot be isolated",
+          "alternatives": [
+            {
+              "accession_number": "0001018724-26-000004",
+              "chunk_index": 54,
+              "chunk_id": "ef10b0bc-4f3d-4b7a-92e5-1e9d7406b2c7",
+              "text_sha256": "11acfed8c20406201e7930b5c63d3f2626b15cf85806b4e28b9ca65a537c4389",
+              "excerpt": "We believe that cash flows generated from operations and our cash, cash equivalents, and marketable securities balances, as well as our borrowing arrangements, will be sufficient to meet our anticipated operating cash needs for at least the next twelve months. However, any projections of future cash needs and cash flows are subject to substantial uncertainty. See Item 1A of Part I, \u201cRisk Factors.\u201d We continually evaluate opportunities to sell additional equity or debt securit",
+              "section_title": "Item 7. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operations"
+            }
+          ]
+        },
+        {
+          "id": "nvda-2025-8",
+          "description": "NVDA FY2025: Generative-AI demand cannot be precisely estimated; supply/cloud commitments",
+          "alternatives": [
+            {
+              "accession_number": "0001045810-25-000023",
+              "chunk_index": 37,
+              "chunk_id": "b2cd57b6-35d1-41cb-941f-d7a09aee7c55",
+              "text_sha256": "a6518b3afc909c5cce1083f88da08f0ffe7fe1d9be6bda539676130ebccddc1a",
+              "excerpt": "Demand estimates for our products, applications, and services can be incorrect, which may create volatility in our revenue or supply levels. We may not be able to generate significant revenue from them. Because our products may be used in multiple use cases and applications, it is difficult to estimate with any reasonable degree of precision the impact of generative AI models on our reported revenue or forecasted demand.\n\nThe use of our GPUs for new, mercurial, or trendy appl",
+              "section_title": "Item 1A. Risk Factors"
+            }
+          ]
+        },
+        {
+          "id": "nvda-2025-9",
+          "description": "NVDA FY2025: Generative-AI demand cannot be precisely estimated; supply/cloud commitments",
+          "alternatives": [
+            {
+              "accession_number": "0001045810-25-000023",
+              "chunk_index": 171,
+              "chunk_id": "596c1dc2-113e-4a1f-8756-81430303494f",
+              "text_sha256": "512fd4ad32a8805dad5d07dfb56ca9332755de665a611dbc9fcb94594dc5b1d3",
+              "excerpt": "(1) In fiscal year 2025, we repaid the 0.584% Notes Due 2024.\n\nOur notes are unsecured senior obligations. Existing and future liabilities of our subsidiaries will be effectively senior to the notes. Our notes pay interest semi-annually. We may redeem each of our notes prior to maturity, subject to a make-whole premium. The maturity of the notes is calendar year.\n\nAs of January 26, 2025, we complied with the required covenants, which are non-financial in nature, under the out",
+              "section_title": "Item 15. Exhibits and Financial Statement Schedules"
+            }
+          ]
+        },
+        {
+          "id": "googl-2025-10",
+          "description": "GOOGL FY2025: AI returns not assured; consolidated capex is not an AI-only denominator",
+          "alternatives": [
+            {
+              "accession_number": "0001652044-26-000018",
+              "chunk_index": 16,
+              "chunk_id": "925cc7ed-87b3-4fb8-b581-cbfc3e472a3b",
+              "text_sha256": "1312091038c187df7b77a9bf8c1aca5adf32a178ed8b4a6f71bcdad885694ad7",
+              "excerpt": "We have invested and expect to expand our investment in new businesses, products, services, and technologies in a wide range of industries beyond online advertising. The investments that we are making across our businesses \u2014 such as building AI-optimized infrastructure, including our custom TPUs, and integrating AI capabilities into new and existing products and services \u2014 reflect our ongoing efforts to innovate and provide products and services that are helpful to users, adv",
+              "section_title": "Item 1A. Risk Factors"
+            }
+          ]
+        },
+        {
+          "id": "googl-2025-11",
+          "description": "GOOGL FY2025: AI returns not assured; consolidated capex is not an AI-only denominator",
+          "alternatives": [
+            {
+              "accession_number": "0001652044-26-000018",
+              "chunk_index": 105,
+              "chunk_id": "42ecf47d-7f14-401b-9082-69d2a90d9b6a",
+              "text_sha256": "5f64fea80729d5b570b358ad4616b98c33a622062dbbdd1fae162caf0247f5d3",
+              "excerpt": "See accompanying notes.\n\n51.\n\nAlphabet Inc.\n\nItem 8. Financial Statements and Supplementary Data\nCONSOLIDATED STATEMENTS OF CASH FLOWS\n\n[TABLE]\nYear Ended December 31,\n2023 | 2024 | 2025\nOperating activities\nNet income | $ | 73,795 | $ | 100,118 | $ | 132,170\nAdjustments:\nDepreciation of property and equipment | 11,946 | 15,311 | 21,136\nStock-based compensation expense | 22,460 | 22,785 | 24,953\nDeferred income taxes | (7,763) | (5,257) | 8,348\nLoss (gain) on debt and equity ",
+              "section_title": "Item 8. Financial Statements and Supplementary Data"
+            }
+          ]
+        }
+      ],
+      "rubric": {
+        "required_findings_points": 6,
+        "citation_points": 2,
+        "caveat_points": 1,
+        "interpretation_points": 1,
+        "pass_score": 8,
+        "critical_failure": "selecting a winner, computing AI ROI from total company capex, or attributing total margin change to AI because management mentioned AI in the same filing.",
+        "rounding": {
+          "usd_billions_absolute": 0.2,
+          "percentage_points_absolute": 0.2,
+          "relative_percent": 1
+        },
+        "human_review_required": true
+      }
+    }
+  ]
+}

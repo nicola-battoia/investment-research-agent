@@ -1,89 +1,288 @@
 {
-  "name": "document-copilot-initial-retrieval-v1",
+  "name": "document-copilot-retrieval-sec-sections-v2-2026-09-05",
   "cases": [
     {
       "id": "aapl-2024-services-growth",
       "query": "What drove the increase in Services net sales?",
-      "filters": {"tickers": ["AAPL"], "filing_types": ["10-K"], "filing_years": [2024]},
+      "filters": {
+        "tickers": [
+          "AAPL"
+        ],
+        "filing_types": [
+          "10-K"
+        ],
+        "filing_years": [
+          2024
+        ]
+      },
       "expected_passages": [
-        {"accession_number": "0000320193-24-000123", "chunk_index": 340, "relevance": 3, "evidence_group": "services-growth"}
+        {
+          "accession_number": "0000320193-24-000123",
+          "chunk_index": 57,
+          "relevance": 3,
+          "evidence_group": "services-growth",
+          "chunk_id": "bafdbd26-9456-4172-b6a8-149e7aad9219",
+          "text_sha256": "9a39f256b2522ee86ea5e3fb6a29eda93fda25e881d2b06ec5e3a8b9405f8965"
+        }
       ]
     },
     {
       "id": "aapl-2024-iphone-sales",
       "query": "How did iPhone net sales change compared with 2023?",
-      "filters": {"tickers": ["AAPL"], "filing_types": ["10-K"], "filing_years": [2024]},
+      "filters": {
+        "tickers": [
+          "AAPL"
+        ],
+        "filing_types": [
+          "10-K"
+        ],
+        "filing_years": [
+          2024
+        ]
+      },
       "expected_passages": [
-        {"accession_number": "0000320193-24-000123", "chunk_index": 332, "relevance": 3, "evidence_group": "iphone-change"}
+        {
+          "accession_number": "0000320193-24-000123",
+          "chunk_index": 56,
+          "relevance": 3,
+          "evidence_group": "iphone-change",
+          "chunk_id": "93757ae9-d451-42b1-ba45-2cb577f4d525",
+          "text_sha256": "067404588b71a8a87ca2cb5a488e633ca5750d75b566d710ebef5b5b6a7813df"
+        }
       ]
     },
     {
       "id": "amzn-2024-aws-sales",
       "query": "How much did AWS sales grow and what drove the change?",
-      "filters": {"tickers": ["AMZN"], "filing_types": ["10-K"], "filing_years": [2024]},
+      "filters": {
+        "tickers": [
+          "AMZN"
+        ],
+        "filing_types": [
+          "10-K"
+        ],
+        "filing_years": [
+          2024
+        ]
+      },
       "expected_passages": [
-        {"accession_number": "0001018724-25-000004", "chunk_index": 371, "relevance": 3, "evidence_group": "aws-sales"}
+        {
+          "accession_number": "0001018724-25-000004",
+          "chunk_index": 57,
+          "relevance": 3,
+          "evidence_group": "aws-sales",
+          "chunk_id": "670cc6a6-b738-4edc-bf1f-6f8ec2a68a79",
+          "text_sha256": "294c624d4decd4ab3ab588e9fa73478870cd5f429dee0cac5353ff831065427d"
+        }
       ]
     },
     {
       "id": "amzn-2024-aws-operating-income",
       "query": "What caused the increase in AWS operating income?",
-      "filters": {"tickers": ["AMZN"], "filing_types": ["10-K"], "filing_years": [2024]},
+      "filters": {
+        "tickers": [
+          "AMZN"
+        ],
+        "filing_types": [
+          "10-K"
+        ],
+        "filing_years": [
+          2024
+        ]
+      },
       "expected_passages": [
-        {"accession_number": "0001018724-25-000004", "chunk_index": 406, "relevance": 3, "evidence_group": "aws-income"}
+        {
+          "accession_number": "0001018724-25-000004",
+          "chunk_index": 63,
+          "relevance": 3,
+          "evidence_group": "aws-income",
+          "chunk_id": "7e4a26f5-6c9f-4f34-8e1b-37ec30dc24ec",
+          "text_sha256": "02f265f7b65a1210899180439e4ef6bb6ce883fc54be08efcaec9aed8fabda44"
+        }
       ]
     },
     {
       "id": "nvda-2024-data-center-demand",
       "query": "What drove Data Center demand and revenue growth?",
-      "filters": {"tickers": ["NVDA"], "filing_types": ["10-K"], "filing_years": [2024]},
+      "filters": {
+        "tickers": [
+          "NVDA"
+        ],
+        "filing_types": [
+          "10-K"
+        ],
+        "filing_years": [
+          2024
+        ]
+      },
       "expected_passages": [
-        {"accession_number": "0001045810-24-000029", "chunk_index": 528, "relevance": 3, "evidence_group": "data-center-demand"},
-        {"accession_number": "0001045810-24-000029", "chunk_index": 535, "relevance": 2, "evidence_group": "data-center-demand"}
+        {
+          "accession_number": "0001045810-24-000029",
+          "chunk_index": 87,
+          "relevance": 3,
+          "evidence_group": "data-center-demand",
+          "chunk_id": "834d228a-7214-403c-8481-8479afb6e71a",
+          "text_sha256": "76cef6320ba2848da65743516ff3efd0db77d6c22719589ec8a2e29514313246"
+        },
+        {
+          "accession_number": "0001045810-24-000029",
+          "chunk_index": 88,
+          "relevance": 2,
+          "evidence_group": "data-center-demand",
+          "chunk_id": "37a2fc5e-6694-4d49-a5b6-e63e2260bbd3",
+          "text_sha256": "ced410fef7940c54d8a50d5b2e6c7ceb7068b64fcdb48688fc65abbc25c0f5f6"
+        }
       ]
     },
     {
       "id": "nvda-2024-supply-constraints",
       "query": "How could foundry capacity and supply constraints prevent NVIDIA from meeting demand?",
-      "filters": {"tickers": ["NVDA"], "filing_types": ["10-K"], "filing_years": [2024]},
+      "filters": {
+        "tickers": [
+          "NVDA"
+        ],
+        "filing_types": [
+          "10-K"
+        ],
+        "filing_years": [
+          2024
+        ]
+      },
       "expected_passages": [
-        {"accession_number": "0001045810-24-000029", "chunk_index": 286, "relevance": 3, "evidence_group": "supply-risk"},
-        {"accession_number": "0001045810-24-000029", "chunk_index": 289, "relevance": 2, "evidence_group": "supply-risk"}
+        {
+          "accession_number": "0001045810-24-000029",
+          "chunk_index": 33,
+          "relevance": 3,
+          "evidence_group": "supply-risk",
+          "chunk_id": "a71096de-e89c-406c-a589-4f78f4a61a61",
+          "text_sha256": "d33926276f052104c78e016be7eaab21498e85da5858348edbb9f38023701cb2"
+        },
+        {
+          "accession_number": "0001045810-24-000029",
+          "chunk_index": 36,
+          "relevance": 2,
+          "evidence_group": "supply-risk",
+          "chunk_id": "371db6d6-93d5-4fc4-b0c5-ba6c89090a74",
+          "text_sha256": "4128dba24418a938161297f7836978b0a09817103efd6c5ec7a470ce2a5b74a6"
+        }
       ]
     },
     {
       "id": "msft-2024-azure-growth",
       "query": "How fast did Azure and other cloud services grow and what drove it?",
-      "filters": {"tickers": ["MSFT"], "filing_types": ["10-K"], "filing_years": [2024]},
+      "filters": {
+        "tickers": [
+          "MSFT"
+        ],
+        "filing_types": [
+          "10-K"
+        ],
+        "filing_years": [
+          2024
+        ]
+      },
       "expected_passages": [
-        {"accession_number": "0000950170-24-087843", "chunk_index": 599, "relevance": 3, "evidence_group": "azure-growth"},
-        {"accession_number": "0000950170-24-087843", "chunk_index": 524, "relevance": 2, "evidence_group": "azure-growth"}
+        {
+          "accession_number": "0000950170-24-087843",
+          "chunk_index": 91,
+          "relevance": 3,
+          "evidence_group": "azure-growth",
+          "chunk_id": "ce496764-f907-4fc2-8fa6-ecbb6327988c",
+          "text_sha256": "52d0a0d327e9b646747483731c7562b66fea2710fc7af198200f8e870e0d86a3"
+        },
+        {
+          "accession_number": "0000950170-24-087843",
+          "chunk_index": 82,
+          "relevance": 2,
+          "evidence_group": "azure-growth",
+          "chunk_id": "93f2fc6c-03f9-4e20-b7b3-4a06916388b7",
+          "text_sha256": "9357bb24c168c2497a4e4c310fa68b1c5ebb81b425638a200dd5891c2809c88a"
+        }
       ]
     },
     {
       "id": "msft-2024-datacenter-capacity",
       "query": "What datacenter component and server capacity constraints did Microsoft describe?",
-      "filters": {"tickers": ["MSFT"], "filing_types": ["10-K"], "filing_years": [2024]},
+      "filters": {
+        "tickers": [
+          "MSFT"
+        ],
+        "filing_types": [
+          "10-K"
+        ],
+        "filing_years": [
+          2024
+        ]
+      },
       "expected_passages": [
-        {"accession_number": "0000950170-24-087843", "chunk_index": 397, "relevance": 3, "evidence_group": "capacity"}
+        {
+          "accession_number": "0000950170-24-087843",
+          "chunk_index": 24,
+          "relevance": 3,
+          "evidence_group": "capacity",
+          "chunk_id": "158be9c7-f65b-4862-9346-d1264ec6f596",
+          "text_sha256": "e1204d0c86c0eaccab18eb272cf002a74445914512e6cb99496c3e3793f7c171"
+        }
       ]
     },
     {
       "id": "googl-2024-youtube-ads",
       "query": "How much did YouTube ads revenue increase and what drove the growth?",
-      "filters": {"tickers": ["GOOGL"], "filing_types": ["10-K"], "filing_years": [2024]},
+      "filters": {
+        "tickers": [
+          "GOOGL"
+        ],
+        "filing_types": [
+          "10-K"
+        ],
+        "filing_years": [
+          2024
+        ]
+      },
       "expected_passages": [
-        {"accession_number": "0001652044-25-000014", "chunk_index": 581, "relevance": 3, "evidence_group": "youtube-growth"},
-        {"accession_number": "0001652044-25-000014", "chunk_index": 575, "relevance": 2, "evidence_group": "youtube-growth"}
+        {
+          "accession_number": "0001652044-25-000014",
+          "chunk_index": 72,
+          "relevance": 3,
+          "evidence_group": "youtube-growth",
+          "chunk_id": "c11a5716-f634-4345-ab61-54c3a08fce62",
+          "text_sha256": "6ffe804a6096401c9e443f1fcc31f04cb5960ed198a09dcca47fcf0f40bff94b"
+        },
+        {
+          "accession_number": "0001652044-25-000014",
+          "chunk_index": 71,
+          "relevance": 2,
+          "evidence_group": "youtube-growth",
+          "chunk_id": "4aadfbe8-0302-4dcf-981e-aba547e39092",
+          "text_sha256": "708f81d2ca54d7306c6f60ba484aa50258f915358e348a342ff456b799cd510f"
+        }
       ]
     },
     {
       "id": "googl-2024-cloud-growth",
       "query": "What drove Google Cloud revenue growth?",
-      "filters": {"tickers": ["GOOGL"], "filing_types": ["10-K"], "filing_years": [2024]},
+      "filters": {
+        "tickers": [
+          "GOOGL"
+        ],
+        "filing_types": [
+          "10-K"
+        ],
+        "filing_years": [
+          2024
+        ]
+      },
       "expected_passages": [
-        {"accession_number": "0001652044-25-000014", "chunk_index": 594, "relevance": 3, "evidence_group": "cloud-growth"}
+        {
+          "accession_number": "0001652044-25-000014",
+          "chunk_index": 73,
+          "relevance": 3,
+          "evidence_group": "cloud-growth",
+          "chunk_id": "b587b357-dd63-4d19-97c4-73b63451a3fd",
+          "text_sha256": "ed197e9b2246f848f240402b7ad2ce0353509fb5071de8117680e2ccff8602ba"
+        }
       ]
     }
-  ]
+  ],
+  "corpus_fingerprint": "9380ee8965eefd9796248c40dc246269e75d1426853101a5f77ce5d60704a056"
 }

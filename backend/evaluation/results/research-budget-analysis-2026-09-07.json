@@ -1,0 +1,4173 @@
+{
+  "method": "Difference consecutive cumulative provider usage for request inputs; keep the local projected stop estimate separate. Corpus chunk token counts exclude schemas, instructions, previews and replay overhead. Tools count completed calls separately from failed attempts. Advisory grades do not establish acceptance. No new model calls.",
+  "runs": [
+    {
+      "run_id": "64b5ee7a-8c82-4f84-a48f-13114704f65a",
+      "dataset_id": "00ae68d1-5a18-405a-9edb-2578fdfc5873",
+      "settings": {
+        "azure_openai_assistant_deployment": "assistant-gpt-5-6-terra",
+        "azure_openai_keyword_deployment": "keywords-gpt-5-4-nano",
+        "azure_openai_embedding_deployment": "embeddings-text-embedding-3-small",
+        "openai_embedding_model": "text-embedding-3-small",
+        "openai_embedding_dimensions": 1536,
+        "openai_keyword_model": "gpt-5.4-nano",
+        "openai_keyword_max_output_tokens": 800,
+        "openai_assistant_model": "gpt-5.6-terra",
+        "openai_assistant_reasoning_effort": "medium",
+        "openai_assistant_max_output_tokens": 3000,
+        "assistant_max_model_requests": 10,
+        "assistant_max_tool_calls": 8,
+        "assistant_max_total_output_tokens": 10000,
+        "assistant_max_total_input_tokens": 75000,
+        "assistant_max_request_input_tokens": 50000,
+        "assistant_max_message_characters": 10000,
+        "assistant_tool_retries": 1,
+        "assistant_output_retries": 1,
+        "assistant_tool_timeout_seconds": 120.0,
+        "assistant_parallel_tool_calls": false,
+        "openai_store_responses": false,
+        "assistant_text_verbosity": "low",
+        "assistant_max_history_turns": 5,
+        "assistant_max_history_characters": 20000,
+        "assistant_max_turn_evidence": 150,
+        "assistant_evidence_preview_characters": 400,
+        "assistant_max_search_calls": 5,
+        "assistant_max_surrounding_calls": 2,
+        "assistant_search_result_limit": 10,
+        "assistant_search_candidate_limit": 50,
+        "assistant_max_search_query_characters": 500,
+        "assistant_surrounding_chunk_radius": 1,
+        "assistant_max_surrounding_chunks": 2,
+        "assistant_max_filter_companies": 5,
+        "assistant_max_filter_tickers": 5,
+        "assistant_max_filter_filing_types": 3,
+        "assistant_max_filter_filing_years": 5,
+        "assistant_max_non_retrieval_answer_characters": 1000,
+        "assistant_max_citations": 20,
+        "retrieval_default_result_limit": 10,
+        "retrieval_max_result_limit": 20,
+        "retrieval_default_candidate_limit": 50,
+        "retrieval_max_candidate_limit": 100,
+        "retrieval_semantic_weight": 20.0,
+        "retrieval_lexical_weight": 1.0,
+        "retrieval_unconfigured_branch_weight": 1.0,
+        "retrieval_rrf_k": 60,
+        "retrieval_min_filing_year": 1900,
+        "retrieval_max_filing_year": 2100,
+        "retrieval_keyword_max_groups": 6,
+        "retrieval_keyword_max_terms_per_group": 3,
+        "retrieval_keyword_max_term_characters": 80,
+        "retrieval_keyword_max_phrase_words": 4,
+        "chat_turn_timeout_seconds": 180,
+        "chat_stream_heartbeat_seconds": 15.0,
+        "chat_stream_text_delta_characters": 160,
+        "chat_auto_title_max_characters": 60,
+        "chat_thread_title_max_characters": 200,
+        "chat_default_thread_title": "New chat",
+        "chat_client_message_id_max_characters": 200,
+        "assistant_trace_mode": "full",
+        "assistant_trace_max_content_characters": 12000
+      },
+      "outcomes": {
+        "assistant_input_tokens_limit": 8,
+        "assistant_tool_calls_limit": 3,
+        "supported": 3,
+        "insufficient_evidence": 1
+      },
+      "cases": [
+        {
+          "code": "DR-01",
+          "outcome": "assistant_input_tokens_limit",
+          "seconds": 35.81,
+          "provider_input_tokens": 65312,
+          "provider_output_tokens": 794,
+          "per_request_input_tokens": [
+            1627,
+            4122,
+            6850,
+            9850,
+            12456,
+            14859,
+            15548
+          ],
+          "projected_cumulative_input_at_stop": 80850,
+          "provider_input_before_first_read": 49764,
+          "model_responses": 7,
+          "completed_tool_calls": 7,
+          "tool_sequence": [
+            "search_filings",
+            "search_filings",
+            "search_filings",
+            "search_filings",
+            "search_filings",
+            "read_chunk",
+            "read_surrounding_chunks"
+          ],
+          "tool_failures": [],
+          "grounding_rejections": [],
+          "searches": [
+            {
+              "arguments": {
+                "query": "Consolidated statements of operations net sales revenue operating income fiscal 2025 2021",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "AAPL",
+                    "MSFT",
+                    "NVDA",
+                    "AMZN",
+                    "GOOGL"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2021,
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 10,
+              "new_chunks": 10,
+              "filing_distribution": {
+                "AMZN:2021": 3,
+                "GOOGL:2025": 2,
+                "GOOGL:2021": 1,
+                "AMZN:2025": 1,
+                "NVDA:2021": 2,
+                "NVDA:2025": 1
+              }
+            },
+            {
+              "arguments": {
+                "query": "Consolidated statements of operations 2025 2024 2023 total net sales revenue operating income",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "AAPL",
+                    "MSFT"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 12,
+              "new_chunks": 12,
+              "filing_distribution": {
+                "MSFT:2025": 8,
+                "AAPL:2025": 4
+              }
+            },
+            {
+              "arguments": {
+                "query": "statements of operations 2025 total net sales operating income 2025 2024 2023",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "AAPL"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 13,
+              "new_chunks": 9,
+              "filing_distribution": {
+                "AAPL:2025": 13
+              }
+            },
+            {
+              "arguments": {
+                "query": "\"Operating income\" \"133,050\" \"416,161\"",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "AAPL"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 11,
+              "new_chunks": 4,
+              "filing_distribution": {
+                "AAPL:2025": 11
+              }
+            },
+            {
+              "arguments": {
+                "query": "consolidated statements operations revenue net sales operating income 2021",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "AAPL",
+                    "MSFT",
+                    "NVDA",
+                    "AMZN",
+                    "GOOGL"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2021
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 10,
+              "new_chunks": 4,
+              "filing_distribution": {
+                "AMZN:2021": 3,
+                "GOOGL:2021": 2,
+                "NVDA:2021": 3,
+                "MSFT:2021": 1,
+                "AAPL:2021": 1
+              }
+            }
+          ],
+          "search_return_occurrences": 56,
+          "unique_search_chunks": 39,
+          "repeated_search_return_occurrences": 17,
+          "read_occurrences": 3,
+          "unique_read_chunks": 3,
+          "unique_read_corpus_tokens": 1537,
+          "maximum_read_chunk_corpus_tokens": 589,
+          "minimum_calls": {
+            "evidence_documents": 10,
+            "minimum_read_calls": 10,
+            "minimum_total_calls": 11
+          },
+          "evidence_recall": {
+            "retrieval": 0.3,
+            "read": 0.1,
+            "citation": 0.0
+          },
+          "advisory_quality": {
+            "status": "not_assessed",
+            "reason": "Use --judge for an advisory rubric score; human review is the release gate."
+          },
+          "failure": {
+            "error_code": "assistant_input_tokens_limit",
+            "error_message": "The next request would exceed the input_tokens_limit of 75000 (input_tokens=80850). Consider raising the limit, or see the docs on usage limits for budget-aware patterns: https://ai.pydantic.dev/agent/#usage-limits",
+            "failed_after_stage": "assistant.model.request"
+          }
+        },
+        {
+          "code": "DR-02",
+          "outcome": "assistant_input_tokens_limit",
+          "seconds": 28.9,
+          "provider_input_tokens": 73988,
+          "provider_output_tokens": 995,
+          "per_request_input_tokens": [
+            1582,
+            3931,
+            6054,
+            8865,
+            11304,
+            13093,
+            14256,
+            14903
+          ],
+          "projected_cumulative_input_at_stop": 89289,
+          "provider_input_before_first_read": 44829,
+          "model_responses": 8,
+          "completed_tool_calls": 7,
+          "tool_sequence": [
+            "search_filings",
+            "search_filings",
+            "search_filings",
+            "search_filings",
+            "search_filings",
+            "read_surrounding_chunks",
+            "read_chunk"
+          ],
+          "tool_failures": [
+            {
+              "tool_name": "search_filings",
+              "error_message": "The maximum of 5 filing searches is exhausted; answer from current evidence or return insufficient_evidence"
+            }
+          ],
+          "grounding_rejections": [],
+          "searches": [
+            {
+              "arguments": {
+                "query": "Revenue net sales total revenues number of employees employees as of fiscal 2021 2025",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "AAPL",
+                    "MSFT",
+                    "NVDA",
+                    "AMZN",
+                    "GOOGL"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2021,
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 10,
+              "new_chunks": 10,
+              "filing_distribution": {
+                "GOOGL:2025": 2,
+                "GOOGL:2021": 2,
+                "AMZN:2021": 3,
+                "AAPL:2025": 1,
+                "NVDA:2025": 1,
+                "AMZN:2025": 1
+              }
+            },
+            {
+              "arguments": {
+                "query": "employees employee headcount 2021",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "AAPL",
+                    "MSFT",
+                    "NVDA",
+                    "AMZN",
+                    "GOOGL"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2021
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 11,
+              "new_chunks": 8,
+              "filing_distribution": {
+                "NVDA:2021": 4,
+                "MSFT:2021": 1,
+                "AMZN:2021": 2,
+                "AAPL:2021": 2,
+                "GOOGL:2021": 2
+              }
+            },
+            {
+              "arguments": {
+                "query": "net sales total revenue 2025 employees 164,000 228,000 36,000 1,576,000 190,167",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "AAPL",
+                    "MSFT",
+                    "NVDA",
+                    "AMZN",
+                    "GOOGL"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 11,
+              "new_chunks": 6,
+              "filing_distribution": {
+                "AMZN:2025": 7,
+                "AAPL:2025": 2,
+                "GOOGL:2025": 2
+              }
+            },
+            {
+              "arguments": {
+                "query": "number employees full-time part-time employees as of December 31 2025",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "AMZN",
+                    "GOOGL"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 11,
+              "new_chunks": 11,
+              "filing_distribution": {
+                "AMZN:2025": 3,
+                "GOOGL:2025": 8
+              }
+            },
+            {
+              "arguments": {
+                "query": "Human Capital Resources \"employees\" \"2025\"",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "AAPL",
+                    "MSFT",
+                    "NVDA",
+                    "AMZN",
+                    "GOOGL"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 10,
+              "new_chunks": 10,
+              "filing_distribution": {
+                "MSFT:2025": 2,
+                "NVDA:2025": 3,
+                "AAPL:2025": 2,
+                "AMZN:2025": 1,
+                "GOOGL:2025": 2
+              }
+            }
+          ],
+          "search_return_occurrences": 53,
+          "unique_search_chunks": 45,
+          "repeated_search_return_occurrences": 8,
+          "read_occurrences": 3,
+          "unique_read_chunks": 3,
+          "unique_read_corpus_tokens": 1303,
+          "maximum_read_chunk_corpus_tokens": 473,
+          "minimum_calls": {
+            "evidence_documents": 10,
+            "minimum_read_calls": 10,
+            "minimum_total_calls": 11
+          },
+          "evidence_recall": {
+            "retrieval": 0.4,
+            "read": 0.05,
+            "citation": 0.0
+          },
+          "advisory_quality": {
+            "status": "not_assessed",
+            "reason": "Use --judge for an advisory rubric score; human review is the release gate."
+          },
+          "failure": {
+            "error_code": "assistant_input_tokens_limit",
+            "error_message": "The next request would exceed the input_tokens_limit of 75000 (input_tokens=89289). Consider raising the limit, or see the docs on usage limits for budget-aware patterns: https://ai.pydantic.dev/agent/#usage-limits",
+            "failed_after_stage": "assistant.model.request"
+          }
+        },
+        {
+          "code": "DR-03",
+          "outcome": "assistant_input_tokens_limit",
+          "seconds": 32.2,
+          "provider_input_tokens": 73568,
+          "provider_output_tokens": 547,
+          "per_request_input_tokens": [
+            1618,
+            3926,
+            6246,
+            8363,
+            10751,
+            13012,
+            14114,
+            15538
+          ],
+          "projected_cumulative_input_at_stop": 88826,
+          "provider_input_before_first_read": 43916,
+          "model_responses": 8,
+          "completed_tool_calls": 8,
+          "tool_sequence": [
+            "search_filings",
+            "search_filings",
+            "search_filings",
+            "search_filings",
+            "search_filings",
+            "read_chunk",
+            "read_surrounding_chunks",
+            "read_chunk"
+          ],
+          "tool_failures": [],
+          "grounding_rejections": [],
+          "searches": [
+            {
+              "arguments": {
+                "query": "Revenue net cash provided by operating activities purchases of property and equipment fiscal 2025 2021",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "AAPL",
+                    "MSFT",
+                    "NVDA",
+                    "AMZN",
+                    "GOOGL"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2025,
+                    2021
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 11,
+              "new_chunks": 11,
+              "filing_distribution": {
+                "AMZN:2021": 6,
+                "AMZN:2025": 4,
+                "NVDA:2025": 1
+              }
+            },
+            {
+              "arguments": {
+                "query": "CONSOLIDATED STATEMENTS OF CASH FLOWS total net sales cash generated by operating activities payments for acquisition of property plant and equipment 2025 2021",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "AAPL"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2025,
+                    2021
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 11,
+              "new_chunks": 10,
+              "filing_distribution": {
+                "AAPL:2021": 4,
+                "AAPL:2025": 7
+              }
+            },
+            {
+              "arguments": {
+                "query": "cash flows net cash from operating activities additions to property and equipment revenue 2025 2021",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "MSFT"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2025,
+                    2021
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 10,
+              "new_chunks": 10,
+              "filing_distribution": {
+                "MSFT:2021": 7,
+                "MSFT:2025": 3
+              }
+            },
+            {
+              "arguments": {
+                "query": "CONSOLIDATED STATEMENTS OF CASH FLOWS net cash provided by operating activities purchases related to property equipment and intangible assets revenue 2025 2021",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "NVDA"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2025,
+                    2021
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 11,
+              "new_chunks": 10,
+              "filing_distribution": {
+                "NVDA:2025": 3,
+                "NVDA:2021": 8
+              }
+            },
+            {
+              "arguments": {
+                "query": "CONSOLIDATED STATEMENTS OF CASH FLOWS net cash provided by operating activities purchases of property and equipment revenue 2025 2021",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "GOOGL"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2025,
+                    2021
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 10,
+              "new_chunks": 10,
+              "filing_distribution": {
+                "GOOGL:2021": 5,
+                "GOOGL:2025": 5
+              }
+            }
+          ],
+          "search_return_occurrences": 53,
+          "unique_search_chunks": 51,
+          "repeated_search_return_occurrences": 2,
+          "read_occurrences": 4,
+          "unique_read_chunks": 4,
+          "unique_read_corpus_tokens": 2744,
+          "maximum_read_chunk_corpus_tokens": 893,
+          "minimum_calls": {
+            "evidence_documents": 10,
+            "minimum_read_calls": 10,
+            "minimum_total_calls": 11
+          },
+          "evidence_recall": {
+            "retrieval": 0.5,
+            "read": 0.1,
+            "citation": 0.0
+          },
+          "advisory_quality": {
+            "status": "not_assessed",
+            "reason": "Use --judge for an advisory rubric score; human review is the release gate."
+          },
+          "failure": {
+            "error_code": "assistant_input_tokens_limit",
+            "error_message": "The next request would exceed the input_tokens_limit of 75000 (input_tokens=88826). Consider raising the limit, or see the docs on usage limits for budget-aware patterns: https://ai.pydantic.dev/agent/#usage-limits",
+            "failed_after_stage": "assistant.model.request"
+          }
+        },
+        {
+          "code": "DR-04",
+          "outcome": "assistant_tool_calls_limit",
+          "seconds": 37.52,
+          "provider_input_tokens": 68017,
+          "provider_output_tokens": 885,
+          "per_request_input_tokens": [
+            1567,
+            1770,
+            1937,
+            4448,
+            5558,
+            7761,
+            10287,
+            11392,
+            11509,
+            11788
+          ],
+          "projected_cumulative_input_at_stop": null,
+          "provider_input_before_first_read": 9722,
+          "model_responses": 10,
+          "completed_tool_calls": 8,
+          "tool_sequence": [
+            "search_filings",
+            "search_filings",
+            "search_filings",
+            "read_chunk",
+            "search_filings",
+            "search_filings",
+            "read_chunk",
+            "read_chunk"
+          ],
+          "tool_failures": [
+            {
+              "tool_name": "read_chunk",
+              "error_message": "'S172' is not evidence retrieved during this turn"
+            }
+          ],
+          "grounding_rejections": [],
+          "searches": [
+            {
+              "arguments": {
+                "query": "cash capital expenditures capital spending payments for property and equipment operating cash flow 2023 2025",
+                "filters": {
+                  "companies": [
+                    "Microsoft",
+                    "Alphabet",
+                    "Amazon",
+                    "NVIDIA"
+                  ],
+                  "tickers": [],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2023,
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 0,
+              "new_chunks": 0,
+              "filing_distribution": {}
+            },
+            {
+              "arguments": {
+                "query": "capital expenditures payments for property and equipment cash flows from operating activities 2025 2024 2023",
+                "filters": {
+                  "companies": [
+                    "Microsoft"
+                  ],
+                  "tickers": [],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 0,
+              "new_chunks": 0,
+              "filing_distribution": {}
+            },
+            {
+              "arguments": {
+                "query": "capital expenditures cash flows operating activities",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "MSFT"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [],
+                  "filed_on_or_after": "2025-01-01",
+                  "filed_on_or_before": "2025-12-31",
+                  "corpus_wide": false
+                }
+              },
+              "returned": 13,
+              "new_chunks": 11,
+              "filing_distribution": {
+                "MSFT:2025": 13
+              }
+            },
+            {
+              "arguments": {
+                "query": "cash flows payments for property and equipment purchases of property and equipment net cash provided by operating activities 2025 2024 2023",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "GOOGL",
+                    "AMZN",
+                    "NVDA"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [],
+                  "filed_on_or_after": "2026-01-01",
+                  "filed_on_or_before": "2026-09-05",
+                  "corpus_wide": false
+                }
+              },
+              "returned": 10,
+              "new_chunks": 10,
+              "filing_distribution": {
+                "AMZN:2025": 7,
+                "GOOGL:2025": 3
+              }
+            },
+            {
+              "arguments": {
+                "query": "purchases related to property and equipment cash flows operating activities 2025 2024 2023",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "NVDA"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [],
+                  "filed_on_or_after": "2025-01-01",
+                  "filed_on_or_before": "2026-09-05",
+                  "corpus_wide": false
+                }
+              },
+              "returned": 12,
+              "new_chunks": 11,
+              "filing_distribution": {
+                "NVDA:2025": 12
+              }
+            }
+          ],
+          "search_return_occurrences": 35,
+          "unique_search_chunks": 32,
+          "repeated_search_return_occurrences": 3,
+          "read_occurrences": 3,
+          "unique_read_chunks": 3,
+          "unique_read_corpus_tokens": 1863,
+          "maximum_read_chunk_corpus_tokens": 897,
+          "minimum_calls": {
+            "evidence_documents": 5,
+            "minimum_read_calls": 5,
+            "minimum_total_calls": 6
+          },
+          "evidence_recall": {
+            "retrieval": 0.5714285714285714,
+            "read": 0.2857142857142857,
+            "citation": 0.0
+          },
+          "advisory_quality": {
+            "status": "not_assessed",
+            "reason": "Use --judge for an advisory rubric score; human review is the release gate."
+          },
+          "failure": {
+            "error_code": "assistant_tool_calls_limit",
+            "error_message": "The next tool call(s) would exceed the tool_calls_limit of 8 (tool_calls=9). Consider raising the limit, or see the docs on usage limits for budget-aware patterns: https://ai.pydantic.dev/agent/#usage-limits",
+            "failed_after_stage": "assistant.model.response"
+          }
+        },
+        {
+          "code": "DR-05",
+          "outcome": "assistant_input_tokens_limit",
+          "seconds": 26.13,
+          "provider_input_tokens": 70756,
+          "provider_output_tokens": 387,
+          "per_request_input_tokens": [
+            1558,
+            3802,
+            6055,
+            8529,
+            9181,
+            9736,
+            10328,
+            10759,
+            10808
+          ],
+          "projected_cumulative_input_at_stop": 81968,
+          "provider_input_before_first_read": 19944,
+          "model_responses": 9,
+          "completed_tool_calls": 8,
+          "tool_sequence": [
+            "search_filings",
+            "search_filings",
+            "search_filings",
+            "read_chunk",
+            "read_chunk",
+            "read_chunk",
+            "read_chunk",
+            "read_chunk"
+          ],
+          "tool_failures": [
+            {
+              "tool_name": "read_chunk",
+              "error_message": "'S145' is not evidence retrieved during this turn"
+            }
+          ],
+          "grounding_rejections": [],
+          "searches": [
+            {
+              "arguments": {
+                "query": "segment operating income and net sales AWS 2021 2025",
+                "filters": {
+                  "companies": [
+                    "Amazon.com, Inc."
+                  ],
+                  "tickers": [],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2021,
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 11,
+              "new_chunks": 11,
+              "filing_distribution": {
+                "AMZN:2025": 5,
+                "AMZN:2021": 6
+              }
+            },
+            {
+              "arguments": {
+                "query": "Google Cloud revenues operating income 2021 2025 segment",
+                "filters": {
+                  "companies": [
+                    "Alphabet Inc."
+                  ],
+                  "tickers": [],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2021,
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 11,
+              "new_chunks": 10,
+              "filing_distribution": {
+                "GOOGL:2021": 5,
+                "GOOGL:2025": 6
+              }
+            },
+            {
+              "arguments": {
+                "query": "Intelligent Cloud revenue operating income 2021 2025 segment",
+                "filters": {
+                  "companies": [
+                    "Microsoft Corporation"
+                  ],
+                  "tickers": [],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2021,
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 13,
+              "new_chunks": 12,
+              "filing_distribution": {
+                "MSFT:2025": 6,
+                "MSFT:2021": 7
+              }
+            }
+          ],
+          "search_return_occurrences": 35,
+          "unique_search_chunks": 33,
+          "repeated_search_return_occurrences": 2,
+          "read_occurrences": 5,
+          "unique_read_chunks": 5,
+          "unique_read_corpus_tokens": 2025,
+          "maximum_read_chunk_corpus_tokens": 499,
+          "minimum_calls": {
+            "evidence_documents": 6,
+            "minimum_read_calls": 6,
+            "minimum_total_calls": 7
+          },
+          "evidence_recall": {
+            "retrieval": 0.875,
+            "read": 0.625,
+            "citation": 0.0
+          },
+          "advisory_quality": {
+            "status": "not_assessed",
+            "reason": "Use --judge for an advisory rubric score; human review is the release gate."
+          },
+          "failure": {
+            "error_code": "assistant_input_tokens_limit",
+            "error_message": "The next request would exceed the input_tokens_limit of 75000 (input_tokens=81968). Consider raising the limit, or see the docs on usage limits for budget-aware patterns: https://ai.pydantic.dev/agent/#usage-limits",
+            "failed_after_stage": "assistant.model.request"
+          }
+        },
+        {
+          "code": "DR-06",
+          "outcome": "assistant_input_tokens_limit",
+          "seconds": 37.81,
+          "provider_input_tokens": 65102,
+          "provider_output_tokens": 552,
+          "per_request_input_tokens": [
+            1562,
+            1687,
+            4034,
+            6210,
+            8233,
+            10279,
+            10386,
+            11177,
+            11534
+          ],
+          "projected_cumulative_input_at_stop": 78404,
+          "provider_input_before_first_read": 42391,
+          "model_responses": 9,
+          "completed_tool_calls": 8,
+          "tool_sequence": [
+            "search_filings",
+            "search_filings",
+            "search_filings",
+            "search_filings",
+            "search_filings",
+            "read_chunk",
+            "read_chunk",
+            "read_chunk"
+          ],
+          "tool_failures": [
+            {
+              "tool_name": "search_filings",
+              "error_message": "The maximum of 5 filing searches is exhausted; answer from current evidence or return insufficient_evidence"
+            }
+          ],
+          "grounding_rejections": [],
+          "searches": [
+            {
+              "arguments": {
+                "query": "remaining performance obligations aggregate amount revenue expected recognition timing backlog",
+                "filters": {
+                  "companies": [
+                    "Microsoft",
+                    "Amazon",
+                    "Alphabet"
+                  ],
+                  "tickers": [],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 0,
+              "new_chunks": 0,
+              "filing_distribution": {}
+            },
+            {
+              "arguments": {
+                "query": "remaining performance obligations transaction price allocated performance obligations recognized revenue next year",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "MSFT"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 13,
+              "new_chunks": 11,
+              "filing_distribution": {
+                "MSFT:2025": 13
+              }
+            },
+            {
+              "arguments": {
+                "query": "remaining performance obligations revenue recognized next 12 months total net sales",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "AMZN"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 11,
+              "new_chunks": 11,
+              "filing_distribution": {
+                "AMZN:2025": 11
+              }
+            },
+            {
+              "arguments": {
+                "query": "backlog committed revenue remaining performance obligations contracts AWS",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "AMZN"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 11,
+              "new_chunks": 8,
+              "filing_distribution": {
+                "AMZN:2025": 11
+              }
+            },
+            {
+              "arguments": {
+                "query": "remaining performance obligations backlog revenue recognized recognition timing",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "GOOGL"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 11,
+              "new_chunks": 10,
+              "filing_distribution": {
+                "GOOGL:2025": 11
+              }
+            }
+          ],
+          "search_return_occurrences": 46,
+          "unique_search_chunks": 40,
+          "repeated_search_return_occurrences": 6,
+          "read_occurrences": 3,
+          "unique_read_chunks": 3,
+          "unique_read_corpus_tokens": 1074,
+          "maximum_read_chunk_corpus_tokens": 498,
+          "minimum_calls": {
+            "evidence_documents": 3,
+            "minimum_read_calls": 3,
+            "minimum_total_calls": 4
+          },
+          "evidence_recall": {
+            "retrieval": 0.5714285714285714,
+            "read": 0.14285714285714285,
+            "citation": 0.0
+          },
+          "advisory_quality": {
+            "status": "not_assessed",
+            "reason": "Use --judge for an advisory rubric score; human review is the release gate."
+          },
+          "failure": {
+            "error_code": "assistant_input_tokens_limit",
+            "error_message": "The next request would exceed the input_tokens_limit of 75000 (input_tokens=78404). Consider raising the limit, or see the docs on usage limits for budget-aware patterns: https://ai.pydantic.dev/agent/#usage-limits",
+            "failed_after_stage": "assistant.model.request"
+          }
+        },
+        {
+          "code": "DR-07",
+          "outcome": "supported",
+          "seconds": 21.28,
+          "provider_input_tokens": 26175,
+          "provider_output_tokens": 1414,
+          "per_request_input_tokens": [
+            1563,
+            3608,
+            4267,
+            4935,
+            5556,
+            6246
+          ],
+          "projected_cumulative_input_at_stop": null,
+          "provider_input_before_first_read": 5171,
+          "model_responses": 6,
+          "completed_tool_calls": 4,
+          "tool_sequence": [
+            "search_filings",
+            "read_chunk",
+            "read_chunk",
+            "read_chunk"
+          ],
+          "tool_failures": [],
+          "grounding_rejections": [
+            "Citation validation failed: Citation S2 excerpt fragments are not present in order in its passage"
+          ],
+          "searches": [
+            {
+              "arguments": {
+                "query": "Amazon consolidated operating income and AWS operating income 2021 2022 2023 2024 2025 segment operating income",
+                "filters": {
+                  "companies": [
+                    "Amazon.com, Inc."
+                  ],
+                  "tickers": [],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2021,
+                    2022,
+                    2023,
+                    2024,
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 10,
+              "new_chunks": 10,
+              "filing_distribution": {
+                "AMZN:2024": 3,
+                "AMZN:2025": 2,
+                "AMZN:2023": 1,
+                "AMZN:2022": 2,
+                "AMZN:2021": 2
+              }
+            }
+          ],
+          "search_return_occurrences": 10,
+          "unique_search_chunks": 10,
+          "repeated_search_return_occurrences": 0,
+          "read_occurrences": 3,
+          "unique_read_chunks": 2,
+          "unique_read_corpus_tokens": 935,
+          "maximum_read_chunk_corpus_tokens": 485,
+          "minimum_calls": {
+            "evidence_documents": 2,
+            "minimum_read_calls": 2,
+            "minimum_total_calls": 3
+          },
+          "evidence_recall": {
+            "retrieval": 1.0,
+            "read": 1.0,
+            "citation": 1.0
+          },
+          "advisory_quality": {
+            "status": "advisory",
+            "score": 10,
+            "rubric_pass": true,
+            "human_review_required": true,
+            "findings": 6,
+            "citations": 2,
+            "caveats": 1,
+            "interpretation": 1,
+            "critical_failures": [],
+            "missing_findings": [],
+            "incorrect_claims": [],
+            "explanation": "The five reported consolidated-less-AWS operating-income amounts are arithmetically correct, in stated $ millions, and have the correct signs: 6,347; (10,593); 12,221; 28,759; and 34,369. The conclusion that only 2022 was negative is correct. The precise 2022 formulation correctly uses AWS $22.841B, consolidated $12.248B, and the $10.593B combined North America/International loss, all supported by S4. S4 supports 2021-2022 and S2 supports 2023-2025. The answer appropriately rejects a cash-transfer inference; it does not mischaracterize the subtraction as a reported measure or AWS profit as revenue share.",
+            "configuration": {
+              "model": "assistant-gpt-5-6-terra",
+              "reasoning_effort": "low",
+              "max_output_tokens": 4000,
+              "prompt_sha256": "a06c1469b093f3dd9c5213cbe5e6fae1abdc8c59bd3ae7ad523c152a0abdc009",
+              "evaluator_version": "1"
+            },
+            "usage": {
+              "input_tokens": 16902,
+              "input_tokens_details": {
+                "cache_write_tokens": 16899,
+                "cached_tokens": 0
+              },
+              "output_tokens": 401,
+              "output_tokens_details": {
+                "reasoning_tokens": 195
+              },
+              "total_tokens": 17303
+            }
+          },
+          "failure": {}
+        },
+        {
+          "code": "DR-08",
+          "outcome": "supported",
+          "seconds": 31.13,
+          "provider_input_tokens": 67852,
+          "provider_output_tokens": 1834,
+          "per_request_input_tokens": [
+            1574,
+            4621,
+            7628,
+            7963,
+            8399,
+            8714,
+            9168,
+            9754,
+            10031
+          ],
+          "projected_cumulative_input_at_stop": null,
+          "provider_input_before_first_read": 13823,
+          "model_responses": 9,
+          "completed_tool_calls": 8,
+          "tool_sequence": [
+            "search_filings",
+            "search_filings",
+            "read_chunk",
+            "read_chunk",
+            "read_chunk",
+            "read_chunk",
+            "read_chunk",
+            "read_chunk"
+          ],
+          "tool_failures": [],
+          "grounding_rejections": [],
+          "searches": [
+            {
+              "arguments": {
+                "query": "Apple 2025 Form 10-K net sales products services gross margin products services 2025 2024 2023",
+                "filters": {
+                  "companies": [
+                    "Apple Inc."
+                  ],
+                  "tickers": [
+                    "AAPL"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 14,
+              "new_chunks": 10,
+              "filing_distribution": {
+                "AAPL:2025": 14
+              }
+            },
+            {
+              "arguments": {
+                "query": "Products and Services net sales 2021 2020 gross margin percentage Products Services 2021",
+                "filters": {
+                  "companies": [
+                    "Apple Inc."
+                  ],
+                  "tickers": [
+                    "AAPL"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2021
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 14,
+              "new_chunks": 11,
+              "filing_distribution": {
+                "AAPL:2021": 14
+              }
+            }
+          ],
+          "search_return_occurrences": 28,
+          "unique_search_chunks": 21,
+          "repeated_search_return_occurrences": 7,
+          "read_occurrences": 6,
+          "unique_read_chunks": 6,
+          "unique_read_corpus_tokens": 1066,
+          "maximum_read_chunk_corpus_tokens": 285,
+          "minimum_calls": {
+            "evidence_documents": 2,
+            "minimum_read_calls": 2,
+            "minimum_total_calls": 3
+          },
+          "evidence_recall": {
+            "retrieval": 1.0,
+            "read": 1.0,
+            "citation": 1.0
+          },
+          "advisory_quality": {
+            "status": "advisory",
+            "score": 8,
+            "rubric_pass": true,
+            "human_review_required": true,
+            "findings": 5,
+            "citations": 2,
+            "caveats": 0,
+            "interpretation": 1,
+            "critical_failures": [],
+            "missing_findings": [
+              "Does not explicitly disclose that the mix/rate allocation is order-dependent (and that a different decomposition order allocates interaction differently).",
+              "Does not state the dollar increases in total and Services revenue and gross profit, though the reported endpoints allow them to be derived."
+            ],
+            "incorrect_claims": [
+              "The bridge says that applying the stated filing-rounded 2021 margins of 35.3% and 69.7% yields 44.4%. Those rounded rates applied to the 2025 revenue mix yield about 44.3%; 44.4% requires using exact underlying category dollar ratios rather than the stated rounded rates."
+            ],
+            "explanation": "The answer correctly reports FY2021/FY2025 Services revenue and gross-profit shares, incremental shares, reported total margins, and the acceptable exact-value bridge allocation of about +2.6 pp mix and +2.5 pp rate effect. Revenue and gross-profit source data are supported by S14/S3/S11/S1, and category/total margin inputs by S13/S5. It appropriately interprets Services as a dominant incremental-profit driver rather than the sole cause of margin expansion. However, it conflates the rounded-margin and exact-dollar bridge methods and omits the material order-dependence caveat. It does not present the decomposition as company-reported, so no critical failure applies.",
+            "configuration": {
+              "model": "assistant-gpt-5-6-terra",
+              "reasoning_effort": "low",
+              "max_output_tokens": 4000,
+              "prompt_sha256": "a06c1469b093f3dd9c5213cbe5e6fae1abdc8c59bd3ae7ad523c152a0abdc009",
+              "evaluator_version": "1"
+            },
+            "usage": {
+              "input_tokens": 29951,
+              "input_tokens_details": {
+                "cache_write_tokens": 29948,
+                "cached_tokens": 0
+              },
+              "output_tokens": 826,
+              "output_tokens_details": {
+                "reasoning_tokens": 516
+              },
+              "total_tokens": 30777
+            }
+          },
+          "failure": {}
+        },
+        {
+          "code": "DR-09",
+          "outcome": "assistant_tool_calls_limit",
+          "seconds": 20.53,
+          "provider_input_tokens": 61615,
+          "provider_output_tokens": 488,
+          "per_request_input_tokens": [
+            1567,
+            4330,
+            6691,
+            7063,
+            7463,
+            7844,
+            8201,
+            8979,
+            9477
+          ],
+          "projected_cumulative_input_at_stop": null,
+          "provider_input_before_first_read": 12588,
+          "model_responses": 9,
+          "completed_tool_calls": 8,
+          "tool_sequence": [
+            "search_filings",
+            "search_filings",
+            "read_chunk",
+            "read_chunk",
+            "read_chunk",
+            "read_chunk",
+            "read_surrounding_chunks",
+            "read_chunk"
+          ],
+          "tool_failures": [],
+          "grounding_rejections": [],
+          "searches": [
+            {
+              "arguments": {
+                "query": "Greater China net sales total net sales 2025 2021 geographic information",
+                "filters": {
+                  "companies": [
+                    "Apple Inc."
+                  ],
+                  "tickers": [],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2021,
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 12,
+              "new_chunks": 11,
+              "filing_distribution": {
+                "AAPL:2025": 5,
+                "AAPL:2021": 7
+              }
+            },
+            {
+              "arguments": {
+                "query": "China Hong Kong billing customers percentage revenue fiscal 2025 2021",
+                "filters": {
+                  "companies": [
+                    "NVIDIA Corporation"
+                  ],
+                  "tickers": [],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2021,
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 11,
+              "new_chunks": 11,
+              "filing_distribution": {
+                "NVDA:2025": 9,
+                "NVDA:2021": 2
+              }
+            }
+          ],
+          "search_return_occurrences": 23,
+          "unique_search_chunks": 22,
+          "repeated_search_return_occurrences": 1,
+          "read_occurrences": 7,
+          "unique_read_chunks": 7,
+          "unique_read_corpus_tokens": 1540,
+          "maximum_read_chunk_corpus_tokens": 318,
+          "minimum_calls": {
+            "evidence_documents": 4,
+            "minimum_read_calls": 4,
+            "minimum_total_calls": 5
+          },
+          "evidence_recall": {
+            "retrieval": 0.4,
+            "read": 0.1,
+            "citation": 0.0
+          },
+          "advisory_quality": {
+            "status": "not_assessed",
+            "reason": "Use --judge for an advisory rubric score; human review is the release gate."
+          },
+          "failure": {
+            "error_code": "assistant_tool_calls_limit",
+            "error_message": "The next tool call(s) would exceed the tool_calls_limit of 8 (tool_calls=9). Consider raising the limit, or see the docs on usage limits for budget-aware patterns: https://ai.pydantic.dev/agent/#usage-limits",
+            "failed_after_stage": "assistant.model.response"
+          }
+        },
+        {
+          "code": "DR-10",
+          "outcome": "assistant_input_tokens_limit",
+          "seconds": 34.24,
+          "provider_input_tokens": 72029,
+          "provider_output_tokens": 995,
+          "per_request_input_tokens": [
+            1554,
+            4161,
+            6421,
+            8720,
+            10940,
+            12771,
+            13402,
+            14060
+          ],
+          "projected_cumulative_input_at_stop": 87658,
+          "provider_input_before_first_read": 44567,
+          "model_responses": 8,
+          "completed_tool_calls": 8,
+          "tool_sequence": [
+            "search_filings",
+            "search_filings",
+            "search_filings",
+            "search_filings",
+            "search_filings",
+            "read_chunk",
+            "read_chunk",
+            "read_surrounding_chunks"
+          ],
+          "tool_failures": [],
+          "grounding_rejections": [],
+          "searches": [
+            {
+              "arguments": {
+                "query": "Revenue by reportable segment Compute & Networking Graphics fiscal years 2021 2022 2023 2024 2025",
+                "filters": {
+                  "companies": [
+                    "NVIDIA Corporation"
+                  ],
+                  "tickers": [],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2021,
+                    2022,
+                    2023,
+                    2024,
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 11,
+              "new_chunks": 10,
+              "filing_distribution": {
+                "NVDA:2024": 4,
+                "NVDA:2025": 3,
+                "NVDA:2023": 1,
+                "NVDA:2021": 2,
+                "NVDA:2022": 1
+              }
+            },
+            {
+              "arguments": {
+                "query": "customer concentration revenue percentage customer A customer B represented 10% fiscal 2021 2022 2023 2024 2025",
+                "filters": {
+                  "companies": [
+                    "NVIDIA Corporation"
+                  ],
+                  "tickers": [],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2021,
+                    2022,
+                    2023,
+                    2024,
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 11,
+              "new_chunks": 9,
+              "filing_distribution": {
+                "NVDA:2025": 5,
+                "NVDA:2024": 2,
+                "NVDA:2022": 1,
+                "NVDA:2023": 3
+              }
+            },
+            {
+              "arguments": {
+                "query": "sales to direct customers represented 10% total revenue Direct Customer fiscal 2021 fiscal 2022 fiscal 2023",
+                "filters": {
+                  "companies": [
+                    "NVIDIA Corporation"
+                  ],
+                  "tickers": [],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2021,
+                    2022,
+                    2023
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 11,
+              "new_chunks": 5,
+              "filing_distribution": {
+                "NVDA:2022": 4,
+                "NVDA:2021": 4,
+                "NVDA:2023": 3
+              }
+            },
+            {
+              "arguments": {
+                "query": "\"No customer represented 10%\" total revenue fiscal year 2022",
+                "filters": {
+                  "companies": [
+                    "NVIDIA Corporation"
+                  ],
+                  "tickers": [],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2022,
+                    2023
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 10,
+              "new_chunks": 2,
+              "filing_distribution": {
+                "NVDA:2022": 6,
+                "NVDA:2023": 4
+              }
+            },
+            {
+              "arguments": {
+                "query": "supplier concentration sole source suppliers wafers assembly testing fiscal 2021 2025 TSMC",
+                "filters": {
+                  "companies": [
+                    "NVIDIA Corporation"
+                  ],
+                  "tickers": [],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2021,
+                    2022,
+                    2023,
+                    2024,
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 10,
+              "new_chunks": 10,
+              "filing_distribution": {
+                "NVDA:2025": 2,
+                "NVDA:2023": 2,
+                "NVDA:2021": 2,
+                "NVDA:2022": 2,
+                "NVDA:2024": 2
+              }
+            }
+          ],
+          "search_return_occurrences": 53,
+          "unique_search_chunks": 36,
+          "repeated_search_return_occurrences": 17,
+          "read_occurrences": 4,
+          "unique_read_chunks": 4,
+          "unique_read_corpus_tokens": 1221,
+          "maximum_read_chunk_corpus_tokens": 477,
+          "minimum_calls": {
+            "evidence_documents": 2,
+            "minimum_read_calls": 2,
+            "minimum_total_calls": 3
+          },
+          "evidence_recall": {
+            "retrieval": 0.4444444444444444,
+            "read": 0.1111111111111111,
+            "citation": 0.0
+          },
+          "advisory_quality": {
+            "status": "not_assessed",
+            "reason": "Use --judge for an advisory rubric score; human review is the release gate."
+          },
+          "failure": {
+            "error_code": "assistant_input_tokens_limit",
+            "error_message": "The next request would exceed the input_tokens_limit of 75000 (input_tokens=87658). Consider raising the limit, or see the docs on usage limits for budget-aware patterns: https://ai.pydantic.dev/agent/#usage-limits",
+            "failed_after_stage": "assistant.model.request"
+          }
+        },
+        {
+          "code": "DR-11",
+          "outcome": "assistant_tool_calls_limit",
+          "seconds": 25.48,
+          "provider_input_tokens": 60042,
+          "provider_output_tokens": 554,
+          "per_request_input_tokens": [
+            1570,
+            1732,
+            3765,
+            4442,
+            7007,
+            9186,
+            9481,
+            10049,
+            12810
+          ],
+          "projected_cumulative_input_at_stop": null,
+          "provider_input_before_first_read": 7067,
+          "model_responses": 9,
+          "completed_tool_calls": 8,
+          "tool_sequence": [
+            "search_filings",
+            "search_filings",
+            "read_chunk",
+            "search_filings",
+            "search_filings",
+            "read_chunk",
+            "read_chunk",
+            "search_filings"
+          ],
+          "tool_failures": [],
+          "grounding_rejections": [],
+          "searches": [
+            {
+              "arguments": {
+                "query": "change in estimated useful lives server and network equipment 2023 operating income benefit depreciation",
+                "filters": {
+                  "companies": [
+                    "Microsoft"
+                  ],
+                  "tickers": [],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2023
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 0,
+              "new_chunks": 0,
+              "filing_distribution": {}
+            },
+            {
+              "arguments": {
+                "query": "estimated useful lives servers network equipment depreciation expense fiscal 2023 extended",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "MSFT"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2023
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 11,
+              "new_chunks": 10,
+              "filing_distribution": {
+                "MSFT:2023": 11
+              }
+            },
+            {
+              "arguments": {
+                "query": "operating income 2023 2022 88,523 83,383 consolidated statements of income",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "MSFT"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2023
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 12,
+              "new_chunks": 11,
+              "filing_distribution": {
+                "MSFT:2023": 12
+              }
+            },
+            {
+              "arguments": {
+                "query": "useful lives servers network equipment increase estimated useful life 2023 operating income depreciation benefit",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "GOOGL"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2023
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 11,
+              "new_chunks": 11,
+              "filing_distribution": {
+                "GOOGL:2023": 11
+              }
+            },
+            {
+              "arguments": {
+                "query": "operating income 2023 2022 84,293 74,842",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "GOOGL"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2023
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 13,
+              "new_chunks": 11,
+              "filing_distribution": {
+                "GOOGL:2023": 13
+              }
+            }
+          ],
+          "search_return_occurrences": 47,
+          "unique_search_chunks": 43,
+          "repeated_search_return_occurrences": 4,
+          "read_occurrences": 3,
+          "unique_read_chunks": 3,
+          "unique_read_corpus_tokens": 977,
+          "maximum_read_chunk_corpus_tokens": 481,
+          "minimum_calls": {
+            "evidence_documents": 2,
+            "minimum_read_calls": 2,
+            "minimum_total_calls": 3
+          },
+          "evidence_recall": {
+            "retrieval": 0.5,
+            "read": 0.25,
+            "citation": 0.0
+          },
+          "advisory_quality": {
+            "status": "not_assessed",
+            "reason": "Use --judge for an advisory rubric score; human review is the release gate."
+          },
+          "failure": {
+            "error_code": "assistant_tool_calls_limit",
+            "error_message": "The next tool call(s) would exceed the tool_calls_limit of 8 (tool_calls=9). Consider raising the limit, or see the docs on usage limits for budget-aware patterns: https://ai.pydantic.dev/agent/#usage-limits",
+            "failed_after_stage": "assistant.model.response"
+          }
+        },
+        {
+          "code": "DR-12",
+          "outcome": "assistant_input_tokens_limit",
+          "seconds": 22.14,
+          "provider_input_tokens": 68324,
+          "provider_output_tokens": 412,
+          "per_request_input_tokens": [
+            1568,
+            4513,
+            6944,
+            7925,
+            9350,
+            11797,
+            12379,
+            13848
+          ],
+          "projected_cumulative_input_at_stop": 81791,
+          "provider_input_before_first_read": 13025,
+          "model_responses": 8,
+          "completed_tool_calls": 8,
+          "tool_sequence": [
+            "search_filings",
+            "search_filings",
+            "read_chunk",
+            "read_surrounding_chunks",
+            "search_filings",
+            "read_chunk",
+            "read_surrounding_chunks",
+            "read_chunk"
+          ],
+          "tool_failures": [],
+          "grounding_rejections": [],
+          "searches": [
+            {
+              "arguments": {
+                "query": "State Aid Decision one-time net tax charge 2024 revenue operating income net income effective tax rate",
+                "filters": {
+                  "companies": [
+                    "Apple Inc."
+                  ],
+                  "tickers": [],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2024
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 14,
+              "new_chunks": 13,
+              "filing_distribution": {
+                "AAPL:2024": 14
+              }
+            },
+            {
+              "arguments": {
+                "query": "Consolidated Statements of Operations 2024 2023 net sales operating income provision for income taxes net income",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "AAPL"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2024
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 11,
+              "new_chunks": 5,
+              "filing_distribution": {
+                "AAPL:2024": 11
+              }
+            },
+            {
+              "arguments": {
+                "query": "\"Net sales\" \"Operating income\" \"Income before provision for income taxes\" \"93,736\"",
+                "filters": {
+                  "companies": [
+                    "Apple Inc."
+                  ],
+                  "tickers": [],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2024
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 11,
+              "new_chunks": 5,
+              "filing_distribution": {
+                "AAPL:2024": 11
+              }
+            }
+          ],
+          "search_return_occurrences": 36,
+          "unique_search_chunks": 23,
+          "repeated_search_return_occurrences": 13,
+          "read_occurrences": 7,
+          "unique_read_chunks": 7,
+          "unique_read_corpus_tokens": 3660,
+          "maximum_read_chunk_corpus_tokens": 776,
+          "minimum_calls": {
+            "evidence_documents": 2,
+            "minimum_read_calls": 2,
+            "minimum_total_calls": 3
+          },
+          "evidence_recall": {
+            "retrieval": 0.5,
+            "read": 0.5,
+            "citation": 0.0
+          },
+          "advisory_quality": {
+            "status": "not_assessed",
+            "reason": "Use --judge for an advisory rubric score; human review is the release gate."
+          },
+          "failure": {
+            "error_code": "assistant_input_tokens_limit",
+            "error_message": "The next request would exceed the input_tokens_limit of 75000 (input_tokens=81791). Consider raising the limit, or see the docs on usage limits for budget-aware patterns: https://ai.pydantic.dev/agent/#usage-limits",
+            "failed_after_stage": "assistant.model.request"
+          }
+        },
+        {
+          "code": "DR-13",
+          "outcome": "supported",
+          "seconds": 18.98,
+          "provider_input_tokens": 19380,
+          "provider_output_tokens": 1073,
+          "per_request_input_tokens": [
+            1585,
+            3889,
+            3959,
+            4756,
+            5191
+          ],
+          "projected_cumulative_input_at_stop": null,
+          "provider_input_before_first_read": 9433,
+          "model_responses": 5,
+          "completed_tool_calls": 3,
+          "tool_sequence": [
+            "search_filings",
+            "read_chunk",
+            "read_chunk"
+          ],
+          "tool_failures": [
+            {
+              "tool_name": "read_chunk",
+              "error_message": "'S77' is not evidence retrieved during this turn"
+            }
+          ],
+          "grounding_rejections": [],
+          "searches": [
+            {
+              "arguments": {
+                "query": "Amazon 2022 net loss 2021 net income operating income total non-operating income expense Rivian fair value changes",
+                "filters": {
+                  "companies": [
+                    "Amazon.com, Inc."
+                  ],
+                  "tickers": [],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2022
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 11,
+              "new_chunks": 11,
+              "filing_distribution": {
+                "AMZN:2022": 11
+              }
+            }
+          ],
+          "search_return_occurrences": 11,
+          "unique_search_chunks": 11,
+          "repeated_search_return_occurrences": 0,
+          "read_occurrences": 2,
+          "unique_read_chunks": 2,
+          "unique_read_corpus_tokens": 830,
+          "maximum_read_chunk_corpus_tokens": 559,
+          "minimum_calls": {
+            "evidence_documents": 1,
+            "minimum_read_calls": 1,
+            "minimum_total_calls": 2
+          },
+          "evidence_recall": {
+            "retrieval": 1.0,
+            "read": 1.0,
+            "citation": 1.0
+          },
+          "advisory_quality": {
+            "status": "advisory",
+            "score": 10,
+            "rubric_pass": true,
+            "human_review_required": true,
+            "findings": 6,
+            "citations": 2,
+            "caveats": 1,
+            "interpretation": 1,
+            "critical_failures": [],
+            "missing_findings": [],
+            "incorrect_claims": [],
+            "explanation": "The answer correctly reports FY2021\u2013FY2022 operating income, total non-operating results, pretax income, net-income and tax effects, and the Rivian $24.5B adverse fair-value swing. Its Rivian-excluded pretax calculations ($26.351B and $6.764B) and $19.587B deterioration are arithmetically correct. Citations [S6] (chunk ac2da0aa) support the income-statement figures and [S1] (chunk a5efe962) supports the Rivian gains/losses and classification in other income (expense), net. It appropriately confines the normalization to pretax income and correctly concludes Rivian did not explain all deterioration.",
+            "configuration": {
+              "model": "assistant-gpt-5-6-terra",
+              "reasoning_effort": "low",
+              "max_output_tokens": 4000,
+              "prompt_sha256": "a06c1469b093f3dd9c5213cbe5e6fae1abdc8c59bd3ae7ad523c152a0abdc009",
+              "evaluator_version": "1"
+            },
+            "usage": {
+              "input_tokens": 16235,
+              "input_tokens_details": {
+                "cache_write_tokens": 16232,
+                "cached_tokens": 0
+              },
+              "output_tokens": 196,
+              "output_tokens_details": {
+                "reasoning_tokens": 0
+              },
+              "total_tokens": 16431
+            }
+          },
+          "failure": {}
+        },
+        {
+          "code": "DR-14",
+          "outcome": "assistant_input_tokens_limit",
+          "seconds": 27.58,
+          "provider_input_tokens": 66874,
+          "provider_output_tokens": 762,
+          "per_request_input_tokens": [
+            1608,
+            3629,
+            6171,
+            8148,
+            10167,
+            12142,
+            12276,
+            12733
+          ],
+          "projected_cumulative_input_at_stop": 81868,
+          "provider_input_before_first_read": 54141,
+          "model_responses": 8,
+          "completed_tool_calls": 7,
+          "tool_sequence": [
+            "search_filings",
+            "search_filings",
+            "search_filings",
+            "search_filings",
+            "search_filings",
+            "read_chunk",
+            "read_chunk"
+          ],
+          "tool_failures": [
+            {
+              "tool_name": "search_filings",
+              "error_message": "The maximum of 5 filing searches is exhausted; answer from current evidence or return insufficient_evidence"
+            }
+          ],
+          "grounding_rejections": [],
+          "searches": [
+            {
+              "arguments": {
+                "query": "artificial intelligence AI generative AI risk factors product harmful content regulation intellectual property infrastructure capacity costs monetization demand return on investment",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "AAPL",
+                    "MSFT",
+                    "NVDA",
+                    "AMZN",
+                    "GOOGL"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2021,
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 11,
+              "new_chunks": 11,
+              "filing_distribution": {
+                "GOOGL:2025": 6,
+                "NVDA:2025": 1,
+                "MSFT:2025": 3,
+                "MSFT:2021": 1
+              }
+            },
+            {
+              "arguments": {
+                "query": "artificial intelligence AI risk factors products services opportunities harms inaccurate output bias content intellectual property regulation investment infrastructure demand monetization",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "AAPL"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2021,
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 14,
+              "new_chunks": 12,
+              "filing_distribution": {
+                "AAPL:2025": 11,
+                "AAPL:2021": 3
+              }
+            },
+            {
+              "arguments": {
+                "query": "\"artificial intelligence\" OR \"AI\"",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "AAPL"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2021,
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 11,
+              "new_chunks": 7,
+              "filing_distribution": {
+                "AAPL:2025": 8,
+                "AAPL:2021": 3
+              }
+            },
+            {
+              "arguments": {
+                "query": "artificial intelligence AI generative AI products services opportunity risk harm content outputs regulation intellectual property infrastructure capacity costs demand monetization return",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "NVDA",
+                    "AMZN"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2021,
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 11,
+              "new_chunks": 9,
+              "filing_distribution": {
+                "NVDA:2025": 9,
+                "NVDA:2021": 1,
+                "AMZN:2025": 1
+              }
+            },
+            {
+              "arguments": {
+                "query": "artificial intelligence AI generative AI machine learning products AWS risk factor regulation content infringement infrastructure capacity capital expenditure demand",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "AMZN"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2021,
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 11,
+              "new_chunks": 9,
+              "filing_distribution": {
+                "AMZN:2025": 9,
+                "AMZN:2021": 2
+              }
+            }
+          ],
+          "search_return_occurrences": 58,
+          "unique_search_chunks": 48,
+          "repeated_search_return_occurrences": 10,
+          "read_occurrences": 2,
+          "unique_read_chunks": 2,
+          "unique_read_corpus_tokens": 687,
+          "maximum_read_chunk_corpus_tokens": 474,
+          "minimum_calls": {
+            "evidence_documents": 10,
+            "minimum_read_calls": 10,
+            "minimum_total_calls": 11
+          },
+          "evidence_recall": {
+            "retrieval": 0.5,
+            "read": 0.07692307692307693,
+            "citation": 0.0
+          },
+          "advisory_quality": {
+            "status": "not_assessed",
+            "reason": "Use --judge for an advisory rubric score; human review is the release gate."
+          },
+          "failure": {
+            "error_code": "assistant_input_tokens_limit",
+            "error_message": "The next request would exceed the input_tokens_limit of 75000 (input_tokens=81868). Consider raising the limit, or see the docs on usage limits for budget-aware patterns: https://ai.pydantic.dev/agent/#usage-limits",
+            "failed_after_stage": "assistant.model.request"
+          }
+        },
+        {
+          "code": "DR-15",
+          "outcome": "insufficient_evidence",
+          "seconds": 12.04,
+          "provider_input_tokens": 10362,
+          "provider_output_tokens": 302,
+          "per_request_input_tokens": [
+            1588,
+            3430,
+            5344
+          ],
+          "projected_cumulative_input_at_stop": null,
+          "provider_input_before_first_read": null,
+          "model_responses": 3,
+          "completed_tool_calls": 2,
+          "tool_sequence": [
+            "search_filings",
+            "search_filings"
+          ],
+          "tool_failures": [],
+          "grounding_rejections": [],
+          "searches": [
+            {
+              "arguments": {
+                "query": "generative AI investment return margin expansion attributable caused by generative AI",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "AAPL",
+                    "MSFT",
+                    "NVDA",
+                    "AMZN",
+                    "GOOGL"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 10,
+              "new_chunks": 10,
+              "filing_distribution": {
+                "GOOGL:2025": 4,
+                "MSFT:2025": 4,
+                "NVDA:2025": 2
+              }
+            },
+            {
+              "arguments": {
+                "query": "generative AI revenue investment costs operating margin gross margin percentage 2025",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "AAPL",
+                    "MSFT",
+                    "NVDA",
+                    "AMZN",
+                    "GOOGL"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 10,
+              "new_chunks": 4,
+              "filing_distribution": {
+                "GOOGL:2025": 4,
+                "MSFT:2025": 4,
+                "NVDA:2025": 2
+              }
+            }
+          ],
+          "search_return_occurrences": 20,
+          "unique_search_chunks": 14,
+          "repeated_search_return_occurrences": 6,
+          "read_occurrences": 0,
+          "unique_read_chunks": 0,
+          "unique_read_corpus_tokens": 0,
+          "maximum_read_chunk_corpus_tokens": 0,
+          "minimum_calls": {
+            "evidence_documents": 5,
+            "minimum_read_calls": 5,
+            "minimum_total_calls": 6
+          },
+          "evidence_recall": {
+            "retrieval": 0.09090909090909091,
+            "read": 0.0,
+            "citation": 0.0
+          },
+          "advisory_quality": {
+            "status": "advisory",
+            "score": 3,
+            "rubric_pass": false,
+            "human_review_required": true,
+            "findings": 1,
+            "citations": 0,
+            "caveats": 1,
+            "interpretation": 1,
+            "critical_failures": [],
+            "missing_findings": [
+              "It does not explain why the corpus cannot support a cross-company generative-AI return ranking: no consistent AI-investment denominator, AI revenue/profit numerator, or ROI/ROIC metric is disclosed.",
+              "It does not state that consolidated capex/shared infrastructure cannot be treated as generative-AI-only investment.",
+              "It omits Microsoft\u2019s disclosed Microsoft Cloud gross-margin decline to 69%, partly from scaling AI infrastructure, and the limitation that this is not AI ROI or a causal consolidated-margin effect (4901b524-a78e-4a9f-a75b-969d9917fc3e).",
+              "It omits Amazon\u2019s statement that AI and other factors\u2019 effects are difficult to predict, isolate, and quantify (ef10b0bc-4f3d-4b7a-92e5-1e9d7406b2c7).",
+              "It omits NVIDIA\u2019s statement that generative AI\u2019s impact on reported revenue or forecast demand cannot be estimated with reasonable precision (b2cd57b6-35d1-41cb-941f-d7a09aee7c55).",
+              "It omits Alphabet\u2019s warning that AI investments may not earn an adequate return and that AI compute overlaps with traditional cloud needs (925cc7ed-87b3-4fb8-b581-cbfc3e472a3b).",
+              "It omits the available Apple evidence\u2019s lack of separately disclosed AI investment, revenue, or margin contribution.",
+              "It does not explicitly answer that no basis-point amount can be calculated from the filings."
+            ],
+            "incorrect_claims": [],
+            "explanation": "The answer reaches the correct high-level conclusion and appropriately does not manufacture a winner or causal basis-point result. However, it is an unsupported conclusory abstention: it provides no citations and none of the filing-specific evidence or causal/metric limitations needed to substantiate the conclusion. The caveat and disciplined interpretation receive credit because it correctly stops at insufficiency.",
+            "configuration": {
+              "model": "assistant-gpt-5-6-terra",
+              "reasoning_effort": "low",
+              "max_output_tokens": 4000,
+              "prompt_sha256": "d3ac1d75d037e89960e6ac21eee49ce65a42a9bd021a924b51c22608e7abf59b",
+              "evaluator_version": "1"
+            },
+            "usage": {
+              "input_tokens": 10738,
+              "input_tokens_details": {
+                "cache_write_tokens": 10735,
+                "cached_tokens": 0
+              },
+              "output_tokens": 515,
+              "output_tokens_details": {
+                "reasoning_tokens": 75
+              },
+              "total_tokens": 11253
+            }
+          },
+          "failure": {}
+        }
+      ]
+    },
+    {
+      "run_id": "5a269f92-9081-44fe-a384-46b42298b300",
+      "dataset_id": "00ae68d1-5a18-405a-9edb-2578fdfc5873",
+      "settings": {
+        "azure_openai_assistant_deployment": "assistant-gpt-5-6-terra",
+        "azure_openai_keyword_deployment": "keywords-gpt-5-4-nano",
+        "azure_openai_embedding_deployment": "embeddings-text-embedding-3-small",
+        "openai_embedding_model": "text-embedding-3-small",
+        "openai_embedding_dimensions": 1536,
+        "openai_keyword_model": "gpt-5.4-nano",
+        "openai_keyword_max_output_tokens": 800,
+        "openai_assistant_model": "gpt-5.6-terra",
+        "openai_assistant_reasoning_effort": "medium",
+        "openai_assistant_max_output_tokens": 3000,
+        "assistant_max_model_requests": 10,
+        "assistant_max_tool_calls": 8,
+        "assistant_max_total_output_tokens": 10000,
+        "assistant_max_total_input_tokens": 75000,
+        "assistant_max_request_input_tokens": 50000,
+        "assistant_max_message_characters": 10000,
+        "assistant_tool_retries": 1,
+        "assistant_output_retries": 1,
+        "assistant_tool_timeout_seconds": 120.0,
+        "assistant_parallel_tool_calls": false,
+        "openai_store_responses": false,
+        "assistant_text_verbosity": "low",
+        "assistant_max_history_turns": 5,
+        "assistant_max_history_characters": 20000,
+        "assistant_max_turn_evidence": 150,
+        "assistant_evidence_preview_characters": 400,
+        "assistant_max_search_calls": 5,
+        "assistant_max_surrounding_calls": 2,
+        "assistant_search_result_limit": 10,
+        "assistant_search_candidate_limit": 50,
+        "assistant_max_search_query_characters": 500,
+        "assistant_surrounding_chunk_radius": 1,
+        "assistant_max_surrounding_chunks": 2,
+        "assistant_max_filter_companies": 5,
+        "assistant_max_filter_tickers": 5,
+        "assistant_max_filter_filing_types": 3,
+        "assistant_max_filter_filing_years": 5,
+        "assistant_max_non_retrieval_answer_characters": 1000,
+        "assistant_max_citations": 20,
+        "retrieval_default_result_limit": 10,
+        "retrieval_max_result_limit": 20,
+        "retrieval_default_candidate_limit": 50,
+        "retrieval_max_candidate_limit": 100,
+        "retrieval_semantic_weight": 20.0,
+        "retrieval_lexical_weight": 1.0,
+        "retrieval_unconfigured_branch_weight": 1.0,
+        "retrieval_rrf_k": 60,
+        "retrieval_min_filing_year": 1900,
+        "retrieval_max_filing_year": 2100,
+        "retrieval_keyword_max_groups": 6,
+        "retrieval_keyword_max_terms_per_group": 3,
+        "retrieval_keyword_max_term_characters": 80,
+        "retrieval_keyword_max_phrase_words": 4,
+        "chat_turn_timeout_seconds": 180,
+        "chat_stream_heartbeat_seconds": 15.0,
+        "chat_stream_text_delta_characters": 160,
+        "chat_auto_title_max_characters": 60,
+        "chat_thread_title_max_characters": 200,
+        "chat_default_thread_title": "New chat",
+        "chat_client_message_id_max_characters": 200,
+        "assistant_trace_mode": "full",
+        "assistant_trace_max_content_characters": 12000
+      },
+      "outcomes": {
+        "assistant_input_tokens_limit": 2,
+        "assistant_rate_limited": 1
+      },
+      "cases": [
+        {
+          "code": "DR-01",
+          "outcome": "assistant_input_tokens_limit",
+          "seconds": 28.58,
+          "provider_input_tokens": 66894,
+          "provider_output_tokens": 658,
+          "per_request_input_tokens": [
+            1627,
+            4083,
+            6730,
+            9312,
+            9383,
+            10097,
+            12539,
+            13123
+          ],
+          "projected_cumulative_input_at_stop": 80674,
+          "provider_input_before_first_read": 31135,
+          "model_responses": 8,
+          "completed_tool_calls": 7,
+          "tool_sequence": [
+            "search_filings",
+            "search_filings",
+            "search_filings",
+            "read_chunk",
+            "search_filings",
+            "read_chunk",
+            "read_surrounding_chunks"
+          ],
+          "tool_failures": [
+            {
+              "tool_name": "read_chunk",
+              "error_message": "'S77' is not evidence retrieved during this turn"
+            }
+          ],
+          "grounding_rejections": [],
+          "searches": [
+            {
+              "arguments": {
+                "query": "Consolidated statements of operations net sales revenue operating income fiscal 2021 2025",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "AAPL",
+                    "MSFT",
+                    "NVDA",
+                    "AMZN",
+                    "GOOGL"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2021,
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 10,
+              "new_chunks": 10,
+              "filing_distribution": {
+                "AMZN:2021": 2,
+                "GOOGL:2025": 2,
+                "GOOGL:2021": 1,
+                "AMZN:2025": 2,
+                "NVDA:2025": 2,
+                "NVDA:2021": 1
+              }
+            },
+            {
+              "arguments": {
+                "query": "Total net sales operating income 2025 2021 consolidated statements of operations",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "AAPL"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2021,
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 11,
+              "new_chunks": 10,
+              "filing_distribution": {
+                "AAPL:2021": 6,
+                "AAPL:2025": 5
+              }
+            },
+            {
+              "arguments": {
+                "query": "\"Operating income\" \"133,050\" \"416,161\"",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "AAPL"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 11,
+              "new_chunks": 8,
+              "filing_distribution": {
+                "AAPL:2025": 11
+              }
+            },
+            {
+              "arguments": {
+                "query": "\"Net sales\" \"Operating income\" \"September 27, 2025\"",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "AAPL"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 11,
+              "new_chunks": 2,
+              "filing_distribution": {
+                "AAPL:2025": 11
+              }
+            }
+          ],
+          "search_return_occurrences": 43,
+          "unique_search_chunks": 30,
+          "repeated_search_return_occurrences": 13,
+          "read_occurrences": 4,
+          "unique_read_chunks": 4,
+          "unique_read_corpus_tokens": 2076,
+          "maximum_read_chunk_corpus_tokens": 589,
+          "minimum_calls": {
+            "evidence_documents": 10,
+            "minimum_read_calls": 10,
+            "minimum_total_calls": 11
+          },
+          "evidence_recall": {
+            "retrieval": 0.1,
+            "read": 0.1,
+            "citation": 0.0
+          },
+          "advisory_quality": {
+            "status": "not_assessed",
+            "reason": "Use --judge for an advisory rubric score; human review is the release gate."
+          },
+          "failure": {
+            "error_code": "assistant_input_tokens_limit",
+            "error_message": "The next request would exceed the input_tokens_limit of 75000 (input_tokens=80674). Consider raising the limit, or see the docs on usage limits for budget-aware patterns: https://ai.pydantic.dev/agent/#usage-limits",
+            "failed_after_stage": "assistant.model.request"
+          }
+        },
+        {
+          "code": "DR-05",
+          "outcome": "assistant_input_tokens_limit",
+          "seconds": 48.67,
+          "provider_input_tokens": 71984,
+          "provider_output_tokens": 450,
+          "per_request_input_tokens": [
+            1558,
+            3863,
+            6116,
+            8695,
+            9369,
+            9924,
+            10516,
+            10947,
+            10996
+          ],
+          "projected_cumulative_input_at_stop": 83358,
+          "provider_input_before_first_read": 20232,
+          "model_responses": 9,
+          "completed_tool_calls": 8,
+          "tool_sequence": [
+            "search_filings",
+            "search_filings",
+            "search_filings",
+            "read_chunk",
+            "read_chunk",
+            "read_chunk",
+            "read_chunk",
+            "read_chunk"
+          ],
+          "tool_failures": [
+            {
+              "tool_name": "read_chunk",
+              "error_message": "'S145' is not evidence retrieved during this turn"
+            }
+          ],
+          "grounding_rejections": [],
+          "searches": [
+            {
+              "arguments": {
+                "query": "AWS segment net sales operating income 2025 2021",
+                "filters": {
+                  "companies": [
+                    "Amazon.com, Inc."
+                  ],
+                  "tickers": [],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2021,
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 11,
+              "new_chunks": 11,
+              "filing_distribution": {
+                "AMZN:2025": 5,
+                "AMZN:2021": 6
+              }
+            },
+            {
+              "arguments": {
+                "query": "Google Cloud revenues operating income 2025 2021 segment",
+                "filters": {
+                  "companies": [
+                    "Alphabet Inc."
+                  ],
+                  "tickers": [],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2021,
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 11,
+              "new_chunks": 10,
+              "filing_distribution": {
+                "GOOGL:2021": 5,
+                "GOOGL:2025": 6
+              }
+            },
+            {
+              "arguments": {
+                "query": "Intelligent Cloud revenue operating income 2025 2021 segment operating margin",
+                "filters": {
+                  "companies": [
+                    "Microsoft Corporation"
+                  ],
+                  "tickers": [],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2021,
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 13,
+              "new_chunks": 11,
+              "filing_distribution": {
+                "MSFT:2025": 8,
+                "MSFT:2021": 5
+              }
+            }
+          ],
+          "search_return_occurrences": 35,
+          "unique_search_chunks": 32,
+          "repeated_search_return_occurrences": 3,
+          "read_occurrences": 5,
+          "unique_read_chunks": 5,
+          "unique_read_corpus_tokens": 2025,
+          "maximum_read_chunk_corpus_tokens": 499,
+          "minimum_calls": {
+            "evidence_documents": 6,
+            "minimum_read_calls": 6,
+            "minimum_total_calls": 7
+          },
+          "evidence_recall": {
+            "retrieval": 0.875,
+            "read": 0.625,
+            "citation": 0.0
+          },
+          "advisory_quality": {
+            "status": "not_assessed",
+            "reason": "Use --judge for an advisory rubric score; human review is the release gate."
+          },
+          "failure": {
+            "error_code": "assistant_input_tokens_limit",
+            "error_message": "The next request would exceed the input_tokens_limit of 75000 (input_tokens=83358). Consider raising the limit, or see the docs on usage limits for budget-aware patterns: https://ai.pydantic.dev/agent/#usage-limits",
+            "failed_after_stage": "assistant.model.request"
+          }
+        },
+        {
+          "code": "DR-11",
+          "outcome": "assistant_rate_limited",
+          "seconds": 51.45,
+          "provider_input_tokens": 12724,
+          "provider_output_tokens": 271,
+          "per_request_input_tokens": [
+            1570,
+            1711,
+            3642,
+            5801
+          ],
+          "projected_cumulative_input_at_stop": null,
+          "provider_input_before_first_read": null,
+          "model_responses": 4,
+          "completed_tool_calls": 4,
+          "tool_sequence": [
+            "search_filings",
+            "search_filings",
+            "search_filings",
+            "search_filings"
+          ],
+          "tool_failures": [],
+          "grounding_rejections": [],
+          "searches": [
+            {
+              "arguments": {
+                "query": "change in estimated useful lives of server and network equipment operating income benefit depreciation 2023",
+                "filters": {
+                  "companies": [
+                    "Microsoft"
+                  ],
+                  "tickers": [],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2023
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 0,
+              "new_chunks": 0,
+              "filing_distribution": {}
+            },
+            {
+              "arguments": {
+                "query": "server and network equipment useful lives depreciation operating income 2023 change estimate",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "MSFT"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2023
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 10,
+              "new_chunks": 10,
+              "filing_distribution": {
+                "MSFT:2023": 10
+              }
+            },
+            {
+              "arguments": {
+                "query": "useful lives server network equipment change estimate operating income benefit 2023 depreciation",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "GOOGL"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2023
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 11,
+              "new_chunks": 11,
+              "filing_distribution": {
+                "GOOGL:2023": 11
+              }
+            },
+            {
+              "arguments": {
+                "query": "total operating income 2023 2022 consolidated statements of income",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "MSFT"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2023
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 11,
+              "new_chunks": 9,
+              "filing_distribution": {
+                "MSFT:2023": 11
+              }
+            }
+          ],
+          "search_return_occurrences": 32,
+          "unique_search_chunks": 30,
+          "repeated_search_return_occurrences": 2,
+          "read_occurrences": 0,
+          "unique_read_chunks": 0,
+          "unique_read_corpus_tokens": 0,
+          "maximum_read_chunk_corpus_tokens": 0,
+          "minimum_calls": {
+            "evidence_documents": 2,
+            "minimum_read_calls": 2,
+            "minimum_total_calls": 3
+          },
+          "evidence_recall": {
+            "retrieval": 0.5,
+            "read": 0.0,
+            "citation": 0.0
+          },
+          "advisory_quality": {
+            "status": "not_assessed",
+            "reason": "Use --judge for an advisory rubric score; human review is the release gate."
+          },
+          "failure": {
+            "error_code": "assistant_rate_limited",
+            "error_message": "status_code: 429, model_name: assistant-gpt-5-6-terra, body: {'message': 'Your requests to gpt-5.6-terra for assistant-gpt-5-6-terra in eastus have exceeded rate limit.', 'type': 'too_many_requests', 'param': None, 'code': 'rate_limit_exceeded'}",
+            "failed_after_stage": "assistant.model.error",
+            "rate_limit_tokens": 100000,
+            "rate_reset_tokens_ms": 65000
+          }
+        }
+      ]
+    },
+    {
+      "run_id": "b72ec8b9-d0e8-4699-b2f8-982e80586ef4",
+      "dataset_id": "00ae68d1-5a18-405a-9edb-2578fdfc5873",
+      "settings": {
+        "azure_openai_assistant_deployment": "assistant-gpt-5-6-terra",
+        "azure_openai_keyword_deployment": "keywords-gpt-5-4-nano",
+        "azure_openai_embedding_deployment": "embeddings-text-embedding-3-small",
+        "openai_embedding_model": "text-embedding-3-small",
+        "openai_embedding_dimensions": 1536,
+        "openai_keyword_model": "gpt-5.4-nano",
+        "openai_keyword_max_output_tokens": 800,
+        "openai_assistant_model": "gpt-5.6-terra",
+        "openai_assistant_reasoning_effort": "medium",
+        "openai_assistant_max_output_tokens": 3000,
+        "assistant_max_model_requests": 18,
+        "assistant_max_tool_calls": 16,
+        "assistant_max_total_output_tokens": 10000,
+        "assistant_max_total_input_tokens": 150000,
+        "assistant_max_request_input_tokens": 50000,
+        "assistant_max_message_characters": 10000,
+        "assistant_tool_retries": 1,
+        "assistant_output_retries": 1,
+        "assistant_tool_timeout_seconds": 120.0,
+        "assistant_parallel_tool_calls": false,
+        "openai_store_responses": false,
+        "assistant_text_verbosity": "low",
+        "assistant_max_history_turns": 5,
+        "assistant_max_history_characters": 20000,
+        "assistant_max_turn_evidence": 150,
+        "assistant_evidence_preview_characters": 400,
+        "assistant_max_search_calls": 8,
+        "assistant_max_surrounding_calls": 2,
+        "assistant_search_result_limit": 10,
+        "assistant_search_candidate_limit": 50,
+        "assistant_max_search_query_characters": 500,
+        "assistant_surrounding_chunk_radius": 1,
+        "assistant_max_surrounding_chunks": 2,
+        "assistant_max_filter_companies": 5,
+        "assistant_max_filter_tickers": 5,
+        "assistant_max_filter_filing_types": 3,
+        "assistant_max_filter_filing_years": 5,
+        "assistant_max_non_retrieval_answer_characters": 1000,
+        "assistant_max_citations": 20,
+        "retrieval_default_result_limit": 10,
+        "retrieval_max_result_limit": 20,
+        "retrieval_default_candidate_limit": 50,
+        "retrieval_max_candidate_limit": 100,
+        "retrieval_semantic_weight": 20.0,
+        "retrieval_lexical_weight": 1.0,
+        "retrieval_unconfigured_branch_weight": 1.0,
+        "retrieval_rrf_k": 60,
+        "retrieval_min_filing_year": 1900,
+        "retrieval_max_filing_year": 2100,
+        "retrieval_keyword_max_groups": 6,
+        "retrieval_keyword_max_terms_per_group": 3,
+        "retrieval_keyword_max_term_characters": 80,
+        "retrieval_keyword_max_phrase_words": 4,
+        "chat_turn_timeout_seconds": 180,
+        "chat_stream_heartbeat_seconds": 15.0,
+        "chat_stream_text_delta_characters": 160,
+        "chat_auto_title_max_characters": 60,
+        "chat_thread_title_max_characters": 200,
+        "chat_default_thread_title": "New chat",
+        "chat_client_message_id_max_characters": 200,
+        "assistant_trace_mode": "full",
+        "assistant_trace_max_content_characters": 12000
+      },
+      "outcomes": {
+        "assistant_input_tokens_limit": 1,
+        "supported": 2
+      },
+      "cases": [
+        {
+          "code": "DR-01",
+          "outcome": "assistant_input_tokens_limit",
+          "seconds": 60.79,
+          "provider_input_tokens": 138783,
+          "provider_output_tokens": 2093,
+          "per_request_input_tokens": [
+            1627,
+            4014,
+            6839,
+            9871,
+            12457,
+            15587,
+            18205,
+            21580,
+            24148,
+            24455
+          ],
+          "projected_cumulative_input_at_stop": 161911,
+          "provider_input_before_first_read": 138783,
+          "model_responses": 10,
+          "completed_tool_calls": 9,
+          "tool_sequence": [
+            "search_filings",
+            "search_filings",
+            "search_filings",
+            "search_filings",
+            "search_filings",
+            "search_filings",
+            "search_filings",
+            "search_filings",
+            "read_chunk"
+          ],
+          "tool_failures": [
+            {
+              "tool_name": "search_filings",
+              "error_message": "The maximum of 8 filing searches is exhausted; answer from current evidence or return insufficient_evidence"
+            }
+          ],
+          "grounding_rejections": [],
+          "searches": [
+            {
+              "arguments": {
+                "query": "Consolidated statements of operations net sales revenue operating income fiscal 2021 fiscal 2025",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "AAPL",
+                    "MSFT",
+                    "NVDA",
+                    "AMZN",
+                    "GOOGL"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2021,
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 10,
+              "new_chunks": 10,
+              "filing_distribution": {
+                "AMZN:2021": 1,
+                "GOOGL:2025": 2,
+                "AMZN:2025": 1,
+                "GOOGL:2021": 1,
+                "NVDA:2025": 4,
+                "NVDA:2021": 1
+              }
+            },
+            {
+              "arguments": {
+                "query": "net sales operating income 2021 2020 Consolidated Statements of Operations",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "AAPL"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2021
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 12,
+              "new_chunks": 10,
+              "filing_distribution": {
+                "AAPL:2021": 12
+              }
+            },
+            {
+              "arguments": {
+                "query": "Total net sales operating income 2021 108949 365817",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "AAPL"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2021
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 13,
+              "new_chunks": 3,
+              "filing_distribution": {
+                "AAPL:2021": 13
+              }
+            },
+            {
+              "arguments": {
+                "query": "consolidated statements of income revenue operating income 2025 2024",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "AAPL",
+                    "MSFT",
+                    "AMZN",
+                    "GOOGL"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 10,
+              "new_chunks": 7,
+              "filing_distribution": {
+                "GOOGL:2025": 3,
+                "AMZN:2025": 4,
+                "MSFT:2025": 3
+              }
+            },
+            {
+              "arguments": {
+                "query": "SUMMARY RESULTS OF OPERATIONS 2025 net sales operating income",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "AAPL"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 14,
+              "new_chunks": 14,
+              "filing_distribution": {
+                "AAPL:2025": 14
+              }
+            },
+            {
+              "arguments": {
+                "query": "summary results of operations 2021 revenue operating income",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "MSFT",
+                    "AMZN",
+                    "GOOGL"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2021
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 12,
+              "new_chunks": 9,
+              "filing_distribution": {
+                "MSFT:2021": 4,
+                "AMZN:2021": 7,
+                "GOOGL:2021": 1
+              }
+            },
+            {
+              "arguments": {
+                "query": "\"Operating income\" \"133,050\" 2025",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "AAPL"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 13,
+              "new_chunks": 2,
+              "filing_distribution": {
+                "AAPL:2025": 13
+              }
+            },
+            {
+              "arguments": {
+                "query": "consolidated operating income 2025 2024 80,000 net sales 716,924",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "AMZN"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 11,
+              "new_chunks": 7,
+              "filing_distribution": {
+                "AMZN:2025": 11
+              }
+            }
+          ],
+          "search_return_occurrences": 95,
+          "unique_search_chunks": 62,
+          "repeated_search_return_occurrences": 33,
+          "read_occurrences": 1,
+          "unique_read_chunks": 1,
+          "unique_read_corpus_tokens": 285,
+          "maximum_read_chunk_corpus_tokens": 285,
+          "minimum_calls": {
+            "evidence_documents": 10,
+            "minimum_read_calls": 10,
+            "minimum_total_calls": 11
+          },
+          "evidence_recall": {
+            "retrieval": 0.3,
+            "read": 0.0,
+            "citation": 0.0
+          },
+          "advisory_quality": {
+            "status": "not_assessed",
+            "reason": "Use --judge for an advisory rubric score; human review is the release gate."
+          },
+          "failure": {
+            "error_code": "assistant_input_tokens_limit",
+            "error_message": "The next request would exceed the input_tokens_limit of 150000 (input_tokens=161911). Consider raising the limit, or see the docs on usage limits for budget-aware patterns: https://ai.pydantic.dev/agent/#usage-limits",
+            "failed_after_stage": "assistant.model.request"
+          }
+        },
+        {
+          "code": "DR-05",
+          "outcome": "supported",
+          "seconds": 118.62,
+          "provider_input_tokens": 148126,
+          "provider_output_tokens": 1794,
+          "per_request_input_tokens": [
+            1558,
+            3824,
+            6077,
+            8551,
+            9230,
+            9785,
+            10377,
+            10808,
+            10857,
+            11636,
+            12028,
+            12889,
+            12938,
+            13538,
+            14030
+          ],
+          "projected_cumulative_input_at_stop": null,
+          "provider_input_before_first_read": 20010,
+          "model_responses": 15,
+          "completed_tool_calls": 12,
+          "tool_sequence": [
+            "search_filings",
+            "search_filings",
+            "search_filings",
+            "read_chunk",
+            "read_chunk",
+            "read_chunk",
+            "read_chunk",
+            "read_chunk",
+            "read_chunk",
+            "read_chunk",
+            "read_chunk",
+            "read_chunk"
+          ],
+          "tool_failures": [
+            {
+              "tool_name": "read_chunk",
+              "error_message": "'S145' is not evidence retrieved during this turn"
+            },
+            {
+              "tool_name": "read_chunk",
+              "error_message": "'S184' is not evidence retrieved during this turn"
+            }
+          ],
+          "grounding_rejections": [],
+          "searches": [
+            {
+              "arguments": {
+                "query": "segment operating income and net sales AWS 2021 2025",
+                "filters": {
+                  "companies": [
+                    "Amazon.com, Inc."
+                  ],
+                  "tickers": [],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2021,
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 11,
+              "new_chunks": 11,
+              "filing_distribution": {
+                "AMZN:2025": 5,
+                "AMZN:2021": 6
+              }
+            },
+            {
+              "arguments": {
+                "query": "Google Cloud revenues operating income 2021 2025 segment",
+                "filters": {
+                  "companies": [
+                    "Alphabet Inc."
+                  ],
+                  "tickers": [],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2021,
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 11,
+              "new_chunks": 10,
+              "filing_distribution": {
+                "GOOGL:2021": 5,
+                "GOOGL:2025": 6
+              }
+            },
+            {
+              "arguments": {
+                "query": "Intelligent Cloud revenue operating income 2021 2025 segment",
+                "filters": {
+                  "companies": [
+                    "Microsoft Corporation"
+                  ],
+                  "tickers": [],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2021,
+                    2025
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 13,
+              "new_chunks": 12,
+              "filing_distribution": {
+                "MSFT:2025": 6,
+                "MSFT:2021": 7
+              }
+            }
+          ],
+          "search_return_occurrences": 35,
+          "unique_search_chunks": 33,
+          "repeated_search_return_occurrences": 2,
+          "read_occurrences": 9,
+          "unique_read_chunks": 9,
+          "unique_read_corpus_tokens": 3488,
+          "maximum_read_chunk_corpus_tokens": 499,
+          "minimum_calls": {
+            "evidence_documents": 6,
+            "minimum_read_calls": 6,
+            "minimum_total_calls": 7
+          },
+          "evidence_recall": {
+            "retrieval": 0.875,
+            "read": 0.75,
+            "citation": 0.75
+          },
+          "advisory_quality": {
+            "status": "advisory",
+            "score": 10,
+            "rubric_pass": true,
+            "human_review_required": true,
+            "findings": 6,
+            "citations": 2,
+            "caveats": 1,
+            "interpretation": 1,
+            "critical_failures": [],
+            "missing_findings": [
+              "Microsoft's FY2025 segment-composition change and recast of only presented prior periods, which further limits direct comparability with the FY2021 filing.",
+              "Microsoft's disclosure that scaling AI infrastructure pressured Microsoft Cloud gross margin."
+            ],
+            "incorrect_claims": [],
+            "explanation": "The margins, percentage-point changes, loss sign, and conclusions are all correct: Google Cloud improved most (+39.8 pp), while Microsoft Intelligent Cloud had the highest reported 2025 segment margin (42.0%) despite declining. Citations S9/S1, S19/S14, and S26/S24 support the underlying revenue and operating-income inputs; S8, S15, and S23 support the scope and allocation caveats. The answer correctly avoids equating Intelligent Cloud with Azure and explains why reported segment margins are not a pure public-cloud ranking. It omits two additional relevant Microsoft comparability caveats, but those omissions do not undermine the stated conclusions.",
+            "configuration": {
+              "model": "assistant-gpt-5-6-terra",
+              "reasoning_effort": "low",
+              "max_output_tokens": 4000,
+              "http_max_retries": 3,
+              "http_timeout_seconds": 120,
+              "prompt_sha256": "d3ac1d75d037e89960e6ac21eee49ce65a42a9bd021a924b51c22608e7abf59b",
+              "evaluator_version": "1"
+            },
+            "usage": {
+              "input_tokens": 63166,
+              "input_tokens_details": {
+                "cache_write_tokens": 63163,
+                "cached_tokens": 0
+              },
+              "output_tokens": 361,
+              "output_tokens_details": {
+                "reasoning_tokens": 131
+              },
+              "total_tokens": 63527
+            }
+          },
+          "failure": {}
+        },
+        {
+          "code": "DR-11",
+          "outcome": "supported",
+          "seconds": 52.1,
+          "provider_input_tokens": 60650,
+          "provider_output_tokens": 1076,
+          "per_request_input_tokens": [
+            1570,
+            1732,
+            3963,
+            6121,
+            8355,
+            8989,
+            9557,
+            9954,
+            10409
+          ],
+          "projected_cumulative_input_at_stop": null,
+          "provider_input_before_first_read": 21741,
+          "model_responses": 9,
+          "completed_tool_calls": 8,
+          "tool_sequence": [
+            "search_filings",
+            "search_filings",
+            "search_filings",
+            "search_filings",
+            "read_chunk",
+            "read_chunk",
+            "read_chunk",
+            "read_chunk"
+          ],
+          "tool_failures": [],
+          "grounding_rejections": [],
+          "searches": [
+            {
+              "arguments": {
+                "query": "useful lives server network equipment change 2023 estimated impact operating income depreciation",
+                "filters": {
+                  "companies": [
+                    "Microsoft",
+                    "Alphabet"
+                  ],
+                  "tickers": [],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2023
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 0,
+              "new_chunks": 0,
+              "filing_distribution": {}
+            },
+            {
+              "arguments": {
+                "query": "server and network equipment useful lives operating income impact",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "MSFT"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2023
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 12,
+              "new_chunks": 11,
+              "filing_distribution": {
+                "MSFT:2023": 12
+              }
+            },
+            {
+              "arguments": {
+                "query": "useful lives servers and network equipment change estimate operating income 2023 depreciation",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "GOOGL"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2023
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 11,
+              "new_chunks": 11,
+              "filing_distribution": {
+                "GOOGL:2023": 11
+              }
+            },
+            {
+              "arguments": {
+                "query": "consolidated statements income operating income 2023 2022",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "MSFT",
+                    "GOOGL"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2023
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 10,
+              "new_chunks": 10,
+              "filing_distribution": {
+                "GOOGL:2023": 7,
+                "MSFT:2023": 3
+              }
+            }
+          ],
+          "search_return_occurrences": 33,
+          "unique_search_chunks": 32,
+          "repeated_search_return_occurrences": 1,
+          "read_occurrences": 4,
+          "unique_read_chunks": 4,
+          "unique_read_corpus_tokens": 1332,
+          "maximum_read_chunk_corpus_tokens": 443,
+          "minimum_calls": {
+            "evidence_documents": 2,
+            "minimum_read_calls": 2,
+            "minimum_total_calls": 3
+          },
+          "evidence_recall": {
+            "retrieval": 0.5,
+            "read": 0.0,
+            "citation": 0.0
+          },
+          "advisory_quality": {
+            "status": "advisory",
+            "score": 10,
+            "rubric_pass": true,
+            "human_review_required": true,
+            "findings": 6,
+            "citations": 2,
+            "caveats": 1,
+            "interpretation": 1,
+            "critical_failures": [],
+            "missing_findings": [],
+            "incorrect_claims": [],
+            "explanation": "The answer correctly calculates both year-over-year operating-income increases, benefit shares (Microsoft 72.0%; Alphabet 41.3%), and subtractive analytical bridges (Microsoft 1.7%; Alphabet 7.4%). It uses the correct fiscal-year scopes and $ billions. Citations support each company\u2019s operating-income figures and disclosed benefit/depreciation effect: S28/S2 for Microsoft and S23/S14 for Alphabet. It appropriately distinguishes Alphabet\u2019s disclosed depreciation reduction from a directly disclosed operating-income impact, labels the dollar-for-dollar treatment as an assumption, and provides a suitable mechanical pre-tax bridge caveat. No critical failure.",
+            "configuration": {
+              "model": "assistant-gpt-5-6-terra",
+              "reasoning_effort": "low",
+              "max_output_tokens": 4000,
+              "http_max_retries": 3,
+              "http_timeout_seconds": 120,
+              "prompt_sha256": "d3ac1d75d037e89960e6ac21eee49ce65a42a9bd021a924b51c22608e7abf59b",
+              "evaluator_version": "1"
+            },
+            "usage": {
+              "input_tokens": 25208,
+              "input_tokens_details": {
+                "cache_write_tokens": 25205,
+                "cached_tokens": 0
+              },
+              "output_tokens": 176,
+              "output_tokens_details": {
+                "reasoning_tokens": 0
+              },
+              "total_tokens": 25384
+            }
+          },
+          "failure": {}
+        }
+      ]
+    },
+    {
+      "run_id": "ab7fccc5-b680-4b66-924d-a96ae586bc07",
+      "dataset_id": "00ae68d1-5a18-405a-9edb-2578fdfc5873",
+      "settings": {
+        "azure_openai_assistant_deployment": "assistant-gpt-5-6-terra",
+        "azure_openai_keyword_deployment": "keywords-gpt-5-4-nano",
+        "azure_openai_embedding_deployment": "embeddings-text-embedding-3-small",
+        "openai_embedding_model": "text-embedding-3-small",
+        "openai_embedding_dimensions": 1536,
+        "openai_keyword_model": "gpt-5.4-nano",
+        "openai_keyword_max_output_tokens": 800,
+        "openai_assistant_model": "gpt-5.6-terra",
+        "openai_assistant_reasoning_effort": "medium",
+        "openai_assistant_max_output_tokens": 3000,
+        "assistant_max_model_requests": 10,
+        "assistant_max_tool_calls": 8,
+        "assistant_max_total_output_tokens": 10000,
+        "assistant_max_total_input_tokens": 75000,
+        "assistant_max_request_input_tokens": 50000,
+        "assistant_max_message_characters": 10000,
+        "assistant_tool_retries": 1,
+        "assistant_output_retries": 1,
+        "assistant_tool_timeout_seconds": 120.0,
+        "assistant_parallel_tool_calls": false,
+        "openai_store_responses": false,
+        "assistant_text_verbosity": "low",
+        "assistant_max_history_turns": 5,
+        "assistant_max_history_characters": 20000,
+        "assistant_max_turn_evidence": 150,
+        "assistant_evidence_preview_characters": 400,
+        "assistant_max_search_calls": 5,
+        "assistant_max_surrounding_calls": 2,
+        "assistant_search_result_limit": 10,
+        "assistant_search_candidate_limit": 50,
+        "assistant_max_search_query_characters": 500,
+        "assistant_surrounding_chunk_radius": 1,
+        "assistant_max_surrounding_chunks": 2,
+        "assistant_max_filter_companies": 5,
+        "assistant_max_filter_tickers": 5,
+        "assistant_max_filter_filing_types": 3,
+        "assistant_max_filter_filing_years": 5,
+        "assistant_max_non_retrieval_answer_characters": 1000,
+        "assistant_max_citations": 20,
+        "retrieval_default_result_limit": 10,
+        "retrieval_max_result_limit": 20,
+        "retrieval_default_candidate_limit": 50,
+        "retrieval_max_candidate_limit": 100,
+        "retrieval_semantic_weight": 20.0,
+        "retrieval_lexical_weight": 1.0,
+        "retrieval_unconfigured_branch_weight": 1.0,
+        "retrieval_rrf_k": 60,
+        "retrieval_min_filing_year": 1900,
+        "retrieval_max_filing_year": 2100,
+        "retrieval_keyword_max_groups": 6,
+        "retrieval_keyword_max_terms_per_group": 3,
+        "retrieval_keyword_max_term_characters": 80,
+        "retrieval_keyword_max_phrase_words": 4,
+        "chat_turn_timeout_seconds": 180,
+        "chat_stream_heartbeat_seconds": 15.0,
+        "chat_stream_text_delta_characters": 160,
+        "chat_auto_title_max_characters": 60,
+        "chat_thread_title_max_characters": 200,
+        "chat_default_thread_title": "New chat",
+        "chat_client_message_id_max_characters": 200,
+        "assistant_trace_mode": "full",
+        "assistant_trace_max_content_characters": 12000
+      },
+      "outcomes": {
+        "assistant_tool_calls_limit": 1
+      },
+      "cases": [
+        {
+          "code": "DR-11",
+          "outcome": "assistant_tool_calls_limit",
+          "seconds": 37.0,
+          "provider_input_tokens": 68577,
+          "provider_output_tokens": 490,
+          "per_request_input_tokens": [
+            1570,
+            1730,
+            3590,
+            5506,
+            8183,
+            11254,
+            11891,
+            12288,
+            12565
+          ],
+          "projected_cumulative_input_at_stop": null,
+          "provider_input_before_first_read": 31833,
+          "model_responses": 9,
+          "completed_tool_calls": 8,
+          "tool_sequence": [
+            "search_filings",
+            "search_filings",
+            "search_filings",
+            "search_filings",
+            "search_filings",
+            "read_chunk",
+            "read_chunk",
+            "read_chunk"
+          ],
+          "tool_failures": [],
+          "grounding_rejections": [],
+          "searches": [
+            {
+              "arguments": {
+                "query": "change in estimated useful lives server and network equipment 2023 depreciation operating income benefit",
+                "filters": {
+                  "companies": [
+                    "Microsoft"
+                  ],
+                  "tickers": [],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2023
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 0,
+              "new_chunks": 0,
+              "filing_distribution": {}
+            },
+            {
+              "arguments": {
+                "query": "server and network equipment useful lives depreciation operating income",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "MSFT"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2024,
+                    2023
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 10,
+              "new_chunks": 10,
+              "filing_distribution": {
+                "MSFT:2023": 5,
+                "MSFT:2024": 5
+              }
+            },
+            {
+              "arguments": {
+                "query": "useful lives servers networking equipment 2023 depreciation operating income benefit change estimate",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "GOOGL"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2023,
+                    2024
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 10,
+              "new_chunks": 10,
+              "filing_distribution": {
+                "GOOGL:2023": 6,
+                "GOOGL:2024": 4
+              }
+            },
+            {
+              "arguments": {
+                "query": "2023 2022 operating income 88,523 83,383 consolidated statements income",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "MSFT"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2023
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 12,
+              "new_chunks": 10,
+              "filing_distribution": {
+                "MSFT:2023": 12
+              }
+            },
+            {
+              "arguments": {
+                "query": "summary results operations 2023 2022 operating income 84,293 74,842",
+                "filters": {
+                  "companies": [],
+                  "tickers": [
+                    "GOOGL"
+                  ],
+                  "filing_types": [
+                    "10-K"
+                  ],
+                  "filing_years": [
+                    2023
+                  ],
+                  "filed_on_or_after": null,
+                  "filed_on_or_before": null,
+                  "corpus_wide": false
+                }
+              },
+              "returned": 15,
+              "new_chunks": 13,
+              "filing_distribution": {
+                "GOOGL:2023": 15
+              }
+            }
+          ],
+          "search_return_occurrences": 47,
+          "unique_search_chunks": 43,
+          "repeated_search_return_occurrences": 4,
+          "read_occurrences": 3,
+          "unique_read_chunks": 3,
+          "unique_read_corpus_tokens": 780,
+          "maximum_read_chunk_corpus_tokens": 443,
+          "minimum_calls": {
+            "evidence_documents": 2,
+            "minimum_read_calls": 2,
+            "minimum_total_calls": 3
+          },
+          "evidence_recall": {
+            "retrieval": 0.75,
+            "read": 0.0,
+            "citation": 0.0
+          },
+          "advisory_quality": {
+            "status": "not_assessed",
+            "reason": "Use --judge for an advisory rubric score; human review is the release gate."
+          },
+          "failure": {
+            "error_code": "assistant_tool_calls_limit",
+            "error_message": "The next tool call(s) would exceed the tool_calls_limit of 8 (tool_calls=9). Consider raising the limit, or see the docs on usage limits for budget-aware patterns: https://ai.pydantic.dev/agent/#usage-limits",
+            "failed_after_stage": "assistant.model.response"
+          }
+        }
+      ]
+    }
+  ]
+}

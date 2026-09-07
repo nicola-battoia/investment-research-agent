@@ -20,6 +20,7 @@ from app.chat.messages import InternalUserMessage
 from app.chat.orchestrator import ChatTurnOrchestrator, derive_thread_title
 from app.config import Settings
 from app.database.chats import ChatPositionConflictError, TurnPersistenceResult
+from app.grounding import GroundingValidationError
 
 USER_ID = UUID("8b50b43c-571d-4fbc-8a3b-32e3bbfa39da")
 THREAD_ID = UUID("1195cdd2-508e-4f18-ac86-8796e983a3e5")
@@ -196,8 +197,36 @@ def test_runs_with_saved_history_and_atomically_persists_validated_turn() -> Non
         "The first answer [S1].",
     ]
     assert persist.await_args.args[2] == 2
+    assert persist.await_args.args[0] is service._admin_supabase
+    assert persist.await_args.args[0] is not service._supabase
+    assert persist.await_args.kwargs["user_id"] == USER_ID
     assert persist.await_args.args[8]["total_tokens"] == 130
     assert persist.await_args.args[9][0]["chunk_id"] == str(UUID(int=1))
+
+
+def test_rejected_grounding_never_reaches_privileged_persistence() -> None:
+    assistant = SimpleNamespace(
+        run=AsyncMock(side_effect=GroundingValidationError("Invented citation"))
+    )
+    persist = AsyncMock()
+    service = orchestrator(assistant)
+
+    async def run():
+        with (
+            patch(
+                "app.chat.orchestrator.chats.load_thread",
+                AsyncMock(return_value=({"id": str(THREAD_ID)}, [], [])),
+            ),
+            patch("app.chat.orchestrator.chats.complete_chat_turn", persist),
+        ):
+            prepared = await service.prepare(
+                thread_id=THREAD_ID, user_id=USER_ID, user_message=user_message()
+            )
+            await service.complete(prepared)
+
+    with pytest.raises(GroundingValidationError):
+        asyncio.run(run())
+    persist.assert_not_awaited()
 
 
 def test_orchestrator_trace_covers_prepare_persistence_and_completion() -> None:

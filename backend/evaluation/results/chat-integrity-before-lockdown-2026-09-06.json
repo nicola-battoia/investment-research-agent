@@ -1,0 +1,78 @@
+{
+  "target": "https://10k-club-backend.up.railway.app",
+  "passed": 16,
+  "failed": 0,
+  "temporary_accounts_deleted": true,
+  "checks": [
+    {
+      "name": "anonymous_cannot_read_chat",
+      "passed": true,
+      "http_status": 401
+    },
+    {
+      "name": "other_user_cannot_read_chat",
+      "passed": true,
+      "http_status": 403
+    },
+    {
+      "name": "other_user_cannot_rename_chat",
+      "passed": true,
+      "http_status": 403
+    },
+    {
+      "name": "other_user_cannot_delete_chat",
+      "passed": true,
+      "http_status": 403
+    },
+    {
+      "name": "other_user_cannot_submit_turn",
+      "passed": true,
+      "http_status": 403
+    },
+    {
+      "name": "api_rejects_supplied_assistant_message",
+      "passed": true
+    },
+    {
+      "name": "api_rejects_supplied_citation",
+      "passed": true
+    },
+    {
+      "name": "real_cited_turn_finishes",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "stream_matches_saved_text_and_citations",
+      "passed": true
+    },
+    {
+      "name": "saved_answer_is_supported",
+      "passed": true
+    },
+    {
+      "name": "duplicate_submission_replays_without_extra_rows",
+      "passed": true
+    },
+    {
+      "name": "changed_duplicate_question_rejected",
+      "passed": true
+    },
+    {
+      "name": "second_turn_keeps_history_and_saves_reply",
+      "passed": true
+    },
+    {
+      "name": "owner_can_rename_chat",
+      "passed": true
+    },
+    {
+      "name": "owner_can_delete_completed_chat",
+      "passed": true
+    },
+    {
+      "name": "deleted_chat_is_unavailable",
+      "passed": true
+    }
+  ]
+}

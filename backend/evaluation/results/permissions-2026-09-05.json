@@ -1,0 +1,253 @@
+{
+  "scope": "PostgreSQL roles/RLS; not an HTTP/JWT test",
+  "rolled_back": true,
+  "passed": 28,
+  "failed": 7,
+  "checks": [
+    {
+      "name": "anonymous_cannot_read_chats",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "passed": true,
+      "sqlstate": "42501"
+    },
+    {
+      "name": "anon_cannot_read_qa_datasets",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "passed": true,
+      "sqlstate": "42501"
+    },
+    {
+      "name": "anon_cannot_read_qa_cases",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "passed": true,
+      "sqlstate": "42501"
+    },
+    {
+      "name": "anon_cannot_read_qa_runs",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "passed": true,
+      "sqlstate": "42501"
+    },
+    {
+      "name": "anon_cannot_read_qa_results",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "passed": true,
+      "sqlstate": "42501"
+    },
+    {
+      "name": "authenticated_cannot_read_qa_datasets",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "passed": true,
+      "sqlstate": "42501"
+    },
+    {
+      "name": "authenticated_cannot_read_qa_cases",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "passed": true,
+      "sqlstate": "42501"
+    },
+    {
+      "name": "authenticated_cannot_read_qa_runs",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "passed": true,
+      "sqlstate": "42501"
+    },
+    {
+      "name": "authenticated_cannot_read_qa_results",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "passed": true,
+      "sqlstate": "42501"
+    },
+    {
+      "name": "user_0_reads_own_thread",
+      "expected_allowed": true,
+      "actual_allowed": true,
+      "passed": true,
+      "sqlstate": null
+    },
+    {
+      "name": "user_0_cannot_read_other_chat_threads",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "passed": true,
+      "sqlstate": null
+    },
+    {
+      "name": "user_0_cannot_delete_other_chat_threads",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "passed": true,
+      "sqlstate": null
+    },
+    {
+      "name": "user_0_cannot_read_other_chat_messages",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "passed": true,
+      "sqlstate": null
+    },
+    {
+      "name": "user_0_cannot_delete_other_chat_messages",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "passed": true,
+      "sqlstate": null
+    },
+    {
+      "name": "user_0_cannot_read_other_message_citations",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "passed": true,
+      "sqlstate": null
+    },
+    {
+      "name": "user_0_cannot_delete_other_message_citations",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "passed": true,
+      "sqlstate": null
+    },
+    {
+      "name": "user_0_cannot_edit_other_message",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "passed": true,
+      "sqlstate": null
+    },
+    {
+      "name": "user_1_reads_own_thread",
+      "expected_allowed": true,
+      "actual_allowed": true,
+      "passed": true,
+      "sqlstate": null
+    },
+    {
+      "name": "user_1_cannot_read_other_chat_threads",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "passed": true,
+      "sqlstate": null
+    },
+    {
+      "name": "user_1_cannot_delete_other_chat_threads",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "passed": true,
+      "sqlstate": null
+    },
+    {
+      "name": "user_1_cannot_read_other_chat_messages",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "passed": true,
+      "sqlstate": null
+    },
+    {
+      "name": "user_1_cannot_delete_other_chat_messages",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "passed": true,
+      "sqlstate": null
+    },
+    {
+      "name": "user_1_cannot_read_other_message_citations",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "passed": true,
+      "sqlstate": null
+    },
+    {
+      "name": "user_1_cannot_delete_other_message_citations",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "passed": true,
+      "sqlstate": null
+    },
+    {
+      "name": "user_1_cannot_edit_other_message",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "passed": true,
+      "sqlstate": null
+    },
+    {
+      "name": "user_can_read_shared_corpus",
+      "expected_allowed": true,
+      "actual_allowed": true,
+      "passed": true,
+      "sqlstate": null
+    },
+    {
+      "name": "user_cannot_edit_corpus",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "passed": true,
+      "sqlstate": "42501"
+    },
+    {
+      "name": "user_cannot_edit_own_assistant",
+      "expected_allowed": false,
+      "actual_allowed": true,
+      "passed": false,
+      "sqlstate": null
+    },
+    {
+      "name": "user_cannot_delete_own_assistant",
+      "expected_allowed": false,
+      "actual_allowed": true,
+      "passed": false,
+      "sqlstate": null
+    },
+    {
+      "name": "user_cannot_insert_own_assistant",
+      "expected_allowed": false,
+      "actual_allowed": true,
+      "passed": false,
+      "sqlstate": null
+    },
+    {
+      "name": "user_cannot_insert_own_citation",
+      "expected_allowed": false,
+      "actual_allowed": true,
+      "passed": false,
+      "sqlstate": null
+    },
+    {
+      "name": "user_cannot_edit_own_citation",
+      "expected_allowed": false,
+      "actual_allowed": true,
+      "passed": false,
+      "sqlstate": null
+    },
+    {
+      "name": "user_cannot_delete_own_citation",
+      "expected_allowed": false,
+      "actual_allowed": true,
+      "passed": false,
+      "sqlstate": null
+    },
+    {
+      "name": "user_cannot_complete_fabricated_turn",
+      "expected_allowed": false,
+      "actual_allowed": true,
+      "passed": false,
+      "sqlstate": null
+    },
+    {
+      "name": "user_can_delete_own_thread",
+      "expected_allowed": true,
+      "actual_allowed": true,
+      "passed": true,
+      "sqlstate": null
+    }
+  ]
+}

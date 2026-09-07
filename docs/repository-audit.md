@@ -1,8 +1,13 @@
 # Repository audit — 2026-09-05
 
-Documentation has been updated to match the local implementation. **Application
-fixes, migrations, configuration changes, and deletions are deferred for your
-decision.** The most consequential findings concern evaluation validity, assistant
+Follow-up: the [September 5 QA investigation](qa-findings-2026-09-05.md) repairs the
+retrieval labels and records live permission/budget evidence. This audit retains
+its original findings and verification scope. The
+[September 6 security fix](security-fix-2026-09-06.md) addresses F02.
+
+At the time of this audit, documentation was updated while application fixes,
+migrations, configuration changes and deletions were deferred. Later authorized
+work is linked above and beside the relevant findings. The most consequential findings concern evaluation validity, assistant
 message provenance, trace content, and corpus/version verification.
 
 ## Scope
@@ -49,7 +54,7 @@ Priority indicates what to decide or verify first, not permission to change it.
 | ID | Priority | Finding | Evidence |
 | --- | --- | --- | --- |
 | F01 | High | Retrieval labels no longer match the corpus | Confirmed against every local checkpoint |
-| F02 | High for provenance | Users can write their own assistant records directly | Confirmed grants/RPC implementation |
+| F02 | High for provenance | Users could write assistant records directly | [Fixed and verified September 6](security-fix-2026-09-06.md) |
 | F03 | High before trace export | Exceptions can enter traces with content capture off | Reproduced offline |
 | F04 | Medium | Python defaults and operator token profiles differ | Confirmed configuration comparison |
 | F05 | High for benchmark acceptance | Page/source requirements exceed current capabilities | Confirmed corpus and tool limits |
@@ -88,6 +93,10 @@ labels. The old `accepted: true` does not establish current retrieval quality.
 version, then run a new evaluation. Preserve the earlier results as history.
 
 ## F02 Assistant-message provenance is not enforced at the database boundary
+
+**Follow-up:** addressed by the [September 6 permission fix](security-fix-2026-09-06.md).
+The original evidence below is retained as the pre-fix record.
+
 
 **Evidence.** [Migration 0002](../backend/app/alembic/versions/20260817_0002_restrict_authenticated_grants.py)
 grants authenticated users SELECT/INSERT/UPDATE/DELETE on their chat tables.

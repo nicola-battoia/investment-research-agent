@@ -1,4 +1,4 @@
-"""User-scoped chat thread and message persistence."""
+"""User-scoped chat access and server-only atomic turn persistence."""
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -154,7 +154,7 @@ async def delete_thread(
 
 
 async def complete_chat_turn(
-    client: AsyncClient,
+    admin: AsyncClient,
     thread_id: UUID,
     expected_position: int,
     user_message: InternalUserMessage,
@@ -165,12 +165,16 @@ async def complete_chat_turn(
     model_usage: dict[str, object],
     citations: list[dict[str, object]],
     first_turn_title: str,
+    *,
+    user_id: UUID,
 ) -> TurnPersistenceResult:
+    """Save a validated turn for the identity verified by the HTTP auth dependency."""
     try:
-        response = await client.rpc(
+        response = await admin.rpc(
             "complete_chat_turn",
             {
                 "p_thread_id": str(thread_id),
+                "p_owner_id": str(user_id),
                 "p_expected_position": expected_position,
                 "p_user_message_id": str(user_message_id),
                 "p_user_content": user_message.content,
@@ -188,6 +192,8 @@ async def complete_chat_turn(
             raise ChatPositionConflictError from error
         if error.code == "P0002":
             raise ChatThreadNotFoundError from error
+        if error.code == "42501":
+            raise ChatThreadForbiddenError from error
         raise
     if not isinstance(response.data, list) or len(response.data) != 1:
         raise TypeError("Supabase complete_chat_turn returned an invalid response")

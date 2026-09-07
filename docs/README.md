@@ -25,15 +25,19 @@ the architecture/workflow documents to follow the implementation.
 | [Architecture](architecture.md) | Current services, authorization, data and model boundaries |
 | [Chat-turn workflow](../backend/CHAT_TURN_WORKFLOW.md) | Send button through retrieval, validation, persistence and SSE |
 | [Project status and remaining work](todos.md) | Implemented capabilities, release gates and decisions |
+| [QA implementation checklist](qa-suite-todo.md) | Completed and pending QA layers |
+| [QA findings](qa-findings-2026-09-05.md) | Live permission and assistant-budget findings, with proposed fixes |
+| [Reliable research plan](assistant-research-plan.md) | Limit root causes, measured capacity experiment, protected answers and secure continuation |
+| [Permission fix](security-fix-2026-09-06.md) | Server-only persistence, rollout and regression evidence |
 | [Repository audit](repository-audit.md) | Findings from the 2026-09-05 working-tree review; fixes await decisions |
 | [Railway design and release history](guides/railway-deployment-plan.md) | Deployment rationale and dated evidence |
 
 ## Historical and reference material
 
 - [Retrieval tuning results](../backend/evaluation/results/tuning-summary.md) describe
-  the old chunk layout. The expected indexes need remapping before reuse.
+  the old chunk layout. The current labels were remapped and rerun on September 5.
 - [Answer benchmark](../backend/evaluation/benchmarks/filings_deep_research_v1.md)
-  contains a manual scoring rubric, not a recorded passing run.
+  has an executable companion and a recorded failing baseline; human acceptance remains pending.
 - [First SEC-parser metrics](../backend/ingestion/metrics/first_step_metrics_2026-08-26_00-27-41.md)
   are a dated local measurement.
 - [Archived ingestion](../backend/ingestion/archive/README.md) is reference-only.

@@ -45,3 +45,7 @@ Thumbs.db
 # Logs
 *.log
 logs/
+
+# Full assistant QA exports live in the private qa schema and local workspace.
+# Commit the reviewed Markdown report and small permission/retrieval summaries.
+/backend/evaluation/results/qa-*.json

@@ -13,7 +13,9 @@ names and limits.
 | [Assistant playground](../playground/inspect_assistant.py) | A complete assistant run with retrieval and grounding | User JWT; live model and database reads; no chat persistence |
 | [Branch inspector](inspect_retrieval.py) | Semantic, lexical, and fused retrieval rankings | Admin database client; live retrieval calls; no answer model |
 | [Retrieval runner](run_retrieval.py) | The cases in `retrieval_cases.json` against all three ranking methods | Admin database client; live retrieval calls; writes a local result file |
-| [Deep research benchmark](benchmarks/filings_deep_research_v1.md) | Fifteen human-scored research tasks | A specification, with no automated runner wired to it |
+| [Assistant QA runner](qa/run.py) | Fifteen research questions through authenticated API/SSE, grounding and reload | Temporary accounts/chats, real model calls, private `qa` records and local reports |
+| [Budget trace analysis](qa/analyze_budgets.py) | Per-request usage, search repeats, reads and stopping causes in saved QA traces | Local report files only; no service calls or database writes |
+| [Permission probes](qa/permissions.py) / [public API probes](qa/permissions_http.py) | Actual roles/RLS and user JWT writes | Rollback-only SQL fixtures or disposable HTTP accounts; failures exit nonzero |
 
 Live model calls incur usage. Full inspection objects contain query and filing
 content; treat saved notebook output accordingly.
@@ -66,32 +68,119 @@ request-budget estimate and are not billing measurements. Simulated assistant
 usage is deliberately omitted. Embeddings have no generated-text output usage;
 unavailable usage remains null.
 
-## Retrieval evaluation: labels need repair
+## Retrieval evaluation
 
-The checked-in ten-case dataset uses accession-number/chunk-index references.
-All fourteen expected references are absent from the current local
-`sec_sections_v2` checkpoints. The accepted result dated 2026-08-19 predates
-the parser/chunker replacement. It is historical evidence, not a passing score
-for today's corpus. See [audit finding F01](../../docs/repository-audit.md#f01-retrieval-evaluation-labels-do-not-match-the-current-corpus).
-
-Before using this runner as a release gate:
-
-1. Remap expected passages to the current corpus and review their relevance.
-2. Verify the uploaded database corpus matches those checkpoints.
-3. Run the evaluation and review per-case rankings, not only the aggregate.
-
-After those prerequisites, a run can be saved without overwriting history:
+The ten-case dataset was remapped to the current corpus on 2026-09-05. Each of
+its fourteen labels now records accession/index, chunk UUID and text hash. The
+runner validates the corpus fingerprint and all labels before calling models.
+The August 19 result remains historical; use the
+[new result](results/retrieval-2026-09-05.json) for the current labels.
 
 ```bash
 uv run --locked python -m evaluation.run_retrieval \
-  --output /tmp/document-copilot-retrieval.json
+  --output evaluation/results/retrieval-new.json
 ```
 
-The runner evaluates semantic, lexical, and hybrid rankings at ten results.
+The runner evaluates semantic, lexical and hybrid rankings at ten results.
 Acceptance requires a hybrid hit for every case, nonzero mean lexical hit rate,
-and hybrid mean nDCG at least as high as both component methods. This tests
-retrieval against the labels; it does not validate generated claims or arithmetic.
-See [the dated tuning record](results/tuning-summary.md) for earlier experiments.
+and hybrid mean nDCG at least as high as both component methods. The September 5
+run passed: hybrid evidence-group recall/hit rate 100%, nDCG 0.7462; semantic
+nDCG 0.7401 and lexical nDCG 0.5994. These ten questions do not establish general
+retrieval performance or answer correctness.
+
+## Assistant QA: dataset, permissions and complete turns
+
+The [working checklist](../../docs/qa-suite-todo.md) separates implemented layers
+from pending browser, behavior and privacy coverage. The
+[findings](../../docs/qa-findings-2026-09-05.md) explain current failures and proposed
+fixes. The [case report](results/qa-baseline-2026-09-05.md) retains all fifteen cases.
+The [September 7 budget investigation](results/research-budget-analysis-2026-09-07.md)
+compares three questions under two profiles and explains why larger limits alone
+are insufficient. Its [implementation plan](../../docs/assistant-research-plan.md)
+proposes protected synthesis, compact evidence and secure continuation.
+
+The [Markdown benchmark](benchmarks/filings_deep_research_v1.md) and its
+[JSON companion](benchmarks/filings_deep_research_v1.json) contain the same questions
+and gold answers; an offline test checks they agree. Required fact groups contain
+one or more equivalent evidence passages. Retrieval, reading and citation each
+receive a separate group-recall score. None is called answer accuracy.
+
+`qa.datasets` stores version/checksum/corpus metadata; `qa.cases` stores questions,
+gold answers, evidence and rubrics; `qa.runs` stores configuration and status;
+`qa.results` stores each answer/failure, evidence, diagnostics and evaluation.
+Dataset/case rows reject updates/deletes. The seeder refuses changed content under
+an existing version. Publish a new version after editing questions, evidence or
+rubrics. Golds are neither exposed through the browser API nor searchable filings.
+The operator connection in `DATABASE_URL` owns QA writes.
+
+Run from `backend/` against the intended configured Supabase project. These
+commands create QA rows or temporary accounts, and assistant/retrieval/judge calls
+use the configured Azure deployments. The QA runners do not change grants or
+budgets. Alembic changes the schema; follow the staged
+[security rollout](../../docs/security-fix-2026-09-06.md) when upgrading an older backend.
+
+```bash
+# After the reviewed migrations/rollout, validate and seed all 15 cases.
+uv run --locked alembic upgrade head
+uv run --locked python -m evaluation.qa.seed
+
+# No assistant calls. A policy violation is a real nonzero result.
+uv run --locked python -m evaluation.qa.permissions \
+  --output evaluation/results/permissions-new.json
+uv run --locked python -m evaluation.qa.permissions_http \
+  --output evaluation/results/permissions-http-new.json
+
+# Real replies, permissions, reload, replay, follow-up and chat lifecycle.
+# Omit --base-url to exercise local FastAPI against the configured real services.
+uv run --locked python -m evaluation.qa.chat_integrity \
+  --base-url https://10k-club-backend.up.railway.app \
+  --output evaluation/results/chat-integrity-new.json
+
+# Bounded pilot; omit --cases to run all fifteen sequentially.
+uv run --locked python -m evaluation.qa.run --cases DR-13 --judge \
+  --output evaluation/results/qa-new.json
+uv run --locked python -m evaluation.qa.report \
+  --input evaluation/results/qa-new.json --output evaluation/results/qa-new.md
+```
+
+The runner creates a fresh confirmed test account for each question without
+sending email, executes the real FastAPI route with its JWT, checks streamed
+text/citations against a reloaded chat, then deletes the test chat/account. It
+uses the same model/tool/validation/persistence code as the frontend's API. It
+does **not** test browser rendering, Stop, CORS across a deployed network, or the
+current Railway runtime configuration. Run each experimental environment profile
+in a new process: several settings are bound at import time.
+
+HTTP 200 is not a successful turn by itself: an SSE error counts as failure.
+Failures and partial evidence are saved. A completed clarification or minimal
+refusal is distinct from a rubric-passing research answer. `--judge` adds a
+structured assessment using the configured assistant deployment (additional
+model usage); critical failures override its score. Grades and usage are kept
+separate from the deterministic evidence metrics. Human calibration remains
+required. API format: [official structured-output documentation](https://developers.openai.com/api/docs/guides/structured-outputs).
+
+Full `qa-*.json` exports are ignored by Git and retained locally/in the private
+schema. Commit reviewed Markdown and small permission/retrieval summaries. The
+harness drops prompts, full source table metadata and duplicate answer payloads
+from its trace; evidence identities, selected diagnostics and final answers remain.
+It does not enable shared Azure content tracing. Do not enable content telemetry
+merely to run QA.
+
+After independently reviewing equivalent evidence, rescore recorded turns without
+new assistant calls. Later inputs replace earlier cases regardless of score. The
+command rejects changed questions/gold answers, missing cases or mixed settings:
+
+```bash
+uv run --locked python -m evaluation.qa.rescore \
+  --input evaluation/results/qa-baseline-2026-09-05.json \
+          evaluation/results/qa-explicit-scope-2026-09-05.json \
+  --output evaluation/results/qa-reviewed-baseline-2026-09-05.json
+```
+
+Execution failures or failed/incomplete requested grading produce a nonzero exit
+status after the run is recorded. An interrupted run records its status and
+unrecorded-case count; hard process termination can leave a run marked running.
+Original cases and results remain available when evidence is rescored.
 
 ## Offline and live tests
 
@@ -114,8 +203,11 @@ integration tests. Some use admin credentials to create test users/threads
 and write or delete test records; assistant/retrieval tests can use paid model
 calls. They are not a read-only production smoke test.
 
-The deep research benchmark additionally requires printed-page locators and
-some ten-document answers. Current chunks have no populated page numbers and
-the default turn has eight total tool calls. Its compatibility notes and the
-[audit](../../docs/repository-audit.md) explain why it is not currently a
-passing end-to-end release gate.
+The new QA integration tests require an additional explicit opt-in:
+
+```bash
+uv run --locked pytest tests/qa -m integration --qa-live
+```
+
+The desired permission assertions currently fail. Do not hide them with `xfail`
+or interpret the green offline suite as proof that database permissions are safe.

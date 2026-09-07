@@ -193,3 +193,18 @@ def test_evidence_registry_enforces_limit_and_dependencies_are_single_use() -> N
     active_deps.evidence.register(passage(1))
     with pytest.raises(ValueError, match="cannot be reused"):
         active_deps.require_fresh_run()
+
+
+def test_surrounding_call_cap_rejects_before_another_database_request() -> None:
+    retriever = SimpleNamespace(surrounding_chunks=AsyncMock(return_value=[]))
+    active_deps = deps(retriever)
+    active_deps.evidence.register(passage(1))
+    context = SimpleNamespace(deps=active_deps)
+    for _ in range(settings.assistant_max_surrounding_calls):
+        asyncio.run(read_surrounding_chunks(context, "S1"))
+    with pytest.raises(ModelRetry, match="surrounding-chunk reads is exhausted"):
+        asyncio.run(read_surrounding_chunks(context, "S1"))
+    assert (
+        retriever.surrounding_chunks.await_count
+        == settings.assistant_max_surrounding_calls
+    )

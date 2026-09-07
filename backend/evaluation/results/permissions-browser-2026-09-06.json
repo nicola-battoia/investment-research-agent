@@ -1,0 +1,14 @@
+{
+  "target": "https://10k-club.up.railway.app",
+  "method": "Real signed-in browser fetches using its normal user JWT",
+  "patch_status": 403,
+  "legacy_rpc_status": 404,
+  "server_only_rpc_status": 403,
+  "assistant_unchanged": true,
+  "sign_in_passed": true,
+  "cited_answer_rendered": true,
+  "source_panel_opened": true,
+  "answer_and_citation_survived_reload": true,
+  "chat_deleted_through_ui": true,
+  "temporary_account_deleted": true
+}

@@ -35,6 +35,7 @@ exclude-newer = "7 days"
 [tool.pytest.ini_options]
 markers = [
     "integration: calls live Supabase or OpenAI services",
+    "qa: explicit assistant quality and permission checks",
 ]
 
 [dependency-groups]

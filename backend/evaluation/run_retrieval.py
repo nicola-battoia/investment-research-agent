@@ -24,6 +24,8 @@ from evaluation.metrics import (
     ndcg_at_k,
 )
 from evaluation.models import RetrievalEvalCase, RetrievalEvalDataset
+from evaluation.qa.dataset import corpus_fingerprint, digest
+from evaluation.qa.storage import read_corpus
 
 DEFAULT_DATASET = Path(__file__).with_name("retrieval_cases.json")
 METHODS = ("semantic", "lexical", "hybrid")
@@ -32,6 +34,21 @@ METRIC_CUTOFF = 10
 
 def load_dataset(path: Path) -> RetrievalEvalDataset:
     return RetrievalEvalDataset.model_validate_json(path.read_text(encoding="utf-8"))
+
+
+def validate_labels(dataset: RetrievalEvalDataset, rows: list[dict]) -> None:
+    if dataset.corpus_fingerprint != corpus_fingerprint(rows):
+        raise ValueError("Retrieval corpus changed or is unversioned; remap the labels")
+    current = {(r["accession_number"], r["chunk_index"]): r for r in rows}
+    for case in dataset.cases:
+        for expected in case.expected_passages:
+            row = current.get((expected.accession_number, expected.chunk_index))
+            if (
+                row is None
+                or str(row["chunk_id"]) != expected.chunk_id
+                or digest(row["text"]) != expected.text_sha256
+            ):
+                raise ValueError(f"{case.id}: missing or changed expected passage")
 
 
 def _passage_key(passage: SourcePassage) -> str:
@@ -108,6 +125,7 @@ async def run_evaluation(
     lexical_weight: float,
     rrf_k: int,
 ) -> dict[str, object]:
+    validate_labels(dataset, await asyncio.to_thread(read_corpus))
     supabase = await create_admin_supabase_client(settings)
     azure_openai = AzureOpenAIService(settings)
     embedding_client = azure_openai.client

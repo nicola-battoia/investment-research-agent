@@ -91,7 +91,9 @@ pnpm build
 Frontend flows are verified manually; the repository does not use a frontend test
 runner. Live backend tests, model calls, and evaluation runs are opt-in. See the
 [evaluation guide](backend/evaluation/README.md) and the audit for the latest local
-check results and known failures.
+check results and known failures. The [QA checklist](docs/qa-suite-todo.md) tracks
+the suite layers; [QA findings](docs/qa-findings-2026-09-05.md) records the live
+permission and research-budget failures.
 
 ## Prepare the corpus
 

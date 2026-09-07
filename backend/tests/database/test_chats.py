@@ -131,6 +131,7 @@ def test_complete_turn_calls_atomic_rpc_with_messages_citations_and_usage() -> N
     client = FakeClient({"complete_chat_turn": [rpc]})
     thread_id = uuid4()
     user_message_id = uuid4()
+    user_id = uuid4()
     assistant_message_id = uuid4()
     citation_id = uuid4()
     chunk_id = uuid4()
@@ -159,11 +160,13 @@ def test_complete_turn_calls_atomic_rpc_with_messages_citations_and_usage() -> N
                 }
             ],
             "Question",
+            user_id=user_id,
         )
     )
 
     params = next(value for action, value in rpc.calls if action == "rpc")
     assert params["p_expected_position"] == 4
+    assert params["p_owner_id"] == str(user_id)
     assert params["p_user_message_id"] == str(user_message_id)
     assert params["p_assistant_message_id"] == str(assistant_message_id)
     assert params["p_citations"][0]["chunk_id"] == str(chunk_id)
@@ -197,12 +200,22 @@ def test_rename_thread_sets_updated_at_and_owner_filter() -> None:
     assert ("eq", ("owner_id", str(user_id))) in update.calls
 
 
-@pytest.mark.parametrize("code", ["23505", "40001"])
-def test_duplicate_or_changed_message_position_becomes_conflict(code: str) -> None:
+@pytest.mark.parametrize(
+    ("code", "expected"),
+    [
+        ("23505", ChatPositionConflictError),
+        ("40001", ChatPositionConflictError),
+        ("42501", ChatThreadForbiddenError),
+        ("P0002", ChatThreadNotFoundError),
+    ],
+)
+def test_completion_errors_preserve_ownership_and_conflict_failures(
+    code: str, expected: type[Exception]
+) -> None:
     conflict = APIError({"code": code, "message": "message position conflict"})
     client = FakeClient({"complete_chat_turn": [FakeBuilder(error=conflict)]})
 
-    with pytest.raises(ChatPositionConflictError):
+    with pytest.raises(expected):
         asyncio.run(
             complete_chat_turn(
                 client,
@@ -220,5 +233,6 @@ def test_duplicate_or_changed_message_position_becomes_conflict(code: str) -> No
                 {},
                 [],
                 "Question",
+                user_id=uuid4(),
             )
         )

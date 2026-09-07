@@ -1,0 +1,231 @@
+{
+  "scope": "real JWT and public PostgREST API",
+  "temporary_accounts_deleted": true,
+  "passed": 34,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "owner_can_create_thread",
+      "expected_allowed": true,
+      "actual_allowed": true,
+      "http_status": 201,
+      "passed": true
+    },
+    {
+      "name": "anonymous_cannot_read_thread",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "http_status": 401,
+      "passed": true
+    },
+    {
+      "name": "other_user_cannot_read_thread",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "http_status": 200,
+      "passed": true
+    },
+    {
+      "name": "other_user_cannot_rename_thread",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "http_status": 200,
+      "passed": true
+    },
+    {
+      "name": "owner_cannot_transfer_thread",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "http_status": 403,
+      "passed": true
+    },
+    {
+      "name": "legacy_completion_rpc_is_unavailable",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "http_status": 404,
+      "passed": true
+    },
+    {
+      "name": "user_cannot_complete_fabricated_turn",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "http_status": 403,
+      "passed": true
+    },
+    {
+      "name": "anonymous_cannot_complete_turn",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "http_status": 401,
+      "passed": true
+    },
+    {
+      "name": "other_user_cannot_complete_turn_as_owner",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "http_status": 403,
+      "passed": true
+    },
+    {
+      "name": "forged_answer_not_persisted",
+      "passed": true
+    },
+    {
+      "name": "server_cannot_save_for_wrong_owner",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "http_status": 403,
+      "passed": true
+    },
+    {
+      "name": "server_can_save_for_verified_owner",
+      "expected_allowed": true,
+      "actual_allowed": true,
+      "http_status": 200,
+      "passed": true
+    },
+    {
+      "name": "owner_can_read_assistant",
+      "expected_allowed": true,
+      "actual_allowed": true,
+      "http_status": 200,
+      "passed": true
+    },
+    {
+      "name": "other_user_cannot_read_assistant",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "http_status": 200,
+      "passed": true
+    },
+    {
+      "name": "other_user_cannot_read_citation",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "http_status": 200,
+      "passed": true
+    },
+    {
+      "name": "owner_can_read_citation",
+      "expected_allowed": true,
+      "actual_allowed": true,
+      "http_status": 200,
+      "passed": true
+    },
+    {
+      "name": "user_cannot_edit_assistant_content",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "http_status": 403,
+      "passed": true
+    },
+    {
+      "name": "user_cannot_edit_assistant_display",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "http_status": 403,
+      "passed": true
+    },
+    {
+      "name": "user_cannot_edit_assistant_role",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "http_status": 403,
+      "passed": true
+    },
+    {
+      "name": "user_cannot_edit_assistant_usage",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "http_status": 403,
+      "passed": true
+    },
+    {
+      "name": "user_cannot_edit_saved_question",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "http_status": 403,
+      "passed": true
+    },
+    {
+      "name": "user_cannot_delete_assistant",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "http_status": 403,
+      "passed": true
+    },
+    {
+      "name": "user_cannot_insert_user",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "http_status": 403,
+      "passed": true
+    },
+    {
+      "name": "user_cannot_insert_assistant",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "http_status": 403,
+      "passed": true
+    },
+    {
+      "name": "user_cannot_upsert_assistant",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "http_status": 403,
+      "passed": true
+    },
+    {
+      "name": "user_cannot_edit_citation",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "http_status": 403,
+      "passed": true
+    },
+    {
+      "name": "user_cannot_delete_citation",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "http_status": 403,
+      "passed": true
+    },
+    {
+      "name": "user_cannot_insert_citation",
+      "expected_allowed": false,
+      "actual_allowed": false,
+      "http_status": 403,
+      "passed": true
+    },
+    {
+      "name": "assistant_unchanged_after_all_probes",
+      "passed": true
+    },
+    {
+      "name": "citation_unchanged_after_all_probes",
+      "passed": true
+    },
+    {
+      "name": "owner_can_rename_thread",
+      "expected_allowed": true,
+      "actual_allowed": true,
+      "http_status": 200,
+      "passed": true
+    },
+    {
+      "name": "owner_can_delete_thread",
+      "expected_allowed": true,
+      "actual_allowed": true,
+      "http_status": 200,
+      "passed": true
+    },
+    {
+      "name": "thread_delete_removes_chat_messages",
+      "passed": true
+    },
+    {
+      "name": "thread_delete_removes_message_citations",
+      "passed": true
+    }
+  ]
+}
